@@ -220,14 +220,14 @@ export function useMarketData(): MarketDataState {
           usingFallback: true,
           isLoading: false,
           error:
-            "바이낸스 심볼을 조회할 수 없습니다. GitHub 저장 데이터를 표시합니다.",
+            "선물가격 데이터를 조회할 수 없습니다. GitHub 저장 데이터를 표시합니다.",
         }));
         return;
       }
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error: "바이낸스 심볼을 조회할 수 없습니다. 데이터 확인 중입니다.",
+        error: "선물가격 데이터를 조회할 수 없습니다. 데이터 확인 중입니다.",
       }));
       return;
     }

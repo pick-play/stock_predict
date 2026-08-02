@@ -5,10 +5,10 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#080b10",
-        "surface-1": "#0d1118",
-        "surface-2": "#121824",
-        "surface-3": "#18202e",
+        background: "var(--bg)",
+        "surface-1": "var(--surface-1)",
+        "surface-2": "var(--surface-2)",
+        "surface-3": "var(--surface-3)",
         rise: "#ff4d5e",
         fall: "#3f82ff",
         neutral: "#d6dde8",

@@ -7,7 +7,7 @@ export function HeroSummary() {
   const titleLine1 = trading
     ? "현재 한국거래소"
     : weekend
-    ? "주말 바이낸스 연계상품"
+    ? "주말 해외 선물가격"
     : "오늘 밤 시장이 반영한";
 
   const titleLine2Accent = trading
@@ -18,7 +18,7 @@ export function HeroSummary() {
 
   const subtitle = trading
     ? "본 예상가격보다 국내 실제 체결가격을 우선 확인하세요."
-    : "바이낸스 연계상품 가격 변동 기반 야간 참고 예상가입니다.";
+    : "해외 선물가격 변동 기반 야간 참고 예상가입니다.";
 
   const warning = trading
     ? "현재 한국거래소 정규장이 진행 중입니다. 실제 체결가 기준으로 거래하세요."
@@ -28,12 +28,12 @@ export function HeroSummary() {
 
   return (
     <div className="animate-slide-fade-in px-4 md:px-6 py-5">
-      <h2 className="text-xl md:text-2xl font-bold text-[#f4f7fb] leading-snug tracking-tight">
+      <h2 className="text-xl md:text-2xl font-bold text-[var(--text-primary)] leading-snug tracking-tight">
         {titleLine1}
         <br />
         <span className="text-[#8b7cff]">{titleLine2Accent}</span>
       </h2>
-      <p className="text-sm text-[#6f7a8c] mt-2 leading-relaxed">{subtitle}</p>
+      <p className="text-sm text-[var(--text-tertiary)] mt-2 leading-relaxed">{subtitle}</p>
 
       {warning && (
         <div

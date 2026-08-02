@@ -14,7 +14,7 @@ export function AppHeader({
   lastUpdated,
 }: AppHeaderProps) {
   return (
-    <header className="animate-fade-in flex items-center justify-between py-4 px-4 md:px-6 border-b border-[rgba(255,255,255,0.05)]">
+    <header className="animate-fade-in flex items-center justify-between py-4 px-4 md:px-6 border-b border-[var(--border-mid)]">
       {/* Logo mark */}
       <div className="flex items-center gap-3">
         <div
@@ -30,11 +30,11 @@ export function AppHeader({
           </span>
         </div>
         <div>
-          <h1 className="text-sm font-semibold text-[#f4f7fb] leading-none tracking-tight">
+          <h1 className="text-sm font-semibold text-[var(--text-primary)] leading-none tracking-tight">
             야간 반도체 예상가
           </h1>
-          <p className="text-[10px] text-[#4a5568] mt-0.5 tracking-wide">
-            바이낸스 연계상품 기반
+          <p className="text-[10px] text-[var(--text-muted)] mt-0.5 tracking-wide">
+            해외 선물가격 기반
           </p>
         </div>
       </div>
@@ -48,7 +48,7 @@ export function AppHeader({
           lastUpdated={lastUpdated}
         />
         {lastUpdated && !isLoading && (
-          <span className="hidden md:block text-[10px] text-[#4a5568] tabular-nums">
+          <span className="hidden md:block text-[10px] text-[var(--text-muted)] tabular-nums">
             {formatRelativeTime(lastUpdated)}
           </span>
         )}

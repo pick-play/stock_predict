@@ -96,7 +96,7 @@ export function StockEstimateCard({
 
   return (
     <article
-      className="animate-slide-fade-in relative rounded-2xl border border-[rgba(255,255,255,0.07)] bg-surface-1 overflow-hidden hover:-translate-y-1 hover:border-[rgba(255,255,255,0.13)] hover:shadow-xl hover:shadow-black/40 transition-all duration-200 ease-out"
+      className="animate-slide-fade-in relative rounded-2xl border border-[var(--border-subtle)] bg-surface-1 overflow-hidden hover:-translate-y-1 hover:border-[var(--border-strong)] hover:shadow-xl hover:shadow-black/20 transition-all duration-200 ease-out"
       style={{ animationDelay, willChange: "transform" }}
       aria-label={`${snapshot.displayName} 예상가격 카드`}
     >
@@ -112,16 +112,13 @@ export function StockEstimateCard({
         <div className="flex items-start justify-between mb-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-semibold text-[#f4f7fb] tracking-tight leading-none">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)] tracking-tight leading-none">
                 {snapshot.displayName}
               </h2>
-              <span className="text-[10px] font-mono text-[#6f7a8c] bg-surface-3 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-mono text-[var(--text-tertiary)] bg-surface-3 px-1.5 py-0.5 rounded">
                 {snapshot.koreanTicker}
               </span>
             </div>
-            <p className="text-[10px] text-[#4a5568] font-mono mt-1.5 tracking-wide">
-              {snapshot.binanceSymbol}
-            </p>
           </div>
           {sparklineData && sparklineData.length >= 2 && (
             <div className="flex-shrink-0 ml-3 mt-0.5">
@@ -147,13 +144,13 @@ export function StockEstimateCard({
                 </p>
               </div>
               <p
-                className="font-bold text-[#2d3748] tabular-nums leading-none"
+                className="font-bold text-[var(--text-muted)] tabular-nums leading-none"
                 style={{ fontSize: "clamp(1.75rem, 4vw, 2.5rem)" }}
                 aria-label="예상가격 없음"
               >
                 —
               </p>
-              <p className="text-xs text-[#4a5568] mt-2 leading-relaxed">
+              <p className="text-xs text-[var(--text-muted)] mt-2 leading-relaxed">
                 국내장 마감 기준가격이 등록되면
                 <br />
                 예상가격이 표시됩니다.
@@ -162,13 +159,13 @@ export function StockEstimateCard({
           ) : (
             <div>
               <p
-                className="font-bold text-[#f4f7fb] tabular-nums leading-none tracking-tight"
+                className="font-bold text-[var(--text-primary)] tabular-nums leading-none tracking-tight"
                 style={{ fontSize: "clamp(2rem, 5vw, 3rem)" }}
                 aria-label={`예상가격 ${formatKrw(snapshot.estimatedPrice)}`}
               >
                 {formatKrw(snapshot.estimatedPrice)}
               </p>
-              <p className="text-[10px] text-[#4a5568] mt-1.5 leading-none">
+              <p className="text-[10px] text-[var(--text-muted)] mt-1.5 leading-none">
                 한국거래소 호가단위로 반올림한 참고 예상가
               </p>
             </div>
@@ -191,13 +188,13 @@ export function StockEstimateCard({
         )}
 
         {/* ── Metrics table ── */}
-        <div className="border-t border-[rgba(255,255,255,0.05)] pt-3 mt-1">
+        <div className="border-t border-[var(--border-mid)] pt-3 mt-1">
           <MetricRow
             label="최근 국내 종가"
             value={snapshot.krxClose > 0 ? formatKrw(snapshot.krxClose) : "—"}
           />
           <MetricRow
-            label="바이낸스 현재 기준가"
+            label="현재 해외 선물가"
             value={
               snapshot.currentBinancePrice > 0
                 ? formatBinancePrice(snapshot.currentBinancePrice)
@@ -205,7 +202,7 @@ export function StockEstimateCard({
             }
           />
           <MetricRow
-            label="마감시 바이낸스 기준가"
+            label="마감시 선물 기준가"
             value={
               snapshot.baselineBinancePrice > 0
                 ? formatBinancePrice(snapshot.baselineBinancePrice)
@@ -214,7 +211,7 @@ export function StockEstimateCard({
           />
           {snapshot.bidPrice !== null && snapshot.askPrice !== null && (
             <MetricRow
-              label="Bid / Ask"
+              label="매수 / 매도 호가"
               value={`${formatBinancePrice(snapshot.bidPrice)} / ${formatBinancePrice(snapshot.askPrice)}`}
             />
           )}
@@ -222,7 +219,7 @@ export function StockEstimateCard({
         </div>
 
         {/* ── Footer: confidence + time ── */}
-        <div className="border-t border-[rgba(255,255,255,0.05)] pt-3 mt-3">
+        <div className="border-t border-[var(--border-mid)] pt-3 mt-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <span
@@ -236,12 +233,12 @@ export function StockEstimateCard({
               >
                 {confLabel}
               </span>
-              <span className="text-[10px] text-[#4a5568]">
+              <span className="text-[10px] text-[var(--text-muted)]">
                 · {confScore}/100
               </span>
             </div>
             <span
-              className="text-[10px] text-[#4a5568] tabular-nums"
+              className="text-[10px] text-[var(--text-muted)] tabular-nums"
               aria-label={`${formatRelativeTime(snapshot.eventTime)} 업데이트`}
             >
               {formatRelativeTime(snapshot.eventTime)}
@@ -250,7 +247,7 @@ export function StockEstimateCard({
 
           {/* Confidence progress bar */}
           <div
-            className="h-[2px] rounded-full bg-[rgba(255,255,255,0.05)] overflow-hidden"
+            className="h-[2px] rounded-full bg-[var(--border-mid)] overflow-hidden"
             role="meter"
             aria-valuenow={confScore}
             aria-valuemin={0}
@@ -270,9 +267,9 @@ export function StockEstimateCard({
 
 function MetricRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between py-[5px] border-b border-[rgba(255,255,255,0.04)] last:border-0">
-      <span className="text-[11px] text-[#6f7a8c]">{label}</span>
-      <span className="text-[11px] text-[#a6b0c0] font-mono tabular-nums ml-4 text-right">
+    <div className="flex items-center justify-between py-[5px] border-b border-[var(--border-subtle)] last:border-0">
+      <span className="text-[11px] text-[var(--text-tertiary)]">{label}</span>
+      <span className="text-[11px] text-[var(--text-secondary)] font-mono tabular-nums ml-4 text-right">
         {value}
       </span>
     </div>

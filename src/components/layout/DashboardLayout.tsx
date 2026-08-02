@@ -7,7 +7,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div
-      className="min-h-screen bg-background text-[#f4f7fb]"
+      className="min-h-screen bg-background text-[var(--text-primary)]"
       style={{
         fontFamily:
           "Pretendard, 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",

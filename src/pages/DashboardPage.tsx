@@ -4,8 +4,6 @@ import { AppHeader } from "../components/common/AppHeader";
 import { StockEstimateCard } from "../components/dashboard/StockEstimateCard";
 import { HeroSummary } from "../components/dashboard/HeroSummary";
 import { LazyPriceChart } from "../components/dashboard/LazyPriceChart";
-import { PriceBreakdown } from "../components/dashboard/PriceBreakdown";
-import { MarketMetrics } from "../components/dashboard/MarketMetrics";
 import { Disclaimer } from "../components/common/Disclaimer";
 import { ErrorState } from "../components/common/ErrorState";
 import { StockCardSkeleton } from "../components/common/LoadingSkeleton";
@@ -106,16 +104,6 @@ export function DashboardPage() {
 
         {/* Price chart — lazy-loaded to split Recharts from initial bundle */}
         <LazyPriceChart history={history} krxClose={krxClose} />
-
-        {/* Bottom detail panels */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <PriceBreakdown stocks={stocks} />
-          <MarketMetrics
-            stocks={stocks}
-            lastUpdated={lastUpdated}
-            usingFallback={usingFallback}
-          />
-        </div>
 
         <Disclaimer />
       </main>
