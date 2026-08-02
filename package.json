@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "data:update": "node scripts/fetch-market-data.mjs",
+    "data:history": "node scripts/update-history.mjs",
     "data:validate": "node scripts/validate-data.mjs"
   },
   "dependencies": {

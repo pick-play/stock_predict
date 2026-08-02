@@ -36,7 +36,7 @@ jobs:
         run: npm run data:update
 
       - name: Update history
-        run: node scripts/update-history.mjs
+        run: npm run data:history
 
       - name: Run data validation
         run: npm run data:validate

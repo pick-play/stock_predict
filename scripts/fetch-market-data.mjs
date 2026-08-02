@@ -169,7 +169,14 @@ async function main() {
   }
 
   if (!anyUpdated) {
-    console.error("[fetch-market-data] No stocks updated. Aborting.");
+    if (existing) {
+      // All fetches failed but existing data is present — keep the file untouched
+      // so the workflow does not create a noisy failure commit or fail the job.
+      // Symbols may be temporarily unavailable (e.g., not listed on Binance).
+      console.warn("[fetch-market-data] No stocks updated. Keeping existing latest.json unchanged.");
+      process.exit(0);
+    }
+    console.error("[fetch-market-data] No stocks updated and no existing data. Aborting.");
     process.exit(1);
   }
 

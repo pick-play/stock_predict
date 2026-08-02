@@ -4,6 +4,20 @@ on:
   push:
     branches:
       - main
+    # Data snapshots (public/data/**) are committed every 5 minutes by
+    # update-market-data.yml. Excluding them here prevents a full
+    # lint + typecheck + test + build cycle on every data commit.
+    #
+    # Deployment strategy decision:
+    #   - The browser fetches live prices directly from the Binance API.
+    #   - public/data/latest.json on GitHub Pages is the last-resort fallback
+    #     (used when Binance is unreachable). It is acceptable for this fallback
+    #     to reflect the last code-change deployment rather than the last 5-min
+    #     data commit.
+    #   - If fresher fallback data on Pages is required in future, add a
+    #     lightweight deploy step at the end of update-market-data.yml.
+    paths-ignore:
+      - "public/data/**"
   workflow_dispatch:
 
 permissions:
