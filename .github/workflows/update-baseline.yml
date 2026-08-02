@@ -1,0 +1,55 @@
+name: Update KRX baseline
+
+on:
+  workflow_dispatch:
+  schedule:
+    # KRX 정규장 마감 후 (15:30 KST = 06:30 UTC), 10분 여유를 두고 실행
+    # 평일 월~금 06:40 UTC = 15:40 KST
+    - cron: "40 6 * * 1-5"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-baseline
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Refresh KRX baseline
+        run: npm run data:baseline
+
+      - name: Run data validation
+        run: npm run data:validate
+
+      - name: Commit updated baseline
+        run: |
+          if git diff --quiet public/data/baseline.json; then
+            echo "baseline.json unchanged, skipping commit"
+            exit 0
+          fi
+
+          git config user.name "market-data-bot"
+          git config user.email "market-data-bot@users.noreply.github.com"
+
+          git add public/data/baseline.json
+          git commit -m "chore(data): refresh KRX baseline $(date -u '+%Y-%m-%d')"
+          git push
