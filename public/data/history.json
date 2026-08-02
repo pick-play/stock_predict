@@ -15,5 +15,22 @@
         "confidenceScore": 0
       }
     }
+  },
+  {
+    "timestamp": "2026-08-02T13:35:50.270Z",
+    "stocks": {
+      "samsung": {
+        "estimatedPrice": 237500,
+        "changeRate": -0.09483655478289432,
+        "currentBinancePrice": 165.31,
+        "confidenceScore": 90
+      },
+      "skHynix": {
+        "estimatedPrice": 1583000,
+        "changeRate": -0.07841786094709202,
+        "currentBinancePrice": 1101.89890038,
+        "confidenceScore": 90
+      }
+    }
   }
 ]
