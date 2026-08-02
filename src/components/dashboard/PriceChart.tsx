@@ -158,11 +158,9 @@ export function PriceChart({ history, krxClose }: PriceChartProps) {
               <YAxis
                 dataKey="price"
                 domain={["auto", "auto"]}
-                tickFormatter={(v: number) => {
-                  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-                  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
-                  return String(v);
-                }}
+                tickFormatter={(v: number) =>
+                  new Intl.NumberFormat("ko-KR").format(Math.round(v))
+                }
                 tick={{
                   fill: "#6f7a8c",
                   fontSize: 10,
@@ -171,7 +169,7 @@ export function PriceChart({ history, krxClose }: PriceChartProps) {
                 }}
                 axisLine={false}
                 tickLine={false}
-                width={40}
+                width={70}
               />
 
               {baseline !== undefined && (

@@ -4,6 +4,7 @@ import {
   BaselineStockSchema,
   BaselineSchema,
   LatestDataSchema,
+  HistoryArraySchema,
 } from "../validation";
 
 const NOW = new Date("2026-08-02T12:00:00.000Z");
@@ -198,5 +199,78 @@ describe("LatestDataSchema — schema version check", () => {
     expect(() =>
       LatestDataSchema.parse({ ...validLatest, source: "unknown-source" })
     ).toThrow();
+  });
+
+  it("accepts github-actions as source (written by GitHub Actions script)", () => {
+    expect(() =>
+      LatestDataSchema.parse({ ...validLatest, source: "github-actions" })
+    ).not.toThrow();
+  });
+
+  it("accepts no-baseline snapshot with zero prices", () => {
+    const noBaselineSnapshot = {
+      ...minimalSnapshot,
+      krxClose: 0,
+      baselineBinancePrice: 0,
+      currentBinancePrice: 0,
+      rawEstimatedPrice: 0,
+      estimatedPrice: 0,
+      changeAmount: 0,
+      changeRate: 0,
+      status: "no-baseline",
+    };
+    const latest = {
+      ...validLatest,
+      stocks: {
+        samsung: noBaselineSnapshot,
+        skHynix: { ...noBaselineSnapshot, displayName: "SK하이닉스", koreanTicker: "000660", binanceSymbol: "SKHYNIXUSDT" },
+      },
+    };
+    expect(() => LatestDataSchema.parse(latest)).not.toThrow();
+  });
+});
+
+describe("HistoryArraySchema", () => {
+  it("accepts valid history array", () => {
+    const entry = {
+      timestamp: "2026-08-02T11:30:00.000Z",
+      stocks: {
+        samsung: { estimatedPrice: 102_500, changeRate: 0.025, currentBinancePrice: 73.42, confidenceScore: 88 },
+        skHynix: { estimatedPrice: 304_000, changeRate: 0.013, currentBinancePrice: 218.1, confidenceScore: 84 },
+      },
+    };
+    expect(() => HistoryArraySchema.parse([entry])).not.toThrow();
+  });
+
+  it("accepts history entry with missing stock (partial data)", () => {
+    const entry = {
+      timestamp: "2026-08-02T11:30:00.000Z",
+      stocks: {
+        samsung: { estimatedPrice: 102_500, changeRate: 0.025, currentBinancePrice: 73.42, confidenceScore: 88 },
+      },
+    };
+    expect(() => HistoryArraySchema.parse([entry])).not.toThrow();
+  });
+
+  it("accepts empty history array", () => {
+    expect(() => HistoryArraySchema.parse([])).not.toThrow();
+  });
+
+  it("rejects history entry with invalid timestamp", () => {
+    const entry = {
+      timestamp: "not-a-date",
+      stocks: {},
+    };
+    expect(() => HistoryArraySchema.parse([entry])).toThrow();
+  });
+
+  it("rejects history entry with negative estimatedPrice", () => {
+    const entry = {
+      timestamp: "2026-08-02T11:30:00.000Z",
+      stocks: {
+        samsung: { estimatedPrice: -1, changeRate: 0, currentBinancePrice: 73.42, confidenceScore: 88 },
+      },
+    };
+    expect(() => HistoryArraySchema.parse([entry])).toThrow();
   });
 });

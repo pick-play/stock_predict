@@ -6,12 +6,12 @@
     "samsung": {
       "krxClose": 0,
       "binanceReferencePrice": 0,
-      "referencePriceMode": "mark"
+      "referencePriceMode": "last"
     },
     "skHynix": {
       "krxClose": 0,
       "binanceReferencePrice": 0,
-      "referencePriceMode": "mark"
+      "referencePriceMode": "last"
     }
   }
 }

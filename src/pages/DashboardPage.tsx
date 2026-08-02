@@ -13,6 +13,7 @@ import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { MobileBottomBar } from "../components/layout/MobileBottomBar";
 import type { HistoryEntry, StockId } from "../types/market";
 import { HISTORY_PATH } from "../config/market";
+import { HistoryArraySchema } from "../lib/validation";
 
 const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
 
@@ -27,12 +28,15 @@ export function DashboardPage() {
     fetch(`${HISTORY_PATH}?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: unknown) => {
-        if (Array.isArray(data)) {
-          setHistory(data as HistoryEntry[]);
+        const result = HistoryArraySchema.safeParse(data);
+        if (result.success) {
+          setHistory(result.data as HistoryEntry[]);
+        } else {
+          console.error("[DashboardPage] Invalid history.json:", result.error);
         }
       })
       .catch(() => {
-        // history is optional; silently ignore
+        // history is optional; silently ignore network errors
       });
   }, []);
 

@@ -17,9 +17,11 @@ export const KRX_CLOSE_MINUTE = 30;
 export const HISTORY_MAX_RECENT_DAYS = 7;
 export const HISTORY_SAMPLE_INTERVAL_MS = 5 * 60 * 1000;
 
-export const BASELINE_PATH = "/data/baseline.json";
-export const LATEST_PATH = "/data/latest.json";
-export const HISTORY_PATH = "/data/history.json";
+// Use import.meta.env.BASE_URL so paths work on GitHub Pages (e.g. /stock_predict/)
+// Vite sets BASE_URL to "/" in dev and to the configured base in production builds.
+export const BASELINE_PATH = `${import.meta.env.BASE_URL}data/baseline.json`;
+export const LATEST_PATH = `${import.meta.env.BASE_URL}data/latest.json`;
+export const HISTORY_PATH = `${import.meta.env.BASE_URL}data/history.json`;
 
 export const BINANCE_REST_BASE = "https://api.binance.com";
 export const BINANCE_WS_BASE = "wss://stream.binance.com:9443";

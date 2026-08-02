@@ -1,6 +1,6 @@
 export type StockId = "samsung" | "skHynix";
 export type ReferencePriceMode = "mark" | "mid" | "last";
-export type DataSource = "binance-rest" | "binance-websocket" | "github-snapshot";
+export type DataSource = "binance-rest" | "binance-websocket" | "github-snapshot" | "github-actions";
 export type StockStatus = "healthy" | "stale" | "error" | "loading" | "no-baseline";
 
 export interface StockConfig {

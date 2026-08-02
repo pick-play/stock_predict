@@ -1,6 +1,6 @@
-import type { StockConfig } from "../types/market";
+import type { StockId, StockConfig } from "../types/market";
 
-export const MARKET_SYMBOLS: Record<string, StockConfig> = {
+export const MARKET_SYMBOLS: Record<StockId, StockConfig> = {
   samsung: {
     id: "samsung",
     displayName: "삼성전자",

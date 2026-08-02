@@ -88,6 +88,59 @@ function loadLatest() {
   }
 }
 
+// Check whether the current time in Seoul is a weekend day
+function isWeekendInKorea() {
+  const day = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    weekday: "short",
+  }).format(new Date());
+  return day === "Sat" || day === "Sun";
+}
+
+// Multi-factor confidence score — mirrors browser src/lib/confidenceScore.ts
+// Factors: data age, bid/ask spread, volume, markPrice availability,
+//          baseline availability, and weekend penalty.
+function calculateConfidenceScore({ ticker, baselineStock }) {
+  let score = 100;
+
+  // Data age (ticker.closeTime is unix ms from Binance 24hr endpoint)
+  const eventTime = typeof ticker.closeTime === "number" ? ticker.closeTime : Date.now();
+  const ageMs = Date.now() - eventTime;
+  if (ageMs > 60_000) score -= 10;
+  if (ageMs > 5 * 60_000) score -= 30;
+
+  // Bid/ask spread
+  const bid = parsePositive(ticker.bidPrice);
+  const ask = parsePositive(ticker.askPrice);
+  if (bid !== null && ask !== null) {
+    const spread = (ask - bid) / ask;
+    if (spread > 0.005) score -= 10;
+  } else {
+    score -= 10; // no valid bid/ask
+  }
+
+  // 24h volume — low liquidity penalty
+  const vol24h = parseFloat(ticker.volume);
+  if (Number.isFinite(vol24h) && vol24h < 1000) score -= 15;
+
+  // TradFi spot has no markPrice — always deduct
+  score -= 10;
+
+  // Baseline availability
+  if (
+    !baselineStock ||
+    !(baselineStock.krxClose > 0) ||
+    !(baselineStock.binanceReferencePrice > 0)
+  ) {
+    score -= 25;
+  }
+
+  // Weekend: lower liquidity and wider spreads
+  if (isWeekendInKorea()) score -= 10;
+
+  return Math.max(0, Math.min(100, score));
+}
+
 async function main() {
   console.log("[fetch-market-data] Starting...");
 
@@ -153,7 +206,7 @@ async function main() {
         bidPrice: bid,
         askPrice: ask,
         spreadPercent,
-        confidenceScore: estimateFields.status === "healthy" ? 80 : 20,
+        confidenceScore: calculateConfidenceScore({ ticker, baselineStock }),
         eventTime: ticker.closeTime
           ? new Date(ticker.closeTime).toISOString()
           : now,

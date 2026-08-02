@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import type { StockId, StockSnapshot, Baseline, LatestData } from "../types/market";
-import { fetchAllStockQuotes } from "../lib/binance/client";
+import { fetchStockQuote } from "../lib/binance/client";
+import type { StockQuoteResult } from "../lib/binance/client";
 import { calculateEstimate } from "../lib/calculateEstimate";
 import { calculateConfidenceScore } from "../lib/confidenceScore";
 import { BaselineSchema, LatestDataSchema } from "../lib/validation";
@@ -69,35 +70,38 @@ export function useMarketData(): MarketDataState {
   currentStocksRef.current = state.stocks;
 
   const refresh = useCallback(async () => {
-    const [baseline, quoteResults] = await Promise.all([
-      fetchBaseline(),
-      fetchAllStockQuotes("mark").catch(() => null),
-    ]);
+    // Fetch baseline first so we know each stock's referencePriceMode (fixes M1/M3)
+    const baseline = await fetchBaseline();
 
-    if (!quoteResults) {
-      const fallback = await fetchGithubLatest();
-      if (fallback) {
-        setState((prev) => ({
-          ...prev,
-          stocks: fallback.stocks as Partial<Record<StockId, StockSnapshot>>,
-          lastUpdated: fallback.generatedAt,
-          usingFallback: true,
-          isLoading: false,
-          error:
-            "최신 시세 연결이 원활하지 않습니다. GitHub 저장 데이터를 표시합니다.",
-        }));
-      } else {
-        setState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: "데이터를 불러올 수 없습니다.",
-          usingFallback: false,
-        }));
-      }
-      return;
-    }
-
+    // Per-stock quote fetch using each stock's configured referencePriceMode.
+    // Default "last" — TradFi spot products have no markPrice.
     const stockIds: StockId[] = ["samsung", "skHynix"];
+    const quoteSettled = await Promise.allSettled(
+      stockIds.map((id) =>
+        fetchStockQuote(id, baseline?.stocks[id]?.referencePriceMode ?? "last")
+      )
+    );
+
+    const quoteResults: Record<StockId, StockQuoteResult> = {} as Record<
+      StockId,
+      StockQuoteResult
+    >;
+    quoteSettled.forEach((result, i) => {
+      const id = stockIds[i];
+      quoteResults[id] =
+        result.status === "fulfilled"
+          ? result.value
+          : {
+              stockId: id,
+              quote: null,
+              referencePrice: null,
+              error:
+                result.reason instanceof Error
+                  ? result.reason.message
+                  : String(result.reason),
+            };
+    });
+
     const newStocks: Partial<Record<StockId, StockSnapshot>> = {
       ...currentStocksRef.current,
     };
@@ -124,7 +128,7 @@ export function useMarketData(): MarketDataState {
           krxClose: 0,
           baselineBinancePrice: 0,
           currentBinancePrice: result.referencePrice,
-          referencePriceMode: "mark",
+          referencePriceMode: baseline?.stocks[stockId]?.referencePriceMode ?? "last",
           rawEstimatedPrice: 0,
           estimatedPrice: 0,
           changeAmount: 0,
@@ -201,6 +205,31 @@ export function useMarketData(): MarketDataState {
       } catch (err) {
         console.error(`[useMarketData] Estimate error for ${stockId}:`, err);
       }
+    }
+
+    // C2 fix: if all quotes failed and there is no prior state to show,
+    // fall back to GitHub latest.json so cards render as "no-baseline" / "error"
+    // rather than leaving the page blank.
+    if (Object.keys(newStocks).length === 0) {
+      const fallback = await fetchGithubLatest();
+      if (fallback) {
+        setState((prev) => ({
+          ...prev,
+          stocks: fallback.stocks as Partial<Record<StockId, StockSnapshot>>,
+          lastUpdated: fallback.generatedAt,
+          usingFallback: true,
+          isLoading: false,
+          error:
+            "바이낸스 심볼을 조회할 수 없습니다. GitHub 저장 데이터를 표시합니다.",
+        }));
+        return;
+      }
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: "바이낸스 심볼을 조회할 수 없습니다. 데이터 확인 중입니다.",
+      }));
+      return;
     }
 
     setState({

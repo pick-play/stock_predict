@@ -49,9 +49,10 @@ export const StockSnapshotSchema = z.object({
   displayName: z.string(),
   koreanTicker: z.string(),
   binanceSymbol: z.string(),
-  krxClose: z.number().positive(),
-  baselineBinancePrice: z.number().positive(),
-  currentBinancePrice: z.number().positive(),
+  // nonnegative (not positive) so no-baseline snapshots with 0 values are valid
+  krxClose: z.number().nonnegative(),
+  baselineBinancePrice: z.number().nonnegative(),
+  currentBinancePrice: z.number().nonnegative(),
   referencePriceMode: z.enum(["mark", "mid", "last"]),
   rawEstimatedPrice: z.number(),
   estimatedPrice: z.number().nonnegative(),
@@ -68,12 +69,32 @@ export const StockSnapshotSchema = z.object({
 export const LatestDataSchema = z.object({
   schemaVersion: z.literal(1),
   generatedAt: z.string().datetime(),
-  source: z.enum(["binance-rest", "binance-websocket", "github-snapshot"]),
+  // "github-actions" is the value written by GitHub Actions scripts
+  source: z.enum(["binance-rest", "binance-websocket", "github-snapshot", "github-actions"]),
   stocks: z.object({
     samsung: StockSnapshotSchema,
     skHynix: StockSnapshotSchema,
   }),
 });
 
+// HistoryEntry schema — used for history.json validation in the browser
+const HistoryStockSchema = z.object({
+  estimatedPrice: z.number().nonnegative(),
+  changeRate: z.number(),
+  currentBinancePrice: z.number().nonnegative(),
+  confidenceScore: z.number().min(0).max(100),
+});
+
+export const HistoryEntrySchema = z.object({
+  timestamp: z.string().datetime(),
+  stocks: z.object({
+    samsung: HistoryStockSchema.optional(),
+    skHynix: HistoryStockSchema.optional(),
+  }),
+});
+
+export const HistoryArraySchema = z.array(HistoryEntrySchema);
+
 export type ValidatedBaseline = z.infer<typeof BaselineSchema>;
 export type ValidatedLatestData = z.infer<typeof LatestDataSchema>;
+export type ValidatedHistoryEntry = z.infer<typeof HistoryEntrySchema>;
