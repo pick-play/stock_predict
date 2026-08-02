@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-02T11:30:00.000Z",
+  "source": "github-actions",
+  "stocks": {
+    "samsung": {
+      "displayName": "삼성전자",
+      "koreanTicker": "005930",
+      "binanceSymbol": "SAMSUNGUSDT",
+      "krxClose": 0,
+      "baselineBinancePrice": 0,
+      "currentBinancePrice": 0,
+      "referencePriceMode": "mark",
+      "rawEstimatedPrice": 0,
+      "estimatedPrice": 0,
+      "changeAmount": 0,
+      "changeRate": 0,
+      "bidPrice": null,
+      "askPrice": null,
+      "spreadPercent": null,
+      "confidenceScore": 0,
+      "eventTime": "2026-08-02T11:30:00.000Z",
+      "status": "no-baseline"
+    },
+    "skHynix": {
+      "displayName": "SK하이닉스",
+      "koreanTicker": "000660",
+      "binanceSymbol": "SKHYNIXUSDT",
+      "krxClose": 0,
+      "baselineBinancePrice": 0,
+      "currentBinancePrice": 0,
+      "referencePriceMode": "mark",
+      "rawEstimatedPrice": 0,
+      "estimatedPrice": 0,
+      "changeAmount": 0,
+      "changeRate": 0,
+      "bidPrice": null,
+      "askPrice": null,
+      "spreadPercent": null,
+      "confidenceScore": 0,
+      "eventTime": "2026-08-02T11:30:00.000Z",
+      "status": "no-baseline"
+    }
+  }
+}

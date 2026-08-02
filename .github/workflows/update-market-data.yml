@@ -1,0 +1,56 @@
+name: Update market data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "2-57/5 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-market-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch and validate market data
+        run: npm run data:update
+
+      - name: Update history
+        run: node scripts/update-history.mjs
+
+      - name: Run data validation
+        run: npm run data:validate
+
+      - name: Commit updated data
+        run: |
+          if git diff --quiet; then
+            echo "No data changes"
+            exit 0
+          fi
+
+          git config user.name "market-data-bot"
+          git config user.email "market-data-bot@users.noreply.github.com"
+
+          git add public/data
+          git commit -m "chore(data): update market snapshot"
+          git push
