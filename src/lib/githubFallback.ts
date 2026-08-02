@@ -1,20 +1,37 @@
 /**
  * githubFallback.ts
  *
- * Fetches latest.json and baseline.json from GitHub with a two-URL fallback:
- *   1. GitHub Pages CDN URL  (same origin, fast — `LATEST_PATH` / `BASELINE_PATH`)
- *   2. raw.githubusercontent.com (absolute, CORS: access-control-allow-origin: *)
+ * Fetches latest.json / baseline.json / history.json from GitHub with an
+ * ordered two-URL strategy.
  *
- * Used by useMarketData when Binance API is unavailable.
+ * Production order (raw FIRST):
+ *   1. raw.githubusercontent.com — reflects every 5-minute data commit
+ *      (deploy-pages.yml ignores public/data/**, so the Pages copies are
+ *      frozen at the last code deploy). CORS: access-control-allow-origin: *.
+ *   2. GitHub Pages CDN (relative URL) — same-origin backup if raw fails.
+ *
+ * Dev order (local FIRST):
+ *   1. Local dev server relative URL (public/data/**) so local edits win.
+ *   2. raw.githubusercontent.com as backup.
+ *
+ * Used by useMarketData when the Binance API is unavailable and by
+ * DashboardPage for chart/sparkline history.
  */
 
-import type { LatestData, Baseline } from "../types/market";
-import { LatestDataSchema, BaselineSchema } from "./validation";
+import type { LatestData, Baseline, HistoryEntry } from "../types/market";
+import {
+  LatestDataSchema,
+  BaselineSchema,
+  HistoryArraySchema,
+  type ValidatedHistoryEntry,
+} from "./validation";
 import {
   LATEST_PATH,
   BASELINE_PATH,
+  HISTORY_PATH,
   GITHUB_RAW_LATEST_URL,
   GITHUB_RAW_BASELINE_URL,
+  GITHUB_RAW_HISTORY_URL,
 } from "../config/market";
 
 type FetchResult<T> = T | null;
@@ -47,37 +64,59 @@ async function tryFetch<T>(
 }
 
 /**
- * Fetch latest.json — GitHub Pages first, raw GitHub second.
- * Returns null only if both URLs fail.
+ * Ordered candidate URLs for one data file.
+ * Production prefers raw (fresh, updated every data commit); dev prefers the
+ * local dev-server copy so local edits are visible without pushing.
  */
-export async function fetchGithubLatest(): Promise<FetchResult<LatestData>> {
-  // 1. Try GitHub Pages CDN (relative URL, same host as the deployed app).
-  const pagesUrl = `${LATEST_PATH}?t=${Date.now()}`;
-  const fromPages = await tryFetch<LatestData>(pagesUrl, LatestDataSchema);
-  if (fromPages !== null) {
-    return fromPages;
-  }
-
-  // 2. Fallback to raw.githubusercontent.com (absolute URL, CORS-enabled).
-  console.info("[githubFallback] Pages URL failed, trying raw GitHub for latest.json");
-  const rawUrl = `${GITHUB_RAW_LATEST_URL}?t=${Date.now()}`;
-  return tryFetch<LatestData>(rawUrl, LatestDataSchema);
+export function orderedDataUrls(rawUrl: string, pagesPath: string): string[] {
+  return import.meta.env.PROD ? [rawUrl, pagesPath] : [pagesPath, rawUrl];
 }
 
-/**
- * Fetch baseline.json — GitHub Pages first, raw GitHub second.
- * Returns null only if both URLs fail.
- */
-export async function fetchGithubBaseline(): Promise<FetchResult<Baseline>> {
-  // 1. Try GitHub Pages CDN.
-  const pagesUrl = `${BASELINE_PATH}?t=${Date.now()}`;
-  const fromPages = await tryFetch<Baseline>(pagesUrl, BaselineSchema);
-  if (fromPages !== null) {
-    return fromPages;
+async function fetchWithFallback<T>(
+  rawUrl: string,
+  pagesPath: string,
+  schema: { safeParse: (data: unknown) => { success: boolean; data?: T } },
+  label: string
+): Promise<FetchResult<T>> {
+  const candidates = orderedDataUrls(rawUrl, pagesPath);
+  for (const base of candidates) {
+    const result = await tryFetch<T>(`${base}?t=${Date.now()}`, schema);
+    if (result !== null) return result;
+    console.info(`[githubFallback] ${label}: ${base} failed, trying next source`);
   }
+  return null;
+}
 
-  // 2. Fallback to raw.githubusercontent.com.
-  console.info("[githubFallback] Pages URL failed, trying raw GitHub for baseline.json");
-  const rawUrl = `${GITHUB_RAW_BASELINE_URL}?t=${Date.now()}`;
-  return tryFetch<Baseline>(rawUrl, BaselineSchema);
+/** Fetch latest.json. Returns null only if both URLs fail. */
+export async function fetchGithubLatest(): Promise<FetchResult<LatestData>> {
+  return fetchWithFallback<LatestData>(
+    GITHUB_RAW_LATEST_URL,
+    LATEST_PATH,
+    LatestDataSchema,
+    "latest.json"
+  );
+}
+
+/** Fetch baseline.json. Returns null only if both URLs fail. */
+export async function fetchGithubBaseline(): Promise<FetchResult<Baseline>> {
+  return fetchWithFallback<Baseline>(
+    GITHUB_RAW_BASELINE_URL,
+    BASELINE_PATH,
+    BaselineSchema,
+    "baseline.json"
+  );
+}
+
+/** Fetch history.json for charts/sparklines. Returns null only if both URLs fail. */
+export async function fetchGithubHistory(): Promise<FetchResult<HistoryEntry[]>> {
+  // ValidatedHistoryEntry has optional per-stock fields (Zod schema);
+  // HistoryEntry uses Record<StockId, ...>. The shapes are runtime-compatible —
+  // same cast pattern the original inline fetch used (`result.data as HistoryEntry[]`).
+  const data = await fetchWithFallback<ValidatedHistoryEntry[]>(
+    GITHUB_RAW_HISTORY_URL,
+    HISTORY_PATH,
+    HistoryArraySchema,
+    "history.json"
+  );
+  return data as HistoryEntry[] | null;
 }

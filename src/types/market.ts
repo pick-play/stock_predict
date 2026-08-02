@@ -52,14 +52,18 @@ export interface LatestData {
 
 export interface HistoryEntry {
   timestamp: string;
-  stocks: Record<
-    StockId,
-    {
-      estimatedPrice: number;
-      changeRate: number;
-      currentBinancePrice: number;
-      confidenceScore: number;
-    }
+  // Partial: a snapshot may contain only the stocks that updated successfully
+  // (per-stock failure isolation), matching HistoryEntrySchema's optional fields.
+  stocks: Partial<
+    Record<
+      StockId,
+      {
+        estimatedPrice: number;
+        changeRate: number;
+        currentBinancePrice: number;
+        confidenceScore: number;
+      }
+    >
   >;
 }
 

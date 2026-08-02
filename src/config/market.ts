@@ -23,12 +23,20 @@ export const BASELINE_PATH = `${import.meta.env.BASE_URL}data/baseline.json`;
 export const LATEST_PATH = `${import.meta.env.BASE_URL}data/latest.json`;
 export const HISTORY_PATH = `${import.meta.env.BASE_URL}data/history.json`;
 
-// Raw GitHub content URLs as secondary fallback when GitHub Pages CDN is unavailable.
+// Raw GitHub content URLs. In production these are the PRIMARY data source:
+// deploy-pages.yml ignores public/data/** commits, so the copies served by
+// GitHub Pages are frozen at the last code deploy, while raw.githubusercontent
+// reflects every 5-minute data commit (raw CDN cache ~5 min matches the cadence).
 // CORS confirmed: access-control-allow-origin: * on raw.githubusercontent.com.
 const GITHUB_RAW_BASE =
   "https://raw.githubusercontent.com/pick-play/stock_predict/main/public/data";
 export const GITHUB_RAW_LATEST_URL = `${GITHUB_RAW_BASE}/latest.json`;
 export const GITHUB_RAW_BASELINE_URL = `${GITHUB_RAW_BASE}/baseline.json`;
+export const GITHUB_RAW_HISTORY_URL = `${GITHUB_RAW_BASE}/history.json`;
+
+// Browser refresh cadence for history.json (charts/sparklines) — matches the
+// 5-minute GitHub Actions data commit interval.
+export const HISTORY_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 export const BINANCE_REST_BASE = "https://api.binance.com";
 export const BINANCE_WS_BASE = "wss://stream.binance.com:9443";

@@ -10,8 +10,8 @@ import { StockCardSkeleton } from "../components/common/LoadingSkeleton";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { MobileBottomBar } from "../components/layout/MobileBottomBar";
 import type { HistoryEntry, StockId } from "../types/market";
-import { HISTORY_PATH } from "../config/market";
-import { HistoryArraySchema } from "../lib/validation";
+import { HISTORY_REFRESH_INTERVAL_MS } from "../config/market";
+import { fetchGithubHistory } from "../lib/githubFallback";
 
 const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
 
@@ -21,21 +21,23 @@ export function DashboardPage() {
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
-  // Load history once on mount for sparklines and chart
+  // Load history for sparklines and chart; refresh every 5 minutes to match
+  // the GitHub Actions data commit cadence (paused while the tab is hidden).
   useEffect(() => {
-    fetch(`${HISTORY_PATH}?t=${Date.now()}`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: unknown) => {
-        const result = HistoryArraySchema.safeParse(data);
-        if (result.success) {
-          setHistory(result.data as HistoryEntry[]);
-        } else {
-          console.error("[DashboardPage] Invalid history.json:", result.error);
-        }
-      })
-      .catch(() => {
-        // history is optional; silently ignore network errors
+    let cancelled = false;
+    const load = () => {
+      void fetchGithubHistory().then((data) => {
+        if (!cancelled && data !== null) setHistory(data);
       });
+    };
+    load();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, HISTORY_REFRESH_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, []);
 
   const hasAnyData = STOCK_IDS.some((id) => stocks[id] !== undefined);
