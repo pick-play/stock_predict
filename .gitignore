@@ -28,3 +28,6 @@ coverage/
 
 # TypeScript build info
 *.tsbuildinfo
+
+# OMC local orchestration state
+.omc/
