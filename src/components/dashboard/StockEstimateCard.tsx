@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import type { StockSnapshot } from "../../types/market";
 import {
   formatKrw,
@@ -9,16 +10,40 @@ import {
   formatBinancePrice,
 } from "../../lib/format";
 import { CONFIDENCE_THRESHOLDS } from "../../config/theme";
+import { Sparkline } from "./Sparkline";
 
 interface StockEstimateCardProps {
   snapshot: StockSnapshot;
+  sparklineData?: number[];
+  animationDelay?: string;
 }
 
-export function StockEstimateCard({ snapshot }: StockEstimateCardProps) {
+export function StockEstimateCard({
+  snapshot,
+  sparklineData,
+  animationDelay,
+}: StockEstimateCardProps) {
   const direction = getDirection(snapshot.changeRate);
-
   const dirSymbol = formatDirectionSymbol(snapshot.changeRate);
+  const isNoBaseline = snapshot.status === "no-baseline";
 
+  // Price flash: increment key to force animation restart without DOM flicker
+  const prevPriceRef = useRef(snapshot.estimatedPrice);
+  const [flashKey, setFlashKey] = useState(0);
+  const [flashDir, setFlashDir] = useState<"rise" | "fall" | null>(null);
+
+  useEffect(() => {
+    const prev = prevPriceRef.current;
+    const curr = snapshot.estimatedPrice;
+    // Only flash when going between real prices (not from zero on initial load)
+    if (prev !== curr && prev > 0 && curr > 0) {
+      setFlashDir(curr > prev ? "rise" : "fall");
+      setFlashKey((k) => k + 1);
+    }
+    prevPriceRef.current = curr;
+  }, [snapshot.estimatedPrice]);
+
+  // Directional color tokens
   const dirColor =
     direction === "rise"
       ? "text-[#ff4d5e]"
@@ -26,21 +51,28 @@ export function StockEstimateCard({ snapshot }: StockEstimateCardProps) {
       ? "text-[#3f82ff]"
       : "text-[#d6dde8]";
 
-  const dirBg =
+  const dirBadgeCls =
     direction === "rise"
-      ? "bg-[rgba(255,77,94,0.14)]"
+      ? "bg-[rgba(255,77,94,0.1)] border border-[rgba(255,77,94,0.2)]"
       : direction === "fall"
-      ? "bg-[rgba(63,130,255,0.14)]"
-      : "bg-[rgba(214,221,232,0.08)]";
+      ? "bg-[rgba(63,130,255,0.1)] border border-[rgba(63,130,255,0.2)]"
+      : "bg-[rgba(214,221,232,0.07)] border border-[rgba(214,221,232,0.12)]";
 
+  const accentColor =
+    direction === "rise"
+      ? "#ff4d5e"
+      : direction === "fall"
+      ? "#3f82ff"
+      : "rgba(214,221,232,0.15)";
+
+  // Confidence tokens
   const confScore = snapshot.confidenceScore;
   const confColor =
     confScore >= CONFIDENCE_THRESHOLDS.good
-      ? "text-[#31c48d]"
+      ? "#31c48d"
       : confScore >= CONFIDENCE_THRESHOLDS.fair
-      ? "text-[#f5b942]"
-      : "text-[#ff5d6c]";
-
+      ? "#f5b942"
+      : "#ff5d6c";
   const confLabel =
     confScore >= CONFIDENCE_THRESHOLDS.good
       ? "데이터 양호"
@@ -50,85 +82,187 @@ export function StockEstimateCard({ snapshot }: StockEstimateCardProps) {
       ? "변동성 주의"
       : "신뢰도 낮음";
 
-  const isNoBaseline = snapshot.status === "no-baseline";
-
   const spreadLabel =
     snapshot.spreadPercent !== null
       ? `${snapshot.spreadPercent.toFixed(4)}%`
       : "—";
 
+  const flashClass =
+    flashKey > 0 && flashDir !== null
+      ? flashDir === "rise"
+        ? "animate-flash-rise"
+        : "animate-flash-fall"
+      : "";
+
   return (
-    <article className="rounded-2xl border border-[rgba(255,255,255,0.07)] bg-[#0d1118] p-6 hover:-translate-y-1 transition-transform duration-200">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="text-base font-semibold text-[#f4f7fb]">
-            {snapshot.displayName}
-          </h2>
-          <p className="text-xs text-[#6f7a8c] mt-0.5">{snapshot.koreanTicker}</p>
-        </div>
-        <span className="text-xs text-[#6f7a8c] font-mono">{snapshot.binanceSymbol}</span>
-      </div>
+    <article
+      className="animate-slide-fade-in relative rounded-2xl border border-[rgba(255,255,255,0.07)] bg-surface-1 overflow-hidden hover:-translate-y-1 hover:border-[rgba(255,255,255,0.13)] hover:shadow-xl hover:shadow-black/40 transition-all duration-200 ease-out"
+      style={{ animationDelay, willChange: "transform" }}
+      aria-label={`${snapshot.displayName} 예상가격 카드`}
+    >
+      {/* Directional accent bar */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px]"
+        style={{ backgroundColor: accentColor }}
+        aria-hidden="true"
+      />
 
-      {/* Price */}
-      {isNoBaseline ? (
-        <div className="mb-5">
-          <p className="text-2xl font-bold text-[#6f7a8c]">—</p>
-          <p className="text-xs text-[#6f7a8c] mt-1">
-            국내장 마감 기준가격이 아직 등록되지 않았습니다.
-          </p>
-        </div>
-      ) : (
-        <div className="mb-1">
-          <div className="text-4xl font-bold text-[#f4f7fb] font-variant-numeric tabular-nums leading-none">
-            {formatKrw(snapshot.estimatedPrice)}
+      <div className="p-5 md:p-6">
+        {/* ── Header ── */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-semibold text-[#f4f7fb] tracking-tight leading-none">
+                {snapshot.displayName}
+              </h2>
+              <span className="text-[10px] font-mono text-[#6f7a8c] bg-surface-3 px-1.5 py-0.5 rounded">
+                {snapshot.koreanTicker}
+              </span>
+            </div>
+            <p className="text-[10px] text-[#4a5568] font-mono mt-1.5 tracking-wide">
+              {snapshot.binanceSymbol}
+            </p>
           </div>
-          <p className="text-xs text-[#6f7a8c] mt-1">
-            한국거래소 호가단위로 반올림한 참고 예상가
-          </p>
+          {sparklineData && sparklineData.length >= 2 && (
+            <div className="flex-shrink-0 ml-3 mt-0.5">
+              <Sparkline data={sparklineData} width={72} height={28} />
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Change */}
-      {!isNoBaseline && (
-        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg ${dirBg} mt-3 mb-5`}>
-          <span className={`text-sm font-bold ${dirColor}`}>
-            {dirSymbol} {formatChangeAmount(snapshot.changeAmount)}
-          </span>
-          <span className={`text-sm ${dirColor}`}>
-            {formatPercent(snapshot.changeRate)}
-          </span>
+        {/* ── Price block (flash wrapper uses key to restart animation) ── */}
+        <div
+          key={flashKey}
+          className={`-mx-1 px-1 py-2 rounded-xl ${flashClass}`}
+        >
+          {isNoBaseline ? (
+            <div className="py-1">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-[#f5b942] animate-pulse"
+                  aria-hidden="true"
+                />
+                <p className="text-xs font-medium text-[#f5b942]">
+                  기준가격 갱신 필요
+                </p>
+              </div>
+              <p
+                className="font-bold text-[#2d3748] tabular-nums leading-none"
+                style={{ fontSize: "clamp(1.75rem, 4vw, 2.5rem)" }}
+                aria-label="예상가격 없음"
+              >
+                —
+              </p>
+              <p className="text-xs text-[#4a5568] mt-2 leading-relaxed">
+                국내장 마감 기준가격이 등록되면
+                <br />
+                예상가격이 표시됩니다.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p
+                className="font-bold text-[#f4f7fb] tabular-nums leading-none tracking-tight"
+                style={{ fontSize: "clamp(2rem, 5vw, 3rem)" }}
+                aria-label={`예상가격 ${formatKrw(snapshot.estimatedPrice)}`}
+              >
+                {formatKrw(snapshot.estimatedPrice)}
+              </p>
+              <p className="text-[10px] text-[#4a5568] mt-1.5 leading-none">
+                한국거래소 호가단위로 반올림한 참고 예상가
+              </p>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Metrics */}
-      <div className="space-y-2 border-t border-[rgba(255,255,255,0.07)] pt-4 mt-4">
-        <MetricRow
-          label="최근 국내 종가"
-          value={snapshot.krxClose > 0 ? formatKrw(snapshot.krxClose) : "—"}
-        />
-        <MetricRow
-          label="바이낸스 현재 기준가격"
-          value={snapshot.currentBinancePrice > 0 ? formatBinancePrice(snapshot.currentBinancePrice) : "—"}
-        />
-        <MetricRow
-          label="국내 마감시 기준가격"
-          value={snapshot.baselineBinancePrice > 0 ? formatBinancePrice(snapshot.baselineBinancePrice) : "—"}
-        />
-        <MetricRow
-          label="호가 스프레드"
-          value={spreadLabel}
-        />
-      </div>
+        {/* ── Direction badge ── */}
+        {!isNoBaseline && (
+          <div
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg mt-3 mb-4 ${dirBadgeCls}`}
+          >
+            <span className={`text-sm font-bold tabular-nums ${dirColor}`}>
+              {dirSymbol} {formatChangeAmount(snapshot.changeAmount)}
+            </span>
+            <span className="text-[#4a5568] select-none">·</span>
+            <span className={`text-sm font-medium tabular-nums ${dirColor}`}>
+              {formatPercent(snapshot.changeRate)}
+            </span>
+          </div>
+        )}
 
-      {/* Footer */}
-      <div className="flex items-center justify-between mt-4 pt-3 border-t border-[rgba(255,255,255,0.07)]">
-        <span className={`text-xs font-medium ${confColor}`}>
-          {confLabel} · {confScore}/100
-        </span>
-        <span className="text-xs text-[#6f7a8c]">
-          {formatRelativeTime(snapshot.eventTime)}
-        </span>
+        {/* ── Metrics table ── */}
+        <div className="border-t border-[rgba(255,255,255,0.05)] pt-3 mt-1">
+          <MetricRow
+            label="최근 국내 종가"
+            value={snapshot.krxClose > 0 ? formatKrw(snapshot.krxClose) : "—"}
+          />
+          <MetricRow
+            label="바이낸스 현재 기준가"
+            value={
+              snapshot.currentBinancePrice > 0
+                ? formatBinancePrice(snapshot.currentBinancePrice)
+                : "—"
+            }
+          />
+          <MetricRow
+            label="마감시 바이낸스 기준가"
+            value={
+              snapshot.baselineBinancePrice > 0
+                ? formatBinancePrice(snapshot.baselineBinancePrice)
+                : "—"
+            }
+          />
+          {snapshot.bidPrice !== null && snapshot.askPrice !== null && (
+            <MetricRow
+              label="Bid / Ask"
+              value={`${formatBinancePrice(snapshot.bidPrice)} / ${formatBinancePrice(snapshot.askPrice)}`}
+            />
+          )}
+          <MetricRow label="호가 스프레드" value={spreadLabel} />
+        </div>
+
+        {/* ── Footer: confidence + time ── */}
+        <div className="border-t border-[rgba(255,255,255,0.05)] pt-3 mt-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <span
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: confColor }}
+                aria-hidden="true"
+              />
+              <span
+                className="text-xs font-medium"
+                style={{ color: confColor }}
+              >
+                {confLabel}
+              </span>
+              <span className="text-[10px] text-[#4a5568]">
+                · {confScore}/100
+              </span>
+            </div>
+            <span
+              className="text-[10px] text-[#4a5568] tabular-nums"
+              aria-label={`${formatRelativeTime(snapshot.eventTime)} 업데이트`}
+            >
+              {formatRelativeTime(snapshot.eventTime)}
+            </span>
+          </div>
+
+          {/* Confidence progress bar */}
+          <div
+            className="h-[2px] rounded-full bg-[rgba(255,255,255,0.05)] overflow-hidden"
+            role="meter"
+            aria-valuenow={confScore}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`데이터 신뢰도 ${confScore}/100`}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${confScore}%`, backgroundColor: confColor }}
+            />
+          </div>
+        </div>
       </div>
     </article>
   );
@@ -136,9 +270,11 @@ export function StockEstimateCard({ snapshot }: StockEstimateCardProps) {
 
 function MetricRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-[#6f7a8c]">{label}</span>
-      <span className="text-xs text-[#a6b0c0] font-mono tabular-nums">{value}</span>
+    <div className="flex items-center justify-between py-[5px] border-b border-[rgba(255,255,255,0.04)] last:border-0">
+      <span className="text-[11px] text-[#6f7a8c]">{label}</span>
+      <span className="text-[11px] text-[#a6b0c0] font-mono tabular-nums ml-4 text-right">
+        {value}
+      </span>
     </div>
   );
 }

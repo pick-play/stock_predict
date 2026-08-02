@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useId } from "react";
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -13,7 +13,7 @@ import { formatKrw, formatPercent } from "../../lib/format";
 
 interface PriceChartProps {
   history: HistoryEntry[];
-  krxClose?: Record<StockId, number>;
+  krxClose?: Partial<Record<StockId, number>>;
 }
 
 type TimeRange = "1h" | "6h" | "24h" | "7d";
@@ -32,9 +32,17 @@ const RANGE_LABELS: Record<TimeRange, string> = {
   "7d": "7일",
 };
 
+const STOCK_LABELS: Record<StockId, string> = {
+  samsung: "삼성전자",
+  skHynix: "SK하이닉스",
+};
+
 export function PriceChart({ history, krxClose }: PriceChartProps) {
   const [activeStock, setActiveStock] = useState<StockId>("samsung");
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
+  const rawId = useId();
+  const uid = rawId.replace(/:/g, "");
+  const gradientId = `pg-${uid}`;
 
   const now = Date.now();
   const cutoff = now - TIME_RANGE_MS[timeRange];
@@ -51,94 +59,184 @@ export function PriceChart({ history, krxClose }: PriceChartProps) {
 
   const baseline = krxClose?.[activeStock];
 
-  if (chartData.length < 2) {
-    return (
-      <div className="rounded-2xl border border-[rgba(255,255,255,0.07)] bg-[#0d1118] p-6">
-        <ChartHeader
-          activeStock={activeStock}
-          timeRange={timeRange}
-          onStockChange={setActiveStock}
-          onRangeChange={setTimeRange}
-        />
-        <div className="flex flex-col items-center justify-center h-48 text-center">
-          <p className="text-sm text-[#a6b0c0]">가격 이력을 수집하고 있습니다.</p>
-          <p className="text-xs text-[#6f7a8c] mt-1">
-            데이터가 쌓이면 추이 차트가 표시됩니다.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const formatAxisTime = (v: number): string => {
+    const d = new Date(v);
+    if (timeRange === "7d") {
+      return new Intl.DateTimeFormat("ko-KR", {
+        timeZone: "Asia/Seoul",
+        month: "numeric",
+        day: "numeric",
+      }).format(d);
+    }
+    return new Intl.DateTimeFormat("ko-KR", {
+      timeZone: "Asia/Seoul",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(d);
+  };
+
+  const formatTooltipTime = (v: number): string =>
+    new Intl.DateTimeFormat("ko-KR", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(new Date(v));
 
   return (
-    <div className="rounded-2xl border border-[rgba(255,255,255,0.07)] bg-[#0d1118] p-6">
+    <div className="rounded-2xl border border-[rgba(255,255,255,0.07)] bg-surface-1 p-5 md:p-6 animate-slide-fade-in delay-250">
       <ChartHeader
         activeStock={activeStock}
         timeRange={timeRange}
         onStockChange={setActiveStock}
         onRangeChange={setTimeRange}
       />
-      <div className="h-52 mt-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-            <XAxis
-              dataKey="time"
-              type="number"
-              scale="time"
-              domain={["dataMin", "dataMax"]}
-              tickFormatter={(v: number) => {
-                const d = new Date(v);
-                return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
-              }}
-              tick={{ fill: "#6f7a8c", fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              dataKey="price"
-              domain={["auto", "auto"]}
-              tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}K`}
-              tick={{ fill: "#6f7a8c", fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-              width={40}
-            />
-            {baseline !== undefined && (
-              <ReferenceLine
-                y={baseline}
-                stroke="rgba(255,255,255,0.2)"
-                strokeDasharray="4 4"
+
+      {chartData.length < 2 ? (
+        <div className="flex flex-col items-center justify-center h-52 mt-4 gap-3">
+          <div className="w-10 h-10 rounded-full border border-[rgba(255,255,255,0.07)] flex items-center justify-center">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M2 12 L5 8 L8 10 L11 5 L14 7"
+                stroke="#6f7a8c"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-            )}
-            <Tooltip
-              contentStyle={{
-                background: "#121824",
-                border: "1px solid rgba(255,255,255,0.13)",
-                borderRadius: "8px",
-                fontSize: "12px",
-                color: "#f4f7fb",
-              }}
-              formatter={(value, name) => {
-                const v = typeof value === "number" ? value : 0;
-                if (name === "price") return [formatKrw(v), "예상가격"];
-                return [formatPercent(v), "야간변동"];
-              }}
-              labelFormatter={(label) => {
-                const d = new Date(typeof label === "number" ? label : 0);
-                return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey="price"
-              stroke="#8b7cff"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+            </svg>
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-[#a6b0c0]">
+              가격 이력을 수집하고 있습니다.
+            </p>
+            <p className="text-xs text-[#6f7a8c] mt-1">
+              데이터가 쌓이면 추이 차트가 표시됩니다.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="h-56 mt-4" role="img" aria-label={`${STOCK_LABELS[activeStock]} 가격 추이 차트`}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={chartData}
+              margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+            >
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b7cff" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#8b7cff" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+
+              <XAxis
+                dataKey="time"
+                type="number"
+                scale="time"
+                domain={["dataMin", "dataMax"]}
+                tickFormatter={formatAxisTime}
+                tick={{
+                  fill: "#6f7a8c",
+                  fontSize: 10,
+                  fontFamily:
+                    "Pretendard, 'Noto Sans KR', -apple-system, sans-serif",
+                }}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={48}
+              />
+
+              <YAxis
+                dataKey="price"
+                domain={["auto", "auto"]}
+                tickFormatter={(v: number) => {
+                  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+                  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
+                  return String(v);
+                }}
+                tick={{
+                  fill: "#6f7a8c",
+                  fontSize: 10,
+                  fontFamily:
+                    "Pretendard, 'Noto Sans KR', -apple-system, sans-serif",
+                }}
+                axisLine={false}
+                tickLine={false}
+                width={40}
+              />
+
+              {baseline !== undefined && (
+                <ReferenceLine
+                  y={baseline}
+                  stroke="rgba(255,255,255,0.12)"
+                  strokeDasharray="5 4"
+                  label={{
+                    value: "종가",
+                    position: "insideTopRight",
+                    fill: "#6f7a8c",
+                    fontSize: 9,
+                  }}
+                />
+              )}
+
+              <Tooltip
+                contentStyle={{
+                  background: "#121824",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: "10px",
+                  fontSize: "12px",
+                  color: "#f4f7fb",
+                  padding: "10px 14px",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                }}
+                labelStyle={{
+                  color: "#6f7a8c",
+                  fontSize: "10px",
+                  marginBottom: "6px",
+                  display: "block",
+                }}
+                cursor={{ stroke: "rgba(255,255,255,0.08)", strokeWidth: 1 }}
+                formatter={(value, name) => {
+                  const v = typeof value === "number" ? value : 0;
+                  if (name === "price") return [formatKrw(v), "예상가격"];
+                  if (name === "changeRate") return [formatPercent(v), "야간변동"];
+                  return [String(value), String(name)];
+                }}
+                labelFormatter={(label) =>
+                  formatTooltipTime(
+                    typeof label === "number" ? label : 0
+                  )
+                }
+              />
+
+              <Area
+                type="monotone"
+                dataKey="price"
+                stroke="#8b7cff"
+                strokeWidth={1.5}
+                fill={`url(#${gradientId})`}
+                dot={false}
+                activeDot={{
+                  r: 4,
+                  fill: "#8b7cff",
+                  stroke: "#121824",
+                  strokeWidth: 2,
+                }}
+                connectNulls={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
@@ -156,31 +254,36 @@ function ChartHeader({
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex gap-1">
+      {/* Stock selector */}
+      <div className="flex gap-1" role="group" aria-label="종목 선택">
         {(["samsung", "skHynix"] as StockId[]).map((id) => (
           <button
             key={id}
             onClick={() => onStockChange(id)}
-            aria-label={id === "samsung" ? "삼성전자 차트 보기" : "SK하이닉스 차트 보기"}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+            aria-label={`${STOCK_LABELS[id]} 차트 보기`}
+            aria-pressed={activeStock === id}
+            className={`min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
               activeStock === id
                 ? "bg-[#8b7cff] text-white"
-                : "bg-[#18202e] text-[#a6b0c0] hover:text-[#f4f7fb]"
+                : "bg-surface-3 text-[#a6b0c0] hover:text-[#f4f7fb] hover:bg-[rgba(255,255,255,0.06)]"
             }`}
           >
-            {id === "samsung" ? "삼성전자" : "SK하이닉스"}
+            {STOCK_LABELS[id]}
           </button>
         ))}
       </div>
-      <div className="flex gap-1">
+
+      {/* Range selector */}
+      <div className="flex gap-0.5" role="group" aria-label="기간 선택">
         {(Object.keys(RANGE_LABELS) as TimeRange[]).map((r) => (
           <button
             key={r}
             onClick={() => onRangeChange(r)}
             aria-label={`${RANGE_LABELS[r]} 기간 보기`}
-            className={`px-2.5 py-1 rounded-lg text-xs transition-colors ${
+            aria-pressed={timeRange === r}
+            className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs transition-all duration-150 ${
               timeRange === r
-                ? "bg-[#18202e] text-[#f4f7fb]"
+                ? "bg-[rgba(255,255,255,0.08)] text-[#f4f7fb]"
                 : "text-[#6f7a8c] hover:text-[#a6b0c0]"
             }`}
           >

@@ -8,22 +8,38 @@ interface AppHeaderProps {
   lastUpdated: string | null;
 }
 
-export function AppHeader({ isLoading, usingFallback, lastUpdated }: AppHeaderProps) {
+export function AppHeader({
+  isLoading,
+  usingFallback,
+  lastUpdated,
+}: AppHeaderProps) {
   return (
-    <header className="flex items-center justify-between py-4 px-4 md:px-6">
+    <header className="animate-fade-in flex items-center justify-between py-4 px-4 md:px-6 border-b border-[rgba(255,255,255,0.05)]">
+      {/* Logo mark */}
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-[#8b7cff] flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-sm font-bold">야</span>
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{
+            background:
+              "linear-gradient(135deg, #8b7cff 0%, #6b5ce7 100%)",
+          }}
+          aria-hidden="true"
+        >
+          <span className="text-white text-xs font-bold tracking-tight">
+            야간
+          </span>
         </div>
         <div>
-          <h1 className="text-sm font-semibold text-[#f4f7fb] leading-none">
+          <h1 className="text-sm font-semibold text-[#f4f7fb] leading-none tracking-tight">
             야간 반도체 예상가
           </h1>
-          <p className="text-xs text-[#6f7a8c] mt-0.5">
+          <p className="text-[10px] text-[#4a5568] mt-0.5 tracking-wide">
             바이낸스 연계상품 기반
           </p>
         </div>
       </div>
+
+      {/* Right controls */}
       <div className="flex items-center gap-2">
         <MarketStatusBadge />
         <ConnectionBadge
@@ -32,7 +48,7 @@ export function AppHeader({ isLoading, usingFallback, lastUpdated }: AppHeaderPr
           lastUpdated={lastUpdated}
         />
         {lastUpdated && !isLoading && (
-          <span className="hidden md:block text-xs text-[#6f7a8c]">
+          <span className="hidden md:block text-[10px] text-[#4a5568] tabular-nums">
             {formatRelativeTime(lastUpdated)}
           </span>
         )}
