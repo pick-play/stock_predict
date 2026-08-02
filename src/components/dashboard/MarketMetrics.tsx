@@ -2,6 +2,7 @@ import type { StockSnapshot, StockId } from "../../types/market";
 import { getDataFreshness } from "../../lib/staleData";
 import { formatRelativeTime } from "../../lib/format";
 import { CONFIDENCE_THRESHOLDS } from "../../config/theme";
+import { useNow } from "../../hooks/useNow";
 
 interface MarketMetricsProps {
   stocks: Partial<Record<StockId, StockSnapshot>>;
@@ -28,6 +29,7 @@ export function MarketMetrics({
   lastUpdated,
   usingFallback,
 }: MarketMetricsProps) {
+  const now = useNow();
   const stockIds: StockId[] = ["samsung", "skHynix"];
   const entries = stockIds
     .map((id) => ({ id, snapshot: stocks[id] }))
@@ -109,7 +111,7 @@ export function MarketMetrics({
           <p className="text-[10px] text-[#4a5568]">
             마지막 갱신:{" "}
             <span className="tabular-nums">
-              {formatRelativeTime(lastUpdated)}
+              {formatRelativeTime(lastUpdated, now)}
             </span>
           </p>
           {usingFallback && (

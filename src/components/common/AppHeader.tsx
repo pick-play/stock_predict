@@ -1,6 +1,7 @@
 import { ConnectionBadge } from "./ConnectionBadge";
 import { MarketStatusBadge } from "./MarketStatusBadge";
 import { formatRelativeTime } from "../../lib/format";
+import { useNow } from "../../hooks/useNow";
 
 interface AppHeaderProps {
   isLoading: boolean;
@@ -13,6 +14,7 @@ export function AppHeader({
   usingFallback,
   lastUpdated,
 }: AppHeaderProps) {
+  const now = useNow();
   return (
     <header className="animate-fade-in flex items-center justify-between py-4 px-4 md:px-6 border-b border-[var(--border-mid)]">
       {/* Logo mark */}
@@ -49,7 +51,7 @@ export function AppHeader({
         />
         {lastUpdated && !isLoading && (
           <span className="hidden md:block text-[10px] text-[var(--text-muted)] tabular-nums">
-            {formatRelativeTime(lastUpdated)}
+            {formatRelativeTime(lastUpdated, now)}
           </span>
         )}
       </div>

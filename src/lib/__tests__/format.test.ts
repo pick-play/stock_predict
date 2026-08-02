@@ -6,6 +6,7 @@ import {
   formatDirectionSymbol,
   getDirection,
   formatKoreanTime,
+  formatRelativeTime,
 } from "../format";
 
 describe("formatKrw", () => {
@@ -111,5 +112,39 @@ describe("formatKoreanTime", () => {
     // Should contain "월" and "일" (Korean month/day)
     expect(result).toContain("월");
     expect(result).toContain("일");
+  });
+});
+
+describe("formatRelativeTime", () => {
+  const BASE = "2026-08-02T12:00:00.000Z";
+
+  it("shows seconds when less than 60 seconds ago", () => {
+    const now = new Date("2026-08-02T12:00:30.000Z");
+    expect(formatRelativeTime(BASE, now)).toBe("30초 전");
+  });
+
+  it("shows 0초 전 when timestamps are equal", () => {
+    const now = new Date(BASE);
+    expect(formatRelativeTime(BASE, now)).toBe("0초 전");
+  });
+
+  it("shows minutes when 60+ seconds ago", () => {
+    const now = new Date("2026-08-02T12:05:00.000Z");
+    expect(formatRelativeTime(BASE, now)).toBe("5분 전");
+  });
+
+  it("shows hours when 60+ minutes ago", () => {
+    const now = new Date("2026-08-02T14:00:00.000Z");
+    expect(formatRelativeTime(BASE, now)).toBe("2시간 전");
+  });
+
+  it("falls back to current time when now is omitted", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-02T12:00:10.000Z"));
+    try {
+      expect(formatRelativeTime(BASE)).toBe("10초 전");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

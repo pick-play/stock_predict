@@ -83,8 +83,8 @@ export function formatKoreanTimeDetailed(isoString: string): string {
   }).format(new Date(isoString)) + " KST";
 }
 
-export function formatRelativeTime(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime();
+export function formatRelativeTime(isoString: string, now?: Date): string {
+  const diff = (now ?? new Date()).getTime() - new Date(isoString).getTime();
   const seconds = Math.floor(diff / 1000);
   if (seconds < 60) return `${seconds}초 전`;
   const minutes = Math.floor(seconds / 60);

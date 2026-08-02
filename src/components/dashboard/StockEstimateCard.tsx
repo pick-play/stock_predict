@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNow } from "../../hooks/useNow";
 import type { StockSnapshot } from "../../types/market";
 import {
   formatKrw,
@@ -23,6 +24,7 @@ export function StockEstimateCard({
   sparklineData,
   animationDelay,
 }: StockEstimateCardProps) {
+  const now = useNow();
   const direction = getDirection(snapshot.changeRate);
   const dirSymbol = formatDirectionSymbol(snapshot.changeRate);
   const isNoBaseline = snapshot.status === "no-baseline";
@@ -239,9 +241,9 @@ export function StockEstimateCard({
             </div>
             <span
               className="text-[10px] text-[var(--text-muted)] tabular-nums"
-              aria-label={`${formatRelativeTime(snapshot.eventTime)} 업데이트`}
+              aria-label={`${formatRelativeTime(snapshot.eventTime, now)} 업데이트`}
             >
-              {formatRelativeTime(snapshot.eventTime)}
+              {formatRelativeTime(snapshot.eventTime, now)}
             </span>
           </div>
 

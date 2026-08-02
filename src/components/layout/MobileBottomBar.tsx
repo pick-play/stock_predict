@@ -1,4 +1,5 @@
 import { formatRelativeTime } from "../../lib/format";
+import { useNow } from "../../hooks/useNow";
 
 interface MobileBottomBarProps {
   lastUpdated: string | null;
@@ -9,6 +10,7 @@ export function MobileBottomBar({
   lastUpdated,
   isLoading,
 }: MobileBottomBarProps) {
+  const now = useNow();
   return (
     <div
       className="fixed bottom-0 left-0 right-0 md:hidden border-t border-[var(--border-subtle)] px-4 py-2.5 flex items-center justify-between"
@@ -36,7 +38,7 @@ export function MobileBottomBar({
               aria-hidden="true"
             />
             <span className="text-xs text-[var(--text-tertiary)] tabular-nums">
-              {formatRelativeTime(lastUpdated)} 갱신
+              {formatRelativeTime(lastUpdated, now)} 갱신
             </span>
           </>
         ) : (
