@@ -1,54 +1,79 @@
-import type { MarketDataProvider, NormalizedQuote, BinanceTickerResponse } from "./types";
-import { normalizeTicker } from "./normalizer";
-import { BINANCE_REST_BASE } from "../../config/market";
+import type {
+  MarketDataProvider,
+  NormalizedQuote,
+  BinanceFutures24hrTicker,
+  BinanceFuturesBookTicker,
+  BinancePremiumIndexResponse,
+} from "./types";
+import { normalizeFuturesTicker } from "./normalizer";
+import { BINANCE_FUTURES_REST_BASE } from "../../config/market";
 
 /**
- * Adapter for Binance TradFi products (SAMSUNGUSDT, SKHYNIXUSDT etc.)
- * These are spot-like products, not futures, so we use the spot ticker endpoint.
+ * Adapter for Binance USDT-M Futures (SAMSUNGUSDT, SKHYNIXUSDT etc.)
+ * Fetches three endpoints in parallel:
+ *   - /fapi/v1/ticker/24hr   → lastPrice, volume, changePercent
+ *   - /fapi/v1/premiumIndex  → markPrice, indexPrice, fundingRate
+ *   - /fapi/v1/ticker/bookTicker → bidPrice, askPrice (optional)
  */
-export class TradFiAdapter implements MarketDataProvider {
+export class FuturesAdapter implements MarketDataProvider {
   private readonly baseUrl: string;
 
-  constructor(baseUrl = BINANCE_REST_BASE) {
+  constructor(baseUrl = BINANCE_FUTURES_REST_BASE) {
     this.baseUrl = baseUrl;
   }
 
   async fetchQuote(symbol: string): Promise<NormalizedQuote> {
-    const url = `${this.baseUrl}/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`;
+    const sym = encodeURIComponent(symbol);
 
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(10_000),
-    });
+    const [tickerRes, premiumRes, bookRes] = await Promise.allSettled([
+      fetch(`${this.baseUrl}/fapi/v1/ticker/24hr?symbol=${sym}`, {
+        signal: AbortSignal.timeout(10_000),
+      }),
+      fetch(`${this.baseUrl}/fapi/v1/premiumIndex?symbol=${sym}`, {
+        signal: AbortSignal.timeout(10_000),
+      }),
+      fetch(`${this.baseUrl}/fapi/v1/ticker/bookTicker?symbol=${sym}`, {
+        signal: AbortSignal.timeout(10_000),
+      }),
+    ]);
 
-    if (!response.ok) {
-      throw new Error(
-        `TradFi REST error for ${symbol}: ${response.status} ${response.statusText}`
-      );
+    if (tickerRes.status === "rejected" || !tickerRes.value.ok) {
+      const reason =
+        tickerRes.status === "rejected"
+          ? String(tickerRes.reason)
+          : `HTTP ${tickerRes.value.status}`;
+      throw new Error(`Futures 24hr ticker error for ${symbol}: ${reason}`);
     }
 
-    const data = (await response.json()) as BinanceTickerResponse;
-
-    if (!data.symbol || data.symbol !== symbol) {
-      throw new Error(`Symbol mismatch: expected ${symbol}, got ${data.symbol}`);
+    if (premiumRes.status === "rejected" || !premiumRes.value.ok) {
+      const reason =
+        premiumRes.status === "rejected"
+          ? String(premiumRes.reason)
+          : `HTTP ${premiumRes.value.status}`;
+      throw new Error(`Futures premiumIndex error for ${symbol}: ${reason}`);
     }
 
-    // Validate bid <= ask
-    const bid = parseFloat(data.bidPrice);
-    const ask = parseFloat(data.askPrice);
-    if (
-      Number.isFinite(bid) &&
-      Number.isFinite(ask) &&
-      bid > 0 &&
-      ask > 0 &&
-      bid > ask
-    ) {
-      console.warn(`[TradFiAdapter] Bid > Ask for ${symbol}: bid=${bid} ask=${ask}`);
-      data.bidPrice = "0";
-      data.askPrice = "0";
+    const ticker = (await tickerRes.value.json()) as BinanceFutures24hrTicker;
+    const premiumIndex = (await premiumRes.value.json()) as BinancePremiumIndexResponse;
+
+    if (ticker.symbol !== symbol) {
+      throw new Error(`Symbol mismatch: expected ${symbol}, got ${ticker.symbol}`);
     }
 
-    return normalizeTicker(data, "binance-rest");
+    let bookTicker: BinanceFuturesBookTicker | null = null;
+    if (bookRes.status === "fulfilled" && bookRes.value.ok) {
+      const raw = (await bookRes.value.json()) as BinanceFuturesBookTicker;
+      const bid = parseFloat(raw.bidPrice);
+      const ask = parseFloat(raw.askPrice);
+      if (Number.isFinite(bid) && Number.isFinite(ask) && bid > 0 && ask > 0 && bid > ask) {
+        console.warn(`[FuturesAdapter] Bid > Ask for ${symbol}: bid=${bid} ask=${ask}`);
+      } else {
+        bookTicker = raw;
+      }
+    }
+
+    return normalizeFuturesTicker(ticker, premiumIndex, bookTicker, "binance-rest");
   }
 }
 
-export const tradFiAdapter = new TradFiAdapter();
+export const tradFiAdapter = new FuturesAdapter();

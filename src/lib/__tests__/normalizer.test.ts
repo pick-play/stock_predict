@@ -1,7 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { normalizeTicker, normalizePremiumIndex } from "../binance/normalizer";
+import { normalizeTicker, normalizePremiumIndex, normalizeFuturesTicker } from "../binance/normalizer";
 import { selectReferencePrice } from "../binance/types";
-import type { BinanceTickerResponse, BinancePremiumIndexResponse } from "../binance/types";
+import type {
+  BinanceTickerResponse,
+  BinancePremiumIndexResponse,
+  BinanceFutures24hrTicker,
+  BinanceFuturesBookTicker,
+} from "../binance/types";
 
 const validTicker: BinanceTickerResponse = {
   symbol: "SAMSUNGUSDT",
@@ -154,5 +159,72 @@ describe("selectReferencePrice", () => {
     const q = { ...baseQuote, markPrice: null, bidPrice: 74.0, askPrice: 73.0 };
     // mode=mid but bid>ask → falls back to lastPrice
     expect(selectReferencePrice(q, "mid")).toBe(70.0);
+  });
+});
+
+describe("normalizeFuturesTicker", () => {
+  const futures24hr: BinanceFutures24hrTicker = {
+    symbol: "SAMSUNGUSDT",
+    lastPrice: "165.35000",
+    priceChangePercent: "1.212",
+    volume: "137014.53",
+    closeTime: 1785677248040,
+  };
+
+  const premiumIndex: BinancePremiumIndexResponse = {
+    symbol: "SAMSUNGUSDT",
+    markPrice: "165.32000000",
+    indexPrice: "165.25368385",
+    lastFundingRate: "-0.00052834",
+    time: 1785677255143,
+  };
+
+  const bookTicker: BinanceFuturesBookTicker = {
+    symbol: "SAMSUNGUSDT",
+    bidPrice: "165.26000",
+    askPrice: "165.29000",
+    time: 1785677267448,
+  };
+
+  it("populates markPrice and indexPrice from premiumIndex", () => {
+    const quote = normalizeFuturesTicker(futures24hr, premiumIndex, bookTicker);
+    expect(quote.markPrice).toBeCloseTo(165.32, 2);
+    expect(quote.indexPrice).toBeCloseTo(165.2537, 4);
+    expect(quote.fundingRate).toBeCloseTo(-0.00052834, 8);
+  });
+
+  it("populates lastPrice and volume from 24hr ticker", () => {
+    const quote = normalizeFuturesTicker(futures24hr, premiumIndex, bookTicker);
+    expect(quote.lastPrice).toBeCloseTo(165.35, 2);
+    expect(quote.volume24h).toBeCloseTo(137014.53, 1);
+    expect(quote.changePercent24h).toBeCloseTo(1.212, 3);
+  });
+
+  it("populates bid/ask from bookTicker", () => {
+    const quote = normalizeFuturesTicker(futures24hr, premiumIndex, bookTicker);
+    expect(quote.bidPrice).toBeCloseTo(165.26, 2);
+    expect(quote.askPrice).toBeCloseTo(165.29, 2);
+  });
+
+  it("returns null bid/ask when bookTicker is null", () => {
+    const quote = normalizeFuturesTicker(futures24hr, premiumIndex, null);
+    expect(quote.bidPrice).toBeNull();
+    expect(quote.askPrice).toBeNull();
+  });
+
+  it("uses premiumIndex.time for eventTime", () => {
+    const quote = normalizeFuturesTicker(futures24hr, premiumIndex, bookTicker);
+    expect(quote.eventTime).toBe(new Date(1785677255143).toISOString());
+  });
+
+  it("returns null for zero or negative markPrice", () => {
+    const pi: BinancePremiumIndexResponse = { ...premiumIndex, markPrice: "0" };
+    const quote = normalizeFuturesTicker(futures24hr, pi, null);
+    expect(quote.markPrice).toBeNull();
+  });
+
+  it("uses 'binance-rest' as default source", () => {
+    const quote = normalizeFuturesTicker(futures24hr, premiumIndex, null);
+    expect(quote.source).toBe("binance-rest");
   });
 });

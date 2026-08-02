@@ -1,6 +1,6 @@
 import type { NormalizedQuote } from "./types";
 import { normalizeTicker } from "./normalizer";
-import { BINANCE_WS_BASE } from "../../config/market";
+import { BINANCE_FUTURES_WS_BASE } from "../../config/market";
 
 interface BookTickerMessage {
   e?: string;
@@ -26,7 +26,7 @@ export function connectBinanceStream(
   const streams = symbols
     .map((s) => `${s.toLowerCase()}@bookTicker`)
     .join("/");
-  const url = `${BINANCE_WS_BASE}/stream?streams=${streams}`;
+  const url = `${BINANCE_FUTURES_WS_BASE}/stream?streams=${streams}`;
 
   function connect() {
     if (stopped) return;

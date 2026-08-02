@@ -25,3 +25,7 @@ export const HISTORY_PATH = `${import.meta.env.BASE_URL}data/history.json`;
 
 export const BINANCE_REST_BASE = "https://api.binance.com";
 export const BINANCE_WS_BASE = "wss://stream.binance.com:9443";
+
+// USDT-M Futures endpoints (fapi.binance.com / fstream.binance.com)
+export const BINANCE_FUTURES_REST_BASE = "https://fapi.binance.com";
+export const BINANCE_FUTURES_WS_BASE = "wss://fstream.binance.com";

@@ -41,6 +41,23 @@ export interface BinancePremiumIndexResponse {
   time: number;
 }
 
+/** Response from /fapi/v1/ticker/24hr — USDT-M Futures 24hr ticker (no bid/ask) */
+export interface BinanceFutures24hrTicker {
+  symbol: string;
+  lastPrice: string;
+  priceChangePercent: string;
+  volume: string;
+  closeTime: number;
+}
+
+/** Response from /fapi/v1/ticker/bookTicker — USDT-M Futures best bid/ask */
+export interface BinanceFuturesBookTicker {
+  symbol: string;
+  bidPrice: string;
+  askPrice: string;
+  time: number;
+}
+
 export function selectReferencePrice(
   quote: NormalizedQuote,
   mode: ReferencePriceMode

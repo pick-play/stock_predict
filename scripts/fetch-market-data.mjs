@@ -1,5 +1,5 @@
 /**
- * Fetches market data from Binance and updates public/data/latest.json
+ * Fetches market data from Binance USDT-M Futures and updates public/data/latest.json
  * Run: node scripts/fetch-market-data.mjs
  */
 
@@ -16,31 +16,56 @@ const SYMBOLS = {
   skHynix: { displayName: "SK하이닉스", koreanTicker: "000660", binanceSymbol: "SKHYNIXUSDT" },
 };
 
-const BINANCE_REST = "https://api.binance.com";
+// USDT-M Futures REST base
+const BINANCE_FUTURES_REST = "https://fapi.binance.com";
 
-async function fetchTicker(symbol) {
-  const url = `${BINANCE_REST}/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`;
+async function fetchFutures24hr(symbol) {
+  const url = `${BINANCE_FUTURES_REST}/fapi/v1/ticker/24hr?symbol=${encodeURIComponent(symbol)}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${symbol}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status} for futures 24hr ${symbol}`);
+  return res.json();
+}
+
+async function fetchPremiumIndex(symbol) {
+  const url = `${BINANCE_FUTURES_REST}/fapi/v1/premiumIndex?symbol=${encodeURIComponent(symbol)}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status} for premiumIndex ${symbol}`);
+  return res.json();
+}
+
+async function fetchBookTicker(symbol) {
+  const url = `${BINANCE_FUTURES_REST}/fapi/v1/ticker/bookTicker?symbol=${encodeURIComponent(symbol)}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) return null;
   return res.json();
 }
 
 function parsePositive(v) {
+  if (v == null) return null;
   const n = parseFloat(v);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function selectReferencePrice(ticker, mode = "mark") {
-  const last = parsePositive(ticker.lastPrice);
-  const bid = parsePositive(ticker.bidPrice);
-  const ask = parsePositive(ticker.askPrice);
+/**
+ * Select reference price from USDT-M futures data.
+ * Supports "mark" (markPrice from premiumIndex), "mid" (bid+ask)/2, "last" (lastPrice).
+ * Falls back through mark → mid → last.
+ */
+function selectReferencePrice(ticker, premiumIndex, bookTicker, mode = "mark") {
+  const markPrice = parsePositive(premiumIndex?.markPrice);
+  const lastPrice = parsePositive(ticker.lastPrice);
+  const bid = parsePositive(bookTicker?.bidPrice);
+  const ask = parsePositive(bookTicker?.askPrice);
+  const midValid = bid && ask && bid <= ask;
 
-  if (mode === "mid" && bid && ask && bid <= ask) return (bid + ask) / 2;
-  if (mode === "last" && last) return last;
+  if (mode === "mark" && markPrice) return markPrice;
+  if (mode === "mid" && midValid) return (bid + ask) / 2;
+  if (mode === "last" && lastPrice) return lastPrice;
 
-  // Default: last (TradFi spot has no markPrice)
-  if (last) return last;
-  if (bid && ask) return (bid + ask) / 2;
+  // Fallback chain: mark → mid → last
+  if (markPrice) return markPrice;
+  if (midValid) return (bid + ask) / 2;
+  if (lastPrice) return lastPrice;
   return null;
 }
 
@@ -97,22 +122,25 @@ function isWeekendInKorea() {
   return day === "Sat" || day === "Sun";
 }
 
-// Multi-factor confidence score — mirrors browser src/lib/confidenceScore.ts
-// Factors: data age, bid/ask spread, volume, markPrice availability,
-//          baseline availability, and weekend penalty.
-function calculateConfidenceScore({ ticker, baselineStock }) {
+/**
+ * Multi-factor confidence score — mirrors browser src/lib/confidenceScore.ts.
+ * Now handles USDT-M Futures: markPrice is real (not always absent).
+ */
+function calculateConfidenceScore({ ticker, premiumIndex, bookTicker, baselineStock }) {
   let score = 100;
 
-  // Data age (ticker.closeTime is unix ms from Binance 24hr endpoint)
-  const eventTime = typeof ticker.closeTime === "number" ? ticker.closeTime : Date.now();
+  // Data age (use premiumIndex.time — updated every 8 hours on funding intervals,
+  // but typically reflects real-time mark price update time)
+  const eventTime =
+    typeof premiumIndex?.time === "number" ? premiumIndex.time : Date.now();
   const ageMs = Date.now() - eventTime;
   if (ageMs > 60_000) score -= 10;
   if (ageMs > 5 * 60_000) score -= 30;
 
-  // Bid/ask spread
-  const bid = parsePositive(ticker.bidPrice);
-  const ask = parsePositive(ticker.askPrice);
-  if (bid !== null && ask !== null) {
+  // Bid/ask spread (from bookTicker)
+  const bid = parsePositive(bookTicker?.bidPrice);
+  const ask = parsePositive(bookTicker?.askPrice);
+  if (bid !== null && ask !== null && bid <= ask) {
     const spread = (ask - bid) / ask;
     if (spread > 0.005) score -= 10;
   } else {
@@ -123,8 +151,9 @@ function calculateConfidenceScore({ ticker, baselineStock }) {
   const vol24h = parseFloat(ticker.volume);
   if (Number.isFinite(vol24h) && vol24h < 1000) score -= 15;
 
-  // TradFi spot has no markPrice — always deduct
-  score -= 10;
+  // markPrice availability (USDT-M futures has markPrice; deduct only if missing)
+  const markPrice = parsePositive(premiumIndex?.markPrice);
+  if (markPrice === null) score -= 10;
 
   // Baseline availability
   if (
@@ -142,7 +171,7 @@ function calculateConfidenceScore({ ticker, baselineStock }) {
 }
 
 async function main() {
-  console.log("[fetch-market-data] Starting...");
+  console.log("[fetch-market-data] Starting (USDT-M Futures)...");
 
   const baseline = loadBaseline();
   const existing = loadLatest();
@@ -157,21 +186,29 @@ async function main() {
     console.log(`[fetch-market-data] Fetching ${config.binanceSymbol}...`);
 
     try {
-      const ticker = await fetchTicker(config.binanceSymbol);
+      // Fetch 24hr ticker and premiumIndex in parallel; bookTicker is optional
+      const [ticker, premiumIndex, bookTicker] = await Promise.all([
+        fetchFutures24hr(config.binanceSymbol),
+        fetchPremiumIndex(config.binanceSymbol),
+        fetchBookTicker(config.binanceSymbol).catch(() => null),
+      ]);
 
       if (!ticker.symbol || ticker.symbol !== config.binanceSymbol) {
         throw new Error(`Symbol mismatch: ${ticker.symbol}`);
       }
 
-      const currentPrice = selectReferencePrice(ticker, "last");
+      const baselineStock = baseline?.stocks?.[stockId];
+      const mode = baselineStock?.referencePriceMode ?? "mark";
+      const currentPrice = selectReferencePrice(ticker, premiumIndex, bookTicker, mode);
+
       if (!currentPrice) {
         throw new Error(`No valid price for ${config.binanceSymbol}`);
       }
 
-      const baselineStock = baseline?.stocks?.[stockId];
-      const bid = parsePositive(ticker.bidPrice);
-      const ask = parsePositive(ticker.askPrice);
-      const spreadPercent = bid && ask && bid <= ask ? ((ask - bid) / ask) * 100 : null;
+      const bid = parsePositive(bookTicker?.bidPrice);
+      const ask = parsePositive(bookTicker?.askPrice);
+      const spreadPercent =
+        bid && ask && bid <= ask ? ((ask - bid) / ask) * 100 : null;
 
       let estimateFields = {
         rawEstimatedPrice: 0,
@@ -202,19 +239,26 @@ async function main() {
         krxClose: baselineStock?.krxClose ?? 0,
         baselineBinancePrice: baselineStock?.binanceReferencePrice ?? 0,
         currentBinancePrice: currentPrice,
-        referencePriceMode: baselineStock?.referencePriceMode ?? "last",
+        referencePriceMode: baselineStock?.referencePriceMode ?? "mark",
         bidPrice: bid,
         askPrice: ask,
         spreadPercent,
-        confidenceScore: calculateConfidenceScore({ ticker, baselineStock }),
-        eventTime: ticker.closeTime
-          ? new Date(ticker.closeTime).toISOString()
+        confidenceScore: calculateConfidenceScore({
+          ticker,
+          premiumIndex,
+          bookTicker,
+          baselineStock,
+        }),
+        eventTime: premiumIndex.time
+          ? new Date(premiumIndex.time).toISOString()
           : now,
         ...estimateFields,
       };
 
       anyUpdated = true;
-      console.log(`[fetch-market-data] ${config.binanceSymbol}: ${currentPrice} (status: ${estimateFields.status})`);
+      console.log(
+        `[fetch-market-data] ${config.binanceSymbol}: ${currentPrice} (status: ${estimateFields.status})`
+      );
     } catch (err) {
       console.error(`[fetch-market-data] Error for ${config.binanceSymbol}:`, err.message);
       // Keep existing data for this stock
@@ -223,10 +267,9 @@ async function main() {
 
   if (!anyUpdated) {
     if (existing) {
-      // All fetches failed but existing data is present — keep the file untouched
-      // so the workflow does not create a noisy failure commit or fail the job.
-      // Symbols may be temporarily unavailable (e.g., not listed on Binance).
-      console.warn("[fetch-market-data] No stocks updated. Keeping existing latest.json unchanged.");
+      console.warn(
+        "[fetch-market-data] No stocks updated. Keeping existing latest.json unchanged."
+      );
       process.exit(0);
     }
     console.error("[fetch-market-data] No stocks updated and no existing data. Aborting.");
