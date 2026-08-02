@@ -23,6 +23,13 @@ export const BASELINE_PATH = `${import.meta.env.BASE_URL}data/baseline.json`;
 export const LATEST_PATH = `${import.meta.env.BASE_URL}data/latest.json`;
 export const HISTORY_PATH = `${import.meta.env.BASE_URL}data/history.json`;
 
+// Raw GitHub content URLs as secondary fallback when GitHub Pages CDN is unavailable.
+// CORS confirmed: access-control-allow-origin: * on raw.githubusercontent.com.
+const GITHUB_RAW_BASE =
+  "https://raw.githubusercontent.com/pick-play/stock_predict/main/public/data";
+export const GITHUB_RAW_LATEST_URL = `${GITHUB_RAW_BASE}/latest.json`;
+export const GITHUB_RAW_BASELINE_URL = `${GITHUB_RAW_BASE}/baseline.json`;
+
 export const BINANCE_REST_BASE = "https://api.binance.com";
 export const BINANCE_WS_BASE = "wss://stream.binance.com:9443";
 

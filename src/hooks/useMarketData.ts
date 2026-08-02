@@ -1,14 +1,12 @@
 import { useState, useCallback, useRef } from "react";
-import type { StockId, StockSnapshot, Baseline, LatestData } from "../types/market";
+import type { StockId, StockSnapshot } from "../types/market";
 import { fetchStockQuote } from "../lib/binance/client";
 import type { StockQuoteResult } from "../lib/binance/client";
 import { calculateEstimate } from "../lib/calculateEstimate";
 import { calculateConfidenceScore } from "../lib/confidenceScore";
-import { BaselineSchema, LatestDataSchema } from "../lib/validation";
+import { fetchGithubLatest, fetchGithubBaseline } from "../lib/githubFallback";
 import { useMinuteRefresh } from "./useMinuteRefresh";
 import {
-  BASELINE_PATH,
-  LATEST_PATH,
   MAX_CHANGE_RATE,
   MIN_PRICE_RATIO,
   MAX_PRICE_RATIO,
@@ -30,38 +28,6 @@ const INITIAL_STATE: MarketDataState = {
   usingFallback: false,
 };
 
-async function fetchBaseline(): Promise<Baseline | null> {
-  try {
-    const res = await fetch(`${BASELINE_PATH}?t=${Date.now()}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const json: unknown = await res.json();
-    const result = BaselineSchema.safeParse(json);
-    if (!result.success) {
-      console.error("[useMarketData] Invalid baseline:", result.error);
-      return null;
-    }
-    return result.data as Baseline;
-  } catch {
-    return null;
-  }
-}
-
-async function fetchGithubLatest(): Promise<LatestData | null> {
-  try {
-    const res = await fetch(`${LATEST_PATH}?t=${Date.now()}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const json: unknown = await res.json();
-    const result = LatestDataSchema.safeParse(json);
-    if (!result.success) return null;
-    return result.data as LatestData;
-  } catch {
-    return null;
-  }
-}
 
 export function useMarketData(): MarketDataState {
   const [state, setState] = useState<MarketDataState>(INITIAL_STATE);
@@ -71,7 +37,7 @@ export function useMarketData(): MarketDataState {
 
   const refresh = useCallback(async () => {
     // Fetch baseline first so we know each stock's referencePriceMode (fixes M1/M3)
-    const baseline = await fetchBaseline();
+    const baseline = await fetchGithubBaseline();
 
     // Per-stock quote fetch using each stock's configured referencePriceMode.
     // Default "last" — TradFi spot products have no markPrice.
