@@ -71,7 +71,8 @@ export function selectReferencePrice(
     quote.bidPrice !== null &&
     quote.askPrice !== null &&
     quote.bidPrice > 0 &&
-    quote.askPrice > 0
+    quote.askPrice > 0 &&
+    quote.bidPrice <= quote.askPrice
   ) {
     return (quote.bidPrice + quote.askPrice) / 2;
   }

@@ -1,17 +1,37 @@
 import { z } from "zod";
 
-export const QuoteSchema = z.object({
-  symbol: z.string().min(1),
-  lastPrice: z.number().positive().nullable(),
-  markPrice: z.number().positive().nullable(),
-  bidPrice: z.number().positive().nullable(),
-  askPrice: z.number().positive().nullable(),
-  eventTime: z.string().datetime(),
-});
+export const QuoteSchema = z
+  .object({
+    symbol: z.string().min(1),
+    lastPrice: z.number().positive().nullable(),
+    markPrice: z.number().positive().nullable(),
+    bidPrice: z.number().positive().nullable(),
+    askPrice: z.number().positive().nullable(),
+    eventTime: z
+      .string()
+      .datetime()
+      .refine(
+        (val) => new Date(val).getTime() <= Date.now() + 5 * 60_000,
+        { message: "eventTime is too far in the future" }
+      ),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.bidPrice !== null &&
+      data.askPrice !== null &&
+      data.bidPrice > data.askPrice
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "bidPrice must be <= askPrice",
+        path: ["bidPrice"],
+      });
+    }
+  });
 
 export const BaselineStockSchema = z.object({
-  krxClose: z.number().nonnegative(),
-  binanceReferencePrice: z.number().nonnegative(),
+  krxClose: z.number().positive(),
+  binanceReferencePrice: z.number().positive(),
   referencePriceMode: z.enum(["mark", "mid", "last"]),
 });
 
@@ -29,9 +49,9 @@ export const StockSnapshotSchema = z.object({
   displayName: z.string(),
   koreanTicker: z.string(),
   binanceSymbol: z.string(),
-  krxClose: z.number().nonnegative(),
-  baselineBinancePrice: z.number().nonnegative(),
-  currentBinancePrice: z.number().nonnegative(),
+  krxClose: z.number().positive(),
+  baselineBinancePrice: z.number().positive(),
+  currentBinancePrice: z.number().positive(),
   referencePriceMode: z.enum(["mark", "mid", "last"]),
   rawEstimatedPrice: z.number(),
   estimatedPrice: z.number().nonnegative(),
