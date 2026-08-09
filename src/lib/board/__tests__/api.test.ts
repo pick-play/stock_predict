@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { BOARD_API_BASE, isBoardConfigured, fetchPosts, submitPost, reportPost } from "../api";
+import { BOARD_API_BASE, isBoardConfigured, fetchPosts, submitPost, reportPost, fetchPopularPosts, likePost } from "../api";
 import { BoardApiError } from "../../../types/board";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -47,6 +47,7 @@ describe("fetchPosts", () => {
           authorTag: "익명#a3f2",
           createdAt: "2026-08-09T00:00:00.000Z",
           reportCount: 0,
+          likeCount: 0,
         },
       ],
       nextCursor: null,
@@ -91,6 +92,7 @@ describe("submitPost", () => {
     authorTag: "익명#b1c2",
     createdAt: "2026-08-09T00:00:00.000Z",
     reportCount: 0,
+    likeCount: 0,
   };
 
   it("returns the created post on 201", async () => {
@@ -210,5 +212,124 @@ describe("reportPost", () => {
       json: () => Promise.resolve({ message: "신고 한도 초과" }),
     } as Response);
     await expect(reportPost("1", "spam")).rejects.toBeInstanceOf(BoardApiError);
+  });
+});
+
+// ─── fetchPopularPosts ────────────────────────────────────────────────────────
+
+describe("fetchPopularPosts", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const popularPost = {
+    id: "1",
+    body: "인기 글 본문",
+    authorTag: "익명#a1b2",
+    createdAt: "2026-08-09T00:00:00.000Z",
+    reportCount: 0,
+    likeCount: 5,
+  };
+
+  it("returns posts array on 200", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ posts: [popularPost] }),
+    } as Response);
+    const result = await fetchPopularPosts();
+    expect(result).toHaveLength(1);
+    expect(result[0].likeCount).toBe(5);
+  });
+
+  it("hits /api/posts/popular endpoint", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ posts: [] }),
+    } as Response);
+    await fetchPopularPosts({ limit: 5 });
+    const calledUrl = vi.mocked(fetch).mock.calls[0][0] as string;
+    expect(calledUrl).toContain("/api/posts/popular");
+    expect(calledUrl).toContain("limit=5");
+  });
+
+  it("throws BoardApiError on network failure", async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error("fail"));
+    await expect(fetchPopularPosts()).rejects.toBeInstanceOf(BoardApiError);
+    await expect(fetchPopularPosts()).rejects.toMatchObject({ kind: "network" });
+  });
+
+  it("throws BoardApiError on non-ok HTTP response", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ message: "서버 오류" }),
+    } as Response);
+    await expect(fetchPopularPosts()).rejects.toMatchObject({ message: "서버 오류" });
+  });
+});
+
+// ─── likePost ─────────────────────────────────────────────────────────────────
+
+describe("likePost", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns likeCount and alreadyLiked on 200", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ok: true, likeCount: 3, alreadyLiked: false }),
+    } as Response);
+    const result = await likePost("1");
+    expect(result.likeCount).toBe(3);
+    expect(result.alreadyLiked).toBe(false);
+  });
+
+  it("returns alreadyLiked: true when same IP re-likes", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ok: true, likeCount: 3, alreadyLiked: true }),
+    } as Response);
+    const result = await likePost("1");
+    expect(result.alreadyLiked).toBe(true);
+  });
+
+  it("uses POST method and correct URL", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ok: true, likeCount: 1, alreadyLiked: false }),
+    } as Response);
+    await likePost("42");
+    const [url, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/api/posts/42/like");
+    expect(init.method).toBe("POST");
+  });
+
+  it("throws BoardApiError on network failure", async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error("fail"));
+    await expect(likePost("1")).rejects.toBeInstanceOf(BoardApiError);
+    await expect(likePost("1")).rejects.toMatchObject({ kind: "network" });
+  });
+
+  it("throws BoardApiError on 404 not-found", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: () => Promise.resolve({ message: "글을 찾을 수 없습니다." }),
+    } as Response);
+    await expect(likePost("99")).rejects.toMatchObject({
+      message: "글을 찾을 수 없습니다.",
+    });
   });
 });

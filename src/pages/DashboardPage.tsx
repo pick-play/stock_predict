@@ -5,6 +5,7 @@ import { StockEstimateCard } from "../components/dashboard/StockEstimateCard";
 import { HeroSummary } from "../components/dashboard/HeroSummary";
 import { LazyPriceChart } from "../components/dashboard/LazyPriceChart";
 import { Disclaimer } from "../components/common/Disclaimer";
+import { PopularTicker } from "../components/board/PopularTicker";
 import { ErrorState } from "../components/common/ErrorState";
 import { StockCardSkeleton } from "../components/common/LoadingSkeleton";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
@@ -71,6 +72,9 @@ export function DashboardPage({ onNavigateBoard }: DashboardPageProps) {
 
       <main className="px-4 md:px-6 pb-24 md:pb-10 space-y-4">
         <HeroSummary anchor={anchor} />
+
+        {/* Community ticker — calm secondary strip, only visible when board is live */}
+        <PopularTicker />
 
         {/* Error banners */}
         {error && !hasAnyData && (

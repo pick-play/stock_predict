@@ -10,6 +10,13 @@ export interface BoardPost {
   authorTag: string;
   createdAt: string;
   reportCount: number;
+  likeCount: number;
+}
+
+export interface LikeResponse {
+  ok: boolean;
+  likeCount: number;
+  alreadyLiked: boolean;
 }
 
 export interface BoardListResponse {

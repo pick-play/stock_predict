@@ -7,7 +7,7 @@
  * instead of attempting any network request.
  */
 
-import type { BoardListResponse, BoardPost, SubmitErrorKind } from "../../types/board";
+import type { BoardListResponse, BoardPost, LikeResponse, SubmitErrorKind } from "../../types/board";
 import { BoardApiError } from "../../types/board";
 
 export const BOARD_API_BASE = (
@@ -98,6 +98,71 @@ export async function submitPost(opts: SubmitPostOptions): Promise<BoardPost> {
   const kind: SubmitErrorKind =
     ERROR_KIND_MAP[errBody?.error ?? ""] ?? "network";
   throw new BoardApiError(kind, errBody?.message ?? "등록할 수 없습니다.");
+}
+
+// ─── Popular posts (ticker) ───────────────────────────────────────────────────
+
+interface FetchPopularOptions {
+  limit?: number;
+  signal?: AbortSignal;
+}
+
+export async function fetchPopularPosts(
+  opts: FetchPopularOptions = {}
+): Promise<BoardPost[]> {
+  const params = new URLSearchParams();
+  if (opts.limit !== undefined) params.set("limit", String(opts.limit));
+  const qs = params.toString();
+  const url = `${BOARD_API_BASE}/api/posts/popular${qs ? `?${qs}` : ""}`;
+
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: opts.signal });
+  } catch {
+    throw new BoardApiError("network", "네트워크 연결을 확인해주세요.");
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null) as
+      | { message?: string }
+      | null;
+    throw new BoardApiError(
+      "network",
+      body?.message ?? "인기 글 목록을 불러올 수 없습니다."
+    );
+  }
+
+  const data = (await res.json()) as { posts: BoardPost[] };
+  return data.posts;
+}
+
+// ─── Like post ────────────────────────────────────────────────────────────────
+
+export async function likePost(
+  id: string,
+  signal?: AbortSignal
+): Promise<LikeResponse> {
+  let res: Response;
+  try {
+    res = await fetch(
+      `${BOARD_API_BASE}/api/posts/${encodeURIComponent(id)}/like`,
+      { method: "POST", signal }
+    );
+  } catch {
+    throw new BoardApiError("network", "공감 처리에 실패했습니다.");
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null) as
+      | { message?: string }
+      | null;
+    throw new BoardApiError(
+      "network",
+      body?.message ?? "공감 처리에 실패했습니다."
+    );
+  }
+
+  return res.json() as Promise<LikeResponse>;
 }
 
 // ─── Report post ──────────────────────────────────────────────────────────────
