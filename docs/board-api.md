@@ -25,7 +25,8 @@
 interface BoardPost {
   id: string;            // 숫자 문자열 (D1 rowid 기반, 커서로도 사용)
   body: string;          // 원문 그대로. 렌더링 시 프론트가 이스케이프한다
-  authorTag: string;     // 예: "익명#a3f2" — IP해시+일자솔트에서 파생, 날마다 바뀜
+  authorTag: string;     // 로그인 글이면 닉네임, 아니면 "익명#a3f2"(IP해시+일자솔트 파생, 날마다 바뀜)
+  isMember: boolean;     // true면 authorTag가 닉네임 — UI가 익명과 구분해 표시한다
   createdAt: string;     // ISO 8601 UTC
   reportCount: number;
   likeCount: number;
@@ -33,6 +34,58 @@ interface BoardPost {
 ```
 
 ## 엔드포인트
+
+## 계정 (선택 사항)
+
+로그인은 선택이다. 로그인하지 않아도 지금처럼 익명으로 글을 쓸 수 있고,
+로그인하면 닉네임으로 글이 표시되며 자기가 쓴 글을 모아 볼 수 있다.
+
+수집하는 정보는 **닉네임과 비밀번호뿐이다.** 이메일·전화번호·이름을 묻지 않는다.
+그 대가로 **비밀번호를 잊으면 복구 수단이 없다.** 그래서 가입 시 복구 코드를
+한 번만 보여주고, 그 코드로만 비밀번호를 재설정할 수 있게 한다.
+
+비밀번호 처리:
+- 브라우저가 `src/lib/auth/deriveAuthKey.ts`로 PBKDF2(210,000회) 스트레칭한 값(`authKey`)만 전송한다. 원문 비밀번호는 서버로 가지 않는다.
+- 서버는 `authKey`를 사용자별 salt와 `PASSWORD_PEPPER` 시크릿으로 HMAC-SHA256 해싱해 저장한다(`worker/src/lib/password.ts`).
+- 세션은 불투명 토큰(32바이트)이며 서버에는 SHA-256 해시만 저장한다. 브라우저는 `Authorization: Bearer <token>`으로 보낸다.
+
+닉네임 규칙:
+- 2~16자, 한글·영문·숫자·밑줄만 허용
+- 대소문자 무시 중복 금지(`nickname_normalized` UNIQUE)
+- `moderatePost()` 검열 통과 필수
+- 예약어 금지: `관리자`, `운영자`, `admin`, `administrator`, `운영진`, `공지`, `익명`
+
+### POST /api/auth/signup
+
+- 본문: `{ "nickname": string, "authKey": string(64 hex), "turnstileToken": string }`
+- 201: `{ "token": string, "nickname": string, "recoveryCode": string }`
+  ※ `recoveryCode`는 이때 단 한 번만 반환된다. 서버는 해시만 보관한다.
+- 409 `nickname-taken` / 422 `invalid-nickname` / 403 `captcha-failed`
+- 429 `rate-limited`: 같은 IP 해시가 24시간 내 3개 초과 가입
+
+### POST /api/auth/login
+
+- 본문: `{ "nickname": string, "authKey": string }`
+- 200: `{ "token": string, "nickname": string }`
+- 401 `invalid-credentials`: 닉네임이 없든 비밀번호가 틀리든 **같은 응답**을 준다(계정 존재 여부를 알려주지 않는다).
+- 429 `rate-limited`: 같은 IP 해시가 10분 내 10회 초과 시도
+
+### POST /api/auth/logout
+- 인증 필요. 200: `{ "ok": true }` — 해당 세션만 폐기한다.
+
+### GET /api/auth/me
+- 인증 필요. 200: `{ "nickname": string, "createdAt": string, "postCount": number }`
+- 401 `unauthorized`: 토큰이 없거나 만료됨(30일).
+
+### POST /api/auth/reset-password
+- 본문: `{ "nickname": string, "recoveryCode": string, "authKey": string }`
+- 200: `{ "ok": true }` — 기존 세션을 모두 폐기한다.
+- 401 `invalid-recovery`: 닉네임·코드 불일치(구분하지 않는다).
+
+### GET /api/me/posts?cursor=&limit=
+
+- 인증 필요. 자기 글만 최신순. 숨김 처리된 자기 글도 포함하되 `hiddenAt`을 채워 보낸다.
+- 200: `{ "posts": (BoardPost & { hiddenAt: string | null })[], "nextCursor": string | null }`
 
 ### GET /api/posts
 

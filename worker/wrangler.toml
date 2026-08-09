@@ -9,7 +9,7 @@ database_name = "stock-predict-board"
 database_id = "f77f5931-cbfa-457a-aecf-35428e521e06"
 
 [vars]
-ALLOWED_ORIGIN = "https://pick-play.github.io"
+ALLOWED_ORIGIN = "https://kospinow.com,https://www.kospinow.com"
 
 # Secrets (set via `wrangler secret put`, never in this file):
 #   TURNSTILE_SECRET

@@ -1,8 +1,18 @@
 import type { Env } from '../types';
 
+/**
+ * ALLOWED_ORIGIN holds a comma-separated list because the site answers on both
+ * the apex and the www host. Only an exact match is echoed back — a wildcard
+ * would let any page call the board with a logged-in reader's bearer token.
+ */
 function getAllowedOrigin(request: Request, env: Env): string {
   const origin = request.headers.get('Origin') ?? '';
-  if (origin === env.ALLOWED_ORIGIN || origin === 'http://localhost:5173') {
+  const allowed = (env.ALLOWED_ORIGIN ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  if (allowed.includes(origin) || origin === 'http://localhost:5173') {
     return origin;
   }
   return '';
