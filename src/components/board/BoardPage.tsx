@@ -172,12 +172,30 @@ export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
           <BoardNotReady />
         ) : (
           <>
-            {/* Post creation form */}
-            <PostForm
-              onPostCreated={handlePostCreated}
-              authToken={auth.token}
-              authorNickname={auth.nickname}
-            />
+            {/* Writing requires an account; reading stays open to everyone. */}
+            {auth.token ? (
+              <PostForm
+                onPostCreated={handlePostCreated}
+                authToken={auth.token}
+                authorNickname={auth.nickname}
+              />
+            ) : (
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] px-4 py-5 text-center">
+                <p className="text-sm text-[var(--text-secondary)]">
+                  글을 쓰려면 로그인해주세요.
+                </p>
+                <p className="text-xs text-[var(--text-muted)] mt-1.5">
+                  닉네임과 비밀번호만 있으면 됩니다. 읽는 것은 로그인 없이도 가능합니다.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setAuthModalOpen(true)}
+                  className="mt-3 min-h-[44px] px-5 rounded-lg text-sm font-medium bg-[#8b7cff] text-white hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+                >
+                  로그인 / 가입
+                </button>
+              </div>
+            )}
 
             {/* Error banner */}
             {error && (

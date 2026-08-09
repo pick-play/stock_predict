@@ -1,5 +1,5 @@
 import { moderatePost, duplicateKey } from '../../../src/lib/moderation/filter';
-import { hashIp, toAuthorTag } from '../lib/ipHash';
+import { hashIp } from '../lib/ipHash';
 import { isPostRateLimited, isDuplicatePost } from '../lib/rateLimit';
 import { verifyTurnstile } from '../lib/turnstile';
 import { requireAuth } from '../lib/session';
@@ -89,6 +89,19 @@ export async function handleCreatePost(
     return errorResponse('invalid-body', '필수 항목이 누락되었습니다.', 400, request, env);
   }
 
+  // Posting requires an account. Checked before moderation so a logged-out
+  // writer is told to sign in rather than being handed a content error first.
+  const authUser = await requireAuth(request, env);
+  if (!authUser) {
+    return errorResponse(
+      'unauthorized',
+      '글을 쓰려면 로그인해주세요.',
+      401,
+      request,
+      env
+    );
+  }
+
   const rawBody = parsed.body;
   const token = parsed.turnstileToken;
 
@@ -142,10 +155,9 @@ export async function handleCreatePost(
     );
   }
 
-  // Optional auth: logged-in members post under their nickname
-  const authUser = await requireAuth(request, env);
-  const authorTag = authUser ? authUser.nickname : toAuthorTag(ipHash);
-  const memberId: number | null = authUser ? authUser.id : null;
+  // Every post now carries a nickname; the IP hash stays for rate limiting only.
+  const authorTag = authUser.nickname;
+  const memberId: number = authUser.id;
 
   const now = new Date().toISOString();
 
