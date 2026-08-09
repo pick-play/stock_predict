@@ -21,7 +21,7 @@ interface DashboardPageProps {
 }
 
 export function DashboardPage({ onNavigateBoard }: DashboardPageProps) {
-  const { stocks, lastUpdated, error, isLoading, usingFallback, anchor } =
+  const { stocks, lastUpdated, error, isLoading, usingFallback, anchor, wsStatus } =
     useMarketData();
 
   const [chartRange, setChartRange] = useState<ChartRange>("24h");
@@ -66,6 +66,7 @@ export function DashboardPage({ onNavigateBoard }: DashboardPageProps) {
         isLoading={isLoading}
         usingFallback={usingFallback}
         lastUpdated={lastUpdated}
+        wsStatus={wsStatus}
         onNavigateBoard={onNavigateBoard}
       />
 

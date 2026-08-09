@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { StockId, StockSnapshot } from "../types/market";
 import { fetchStockQuote } from "../lib/binance/client";
 import type { StockQuoteResult } from "../lib/binance/client";
@@ -10,6 +10,9 @@ import { resolveAnchor } from "../lib/marketSession";
 import type { ResolvedAnchor } from "../lib/marketSession";
 import { MARKET_SYMBOLS } from "../config/symbols";
 import { useMinuteRefresh } from "./useMinuteRefresh";
+import { connectBinanceFuturesStream } from "../lib/binance/websocketAdapter";
+import type { WsConnectionStatus } from "../lib/binance/websocketAdapter";
+import type { NormalizedQuote } from "../lib/binance/types";
 import {
   MAX_CHANGE_RATE,
   MIN_PRICE_RATIO,
@@ -23,6 +26,7 @@ export interface MarketDataState {
   isLoading: boolean;
   usingFallback: boolean;
   anchor: ResolvedAnchor | null;
+  wsStatus: WsConnectionStatus;
 }
 
 const INITIAL_STATE: MarketDataState = {
@@ -32,6 +36,7 @@ const INITIAL_STATE: MarketDataState = {
   isLoading: true,
   usingFallback: false,
   anchor: null,
+  wsStatus: "connecting",
 };
 
 const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
@@ -46,6 +51,10 @@ export function useMarketData(): MarketDataState {
   const previousPrices = useRef<Partial<Record<StockId, number>>>({});
   const currentStocksRef = useRef<Partial<Record<StockId, StockSnapshot>>>({});
   currentStocksRef.current = state.stocks;
+
+  // Latest WS bid/ask quotes keyed by Binance symbol (e.g. "SAMSUNGUSDT").
+  // Written by the WS callback (no re-render), flushed to state at most once/s.
+  const latestWsQuotesRef = useRef<Record<string, NormalizedQuote>>({});
 
   const refresh = useCallback(async () => {
     const baseline = await fetchGithubBaseline();
@@ -107,14 +116,20 @@ export function useMarketData(): MarketDataState {
 
       const anchorKrxPrice = anchor?.krxPrice[stockId];
       const anchorFuturesPrice = anchorFutures[stockId];
+
+      // Merge latest WS bid/ask if available — fresher than the REST bookTicker response.
+      const wsQuote = latestWsQuotesRef.current[result.quote.symbol];
+      const bid = wsQuote?.bidPrice ?? result.quote.bidPrice;
+      const ask = wsQuote?.askPrice ?? result.quote.askPrice;
+
       const base = {
         displayName: DISPLAY[stockId].displayName,
         koreanTicker: DISPLAY[stockId].koreanTicker,
         binanceSymbol: result.quote.symbol,
         currentBinancePrice: result.referencePrice,
         referencePriceMode: mode,
-        bidPrice: result.quote.bidPrice,
-        askPrice: result.quote.askPrice,
+        bidPrice: bid,
+        askPrice: ask,
         eventTime: result.quote.eventTime,
       };
 
@@ -166,8 +181,6 @@ export function useMarketData(): MarketDataState {
           baselineBinancePrice: anchorFuturesPrice!,
         });
 
-        const bid = result.quote.bidPrice;
-        const ask = result.quote.askPrice;
         const spreadPercent =
           bid !== null && ask !== null && bid > 0 && ask > 0
             ? ((ask - bid) / ask) * 100
@@ -222,17 +235,98 @@ export function useMarketData(): MarketDataState {
       return;
     }
 
-    setState({
+    setState((prev) => ({
+      ...prev,
       stocks: newStocks,
       lastUpdated: new Date().toISOString(),
       error: null,
       isLoading: false,
       usingFallback: false,
       anchor,
-    });
+    }));
   }, []);
 
   useMinuteRefresh(refresh);
+
+  // WebSocket connection for real-time bid/ask updates (bid/ask only — markPrice
+  // is not emitted via WS for TradFi symbols; estimate recalculation stays on
+  // the 60s REST refresh path to preserve anchor-based outlier protection).
+  useEffect(() => {
+    const symbols = STOCK_IDS.map((id) => MARKET_SYMBOLS[id].binanceSymbol);
+
+    const disconnect = connectBinanceFuturesStream(
+      symbols,
+      (quote) => {
+        // Store in ref only — no setState here. The 1s flush timer below
+        // batches these into a single setState, preventing multiple re-renders/s.
+        latestWsQuotesRef.current[quote.symbol] = quote;
+      },
+      (status) => {
+        setState((prev) => ({ ...prev, wsStatus: status }));
+      }
+    );
+
+    // Flush pending WS bid/ask quotes to state at most once per second.
+    // Tab visibility guard: skip flush when hidden to avoid waking up React.
+    const flushTimer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+
+      // Snapshot and clear atomically so WS messages arriving mid-flush
+      // land in the next batch rather than being dropped.
+      const pending = latestWsQuotesRef.current;
+      latestWsQuotesRef.current = {};
+
+      const entries = STOCK_IDS.map((id) => ({
+        id,
+        symbol: MARKET_SYMBOLS[id].binanceSymbol,
+        quote: pending[MARKET_SYMBOLS[id].binanceSymbol],
+      })).filter(({ quote }) => quote !== undefined);
+
+      if (entries.length === 0) return;
+
+      setState((prev) => {
+        const updated: Partial<Record<StockId, StockSnapshot>> = {
+          ...prev.stocks,
+        };
+        let changed = false;
+
+        for (const { id, quote } of entries) {
+          const existing = updated[id];
+          if (!existing) continue;
+
+          const bid = quote!.bidPrice;
+          const ask = quote!.askPrice;
+          if (bid === null || ask === null) continue;
+          // Discard inverted book (bid > ask is a data error)
+          if (bid > ask) continue;
+
+          const spreadPercent =
+            bid > 0 && ask > 0
+              ? ((ask - bid) / ask) * 100
+              : existing.spreadPercent;
+
+          if (bid !== existing.bidPrice || ask !== existing.askPrice) {
+            updated[id] = {
+              ...existing,
+              bidPrice: bid,
+              askPrice: ask,
+              spreadPercent,
+              eventTime: quote!.eventTime,
+            };
+            changed = true;
+          }
+        }
+
+        if (!changed) return prev;
+        return { ...prev, stocks: updated };
+      });
+    }, 1000);
+
+    return () => {
+      disconnect();
+      window.clearInterval(flushTimer);
+    };
+  }, []);
 
   return state;
 }

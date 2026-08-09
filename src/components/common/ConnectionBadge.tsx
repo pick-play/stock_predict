@@ -1,10 +1,18 @@
+import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
+
 interface ConnectionBadgeProps {
   usingFallback: boolean;
   isLoading: boolean;
   lastUpdated: string | null;
+  wsStatus?: WsConnectionStatus;
 }
 
-export function ConnectionBadge({ usingFallback, isLoading, lastUpdated }: ConnectionBadgeProps) {
+export function ConnectionBadge({
+  usingFallback,
+  isLoading,
+  lastUpdated,
+  wsStatus,
+}: ConnectionBadgeProps) {
   if (isLoading) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-surface-3 text-[#a6b0c0]">
@@ -24,9 +32,13 @@ export function ConnectionBadge({ usingFallback, isLoading, lastUpdated }: Conne
   }
 
   if (lastUpdated) {
+    // Pulse the dot when WS is actively streaming; static when REST-only.
+    const wsLive = wsStatus === "connected";
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-surface-3 text-[#31c48d]">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#31c48d]" />
+        <span
+          className={`w-1.5 h-1.5 rounded-full bg-[#31c48d]${wsLive ? " animate-pulse" : ""}`}
+        />
         실시간
       </span>
     );

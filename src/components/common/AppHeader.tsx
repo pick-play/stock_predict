@@ -2,11 +2,13 @@ import { ConnectionBadge } from "./ConnectionBadge";
 import { MarketStatusBadge } from "./MarketStatusBadge";
 import { formatRelativeTime } from "../../lib/format";
 import { useNow } from "../../hooks/useNow";
+import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
 
 interface AppHeaderProps {
   isLoading: boolean;
   usingFallback: boolean;
   lastUpdated: string | null;
+  wsStatus?: WsConnectionStatus;
   onNavigateBoard?: () => void;
 }
 
@@ -14,6 +16,7 @@ export function AppHeader({
   isLoading,
   usingFallback,
   lastUpdated,
+  wsStatus,
   onNavigateBoard,
 }: AppHeaderProps) {
   const now = useNow();
@@ -46,6 +49,7 @@ export function AppHeader({
           isLoading={isLoading}
           usingFallback={usingFallback}
           lastUpdated={lastUpdated}
+          wsStatus={wsStatus}
         />
         {lastUpdated && !isLoading && (
           <span className="hidden md:block text-[10px] text-[var(--text-muted)] tabular-nums">

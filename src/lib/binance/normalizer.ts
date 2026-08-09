@@ -4,6 +4,7 @@ import type {
   BinancePremiumIndexResponse,
   BinanceFutures24hrTicker,
   BinanceFuturesBookTicker,
+  BinanceFuturesBookTickerWS,
 } from "./types";
 
 export function normalizeTicker(
@@ -60,6 +61,34 @@ export function normalizeFuturesTicker(
     changePercent24h: parseFloat(ticker.priceChangePercent) || null,
     fundingRate: parseFloat(premiumIndex.lastFundingRate) || null,
     eventTime: new Date(premiumIndex.time).toISOString(),
+    source,
+  };
+}
+
+/**
+ * Normalizes a USDT-M Futures WebSocket @bookTicker message.
+ * markPrice is NOT available via WebSocket for TradFi symbols (verified 2026-08-09).
+ * Only bid/ask fields are populated; mark/last prices must come from REST.
+ */
+export function normalizeFuturesBookTickerWS(
+  data: BinanceFuturesBookTickerWS,
+  source: NormalizedQuote["source"] = "binance-websocket"
+): NormalizedQuote {
+  const parsePrice = (v: string): number | null => {
+    const n = parseFloat(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  return {
+    symbol: data.s,
+    lastPrice: null,
+    markPrice: null,
+    indexPrice: null,
+    bidPrice: parsePrice(data.b),
+    askPrice: parsePrice(data.a),
+    volume24h: null,
+    changePercent24h: null,
+    fundingRate: null,
+    eventTime: new Date(data.T).toISOString(),
     source,
   };
 }

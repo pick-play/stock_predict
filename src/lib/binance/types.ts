@@ -58,6 +58,26 @@ export interface BinanceFuturesBookTicker {
   time: number;
 }
 
+/**
+ * Raw WebSocket bookTicker message for USDT-M Futures.
+ * Verified live 2026-08-09: only @bookTicker emits for SAMSUNGUSDT / SKHYNIXUSDT.
+ * @markPrice, @ticker produce no messages for these TradFi symbols.
+ * Combined-stream envelope: { stream: "samsungusdt@bookTicker", data: BinanceFuturesBookTickerWS }
+ */
+export interface BinanceFuturesBookTickerWS {
+  e: "bookTicker";
+  u: number;   // update id
+  s: string;   // symbol e.g. "SAMSUNGUSDT"
+  ps: string;  // pair
+  b: string;   // best bid price
+  B: string;   // best bid qty
+  a: string;   // best ask price
+  A: string;   // best ask qty
+  T: number;   // transaction time (ms)
+  E: number;   // event time (ms)
+  st?: number; // undocumented field observed in live messages
+}
+
 export function selectReferencePrice(
   quote: NormalizedQuote,
   mode: ReferencePriceMode

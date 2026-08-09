@@ -1,22 +1,23 @@
-import type { NormalizedQuote } from "./types";
-import { normalizeTicker } from "./normalizer";
+import type { NormalizedQuote, BinanceFuturesBookTickerWS } from "./types";
+import { normalizeFuturesBookTickerWS } from "./normalizer";
 import { BINANCE_FUTURES_WS_BASE } from "../../config/market";
 
-interface BookTickerMessage {
-  e?: string;
-  s: string;
-  b: string;
-  B: string;
-  a: string;
-  A: string;
-  T?: number;
-}
+export type WsConnectionStatus = "connecting" | "connected" | "disconnected";
 
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 15000, 30000];
 
-export function connectBinanceStream(
+/**
+ * Connects to Binance USDT-M Futures combined WebSocket stream for @bookTicker.
+ *
+ * Note: only @bookTicker reliably emits for TradFi symbols (SAMSUNGUSDT, SKHYNIXUSDT).
+ * @markPrice / @ticker produce no messages for these symbols (verified live 2026-08-09).
+ *
+ * Returns a disconnect function that stops reconnection and closes the socket.
+ */
+export function connectBinanceFuturesStream(
   symbols: string[],
-  onQuote: (quote: NormalizedQuote) => void
+  onQuote: (quote: NormalizedQuote) => void,
+  onStatusChange?: (status: WsConnectionStatus) => void
 ): () => void {
   let ws: WebSocket | null = null;
   let reconnectCount = 0;
@@ -31,45 +32,34 @@ export function connectBinanceStream(
   function connect() {
     if (stopped) return;
 
+    onStatusChange?.("connecting");
     ws = new WebSocket(url);
 
     ws.onopen = () => {
       reconnectCount = 0;
+      onStatusChange?.("connected");
     };
 
     ws.onmessage = (event) => {
       try {
-        const msg = JSON.parse(event.data as string) as {
-          data: BookTickerMessage;
+        const envelope = JSON.parse(event.data as string) as {
+          data: BinanceFuturesBookTickerWS;
         };
-        const data = msg.data;
-        if (!data?.s) return;
-
-        const quote = normalizeTicker(
-          {
-            symbol: data.s,
-            lastPrice: data.b, // use bid as approximation for last in book stream
-            bidPrice: data.b,
-            askPrice: data.a,
-            volume: "0",
-            priceChangePercent: "0",
-            time: data.T,
-          },
-          "binance-websocket"
-        );
-
-        onQuote(quote);
+        const data = envelope.data;
+        if (!data?.s || data.e !== "bookTicker") return;
+        onQuote(normalizeFuturesBookTickerWS(data, "binance-websocket"));
       } catch (err) {
         console.error("[WebSocket] Message parse error:", err);
       }
     };
 
     ws.onerror = () => {
-      // Error handled in onclose
+      // All errors surface through onclose; no separate action needed here.
     };
 
     ws.onclose = () => {
       if (stopped) return;
+      onStatusChange?.("disconnected");
       const delay =
         RECONNECT_DELAYS[Math.min(reconnectCount, RECONNECT_DELAYS.length - 1)];
       reconnectCount++;
