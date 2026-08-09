@@ -104,7 +104,7 @@ export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
 
           <div>
             <h1 className="text-sm font-semibold text-[var(--text-primary)] leading-none tracking-tight">
-              익명 토론방
+              토론방
             </h1>
             <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
               KOSPI NOW · 참고 의견 공유
@@ -160,7 +160,7 @@ export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
           )}
           {!isBoardConfigured && (
             <span className="text-[10px] text-[var(--text-muted)]">
-              익명 · 비로그인
+              준비 중
             </span>
           )}
         </div>
@@ -226,7 +226,13 @@ export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
               >
                 <div className="space-y-3">
                   {posts.map((post) => (
-                    <PostCard key={post.id} post={post} />
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      authToken={auth.token}
+                      authorNickname={auth.nickname}
+                      onOpenAuth={handleOpenAuth}
+                    />
                   ))}
                 </div>
               </section>

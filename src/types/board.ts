@@ -13,6 +13,24 @@ export interface BoardPost {
   createdAt: string;
   reportCount: number;
   likeCount: number;
+  commentCount: number;
+}
+
+/** Single comment on a post. Writing requires login; reading is public. */
+export interface BoardComment {
+  id: string;
+  postId: string;
+  /** Plain text — caller must render as text, never set as innerHTML. */
+  body: string;
+  /** Always a member nickname — comments require login. */
+  authorTag: string;
+  createdAt: string;
+  reportCount: number;
+}
+
+export interface CommentListResponse {
+  comments: BoardComment[];
+  nextCursor: string | null;
 }
 
 /** Board post with optional hidden timestamp — returned by GET /api/me/posts. */

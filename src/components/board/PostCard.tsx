@@ -2,9 +2,16 @@ import { useState } from "react";
 import type { BoardPost } from "../../types/board";
 import { BoardApiError } from "../../types/board";
 import { reportPost, likePost } from "../../lib/board/api";
+import { CommentSection } from "./CommentSection";
 
 interface PostCardProps {
   post: BoardPost;
+  /** Bearer token for the logged-in user; undefined/null means unauthenticated. */
+  authToken?: string | null;
+  /** Display nickname of the logged-in user. */
+  authorNickname?: string | null;
+  /** Called when the user taps "로그인 / 가입" inside the comment area. */
+  onOpenAuth?: () => void;
 }
 
 const LIKED_STORAGE_KEY = "board:liked";
@@ -49,7 +56,12 @@ function formatBoardTime(isoString: string): string {
 
 type ReportState = "idle" | "confirming" | "sending" | "done" | "error";
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({
+  post,
+  authToken,
+  authorNickname,
+  onOpenAuth,
+}: PostCardProps) {
   const [reportState, setReportState] = useState<ReportState>("idle");
   const [reportError, setReportError] = useState<string | null>(null);
   const [likeCount, setLikeCount] = useState(post.likeCount);
@@ -196,6 +208,14 @@ export function PostCard({ post }: PostCardProps) {
           )}
         </div>
       </div>
+      {/* ── Comments ── */}
+      <CommentSection
+        postId={post.id}
+        commentCount={post.commentCount ?? 0}
+        authToken={authToken}
+        authorNickname={authorNickname}
+        onOpenAuth={onOpenAuth}
+      />
     </article>
   );
 }

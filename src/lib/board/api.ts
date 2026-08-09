@@ -7,7 +7,7 @@
  * instead of attempting any network request.
  */
 
-import type { BoardListResponse, BoardPost, LikeResponse, SubmitErrorKind } from "../../types/board";
+import type { BoardListResponse, BoardPost, BoardComment, CommentListResponse, LikeResponse, SubmitErrorKind } from "../../types/board";
 import { BoardApiError } from "../../types/board";
 
 export const BOARD_API_BASE = (
@@ -169,6 +169,114 @@ export async function likePost(
   }
 
   return res.json() as Promise<LikeResponse>;
+}
+
+// ─── Fetch comments ───────────────────────────────────────────────────────────
+
+interface FetchCommentsOptions {
+  cursor?: string;
+  limit?: number;
+  signal?: AbortSignal;
+}
+
+export async function fetchComments(
+  postId: string,
+  opts: FetchCommentsOptions = {}
+): Promise<CommentListResponse> {
+  const params = new URLSearchParams();
+  if (opts.cursor) params.set("cursor", opts.cursor);
+  if (opts.limit !== undefined) params.set("limit", String(opts.limit));
+  const qs = params.toString();
+  const url = `${BOARD_API_BASE}/api/posts/${encodeURIComponent(postId)}/comments${qs ? `?${qs}` : ""}`;
+
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: opts.signal });
+  } catch {
+    throw new BoardApiError("network", "댓글을 불러올 수 없습니다.");
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null) as
+      | { message?: string }
+      | null;
+    throw new BoardApiError(
+      "network",
+      body?.message ?? "댓글을 불러올 수 없습니다."
+    );
+  }
+
+  return res.json() as Promise<CommentListResponse>;
+}
+
+// ─── Submit comment ───────────────────────────────────────────────────────────
+
+interface SubmitCommentOptions {
+  body: string;
+  authToken: string;
+  signal?: AbortSignal;
+}
+
+export async function submitComment(
+  postId: string,
+  opts: SubmitCommentOptions
+): Promise<BoardComment> {
+  let res: Response;
+  try {
+    res = await fetch(
+      `${BOARD_API_BASE}/api/posts/${encodeURIComponent(postId)}/comments`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          Authorization: `Bearer ${opts.authToken}`,
+        },
+        body: JSON.stringify({ body: opts.body }),
+        signal: opts.signal,
+      }
+    );
+  } catch {
+    throw new BoardApiError("network", "네트워크 연결을 확인해주세요.");
+  }
+
+  if (res.status === 201) {
+    const data = (await res.json()) as { comment: BoardComment };
+    return data.comment;
+  }
+
+  const errBody = await res.json().catch(() => null) as
+    | { error?: string; message?: string }
+    | null;
+  const kind: SubmitErrorKind =
+    ERROR_KIND_MAP[errBody?.error ?? ""] ?? "network";
+  throw new BoardApiError(kind, errBody?.message ?? "댓글을 등록할 수 없습니다.");
+}
+
+// ─── Report comment ───────────────────────────────────────────────────────────
+
+export async function reportComment(commentId: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(
+      `${BOARD_API_BASE}/api/comments/${encodeURIComponent(commentId)}/report`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({ reason: "" }),
+      }
+    );
+  } catch {
+    throw new BoardApiError("network", "신고를 처리할 수 없습니다.");
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => null) as
+      | { message?: string }
+      | null;
+    throw new BoardApiError(
+      "network",
+      body?.message ?? "신고를 처리할 수 없습니다."
+    );
+  }
 }
 
 // ─── Report post ──────────────────────────────────────────────────────────────

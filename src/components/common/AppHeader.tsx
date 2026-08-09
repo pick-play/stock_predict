@@ -1,4 +1,5 @@
 import { ConnectionBadge } from "./ConnectionBadge";
+import { ThemeToggle } from "./ThemeToggle";
 import { MarketStatusBadge } from "./MarketStatusBadge";
 import { formatRelativeTime } from "../../lib/format";
 import { useNow } from "../../hooks/useNow";
@@ -44,6 +45,7 @@ export function AppHeader({
 
       {/* Right controls */}
       <div className="flex items-center gap-2">
+        <ThemeToggle />
         <MarketStatusBadge />
         <ConnectionBadge
           isLoading={isLoading}
