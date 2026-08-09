@@ -1,5 +1,6 @@
 import { handleOptions, errorResponse } from './lib/cors';
-import { handleGetPosts, handleCreatePost } from './routes/posts';
+import { handleGetPosts, handleCreatePost, handleGetPopularPosts } from './routes/posts';
+import { handleLike } from './routes/like';
 import { handleReport } from './routes/report';
 import {
   handleAdminGetPosts,
@@ -19,6 +20,11 @@ export default {
     const { pathname: path } = new URL(request.url);
     const { method } = request;
 
+    // GET /api/posts/popular — must be matched before the :id routes
+    if (method === 'GET' && path === '/api/posts/popular') {
+      return handleGetPopularPosts(request, env);
+    }
+
     // GET /api/posts
     if (method === 'GET' && path === '/api/posts') {
       return handleGetPosts(request, env);
@@ -33,6 +39,12 @@ export default {
     const reportMatch = path.match(/^\/api\/posts\/(\d+)\/report$/);
     if (method === 'POST' && reportMatch) {
       return handleReport(request, env, reportMatch[1]);
+    }
+
+    // POST /api/posts/:id/like
+    const likeMatch = path.match(/^\/api\/posts\/(\d+)\/like$/);
+    if (method === 'POST' && likeMatch) {
+      return handleLike(request, env, likeMatch[1]);
     }
 
     // GET /api/admin/posts?filter=reported|hidden|all

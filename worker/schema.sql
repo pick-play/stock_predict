@@ -9,12 +9,24 @@ CREATE TABLE IF NOT EXISTS posts (
   dup_key      TEXT    NOT NULL,
   created_at   TEXT    NOT NULL,
   report_count INTEGER NOT NULL DEFAULT 0,
+  like_count   INTEGER NOT NULL DEFAULT 0,
   hidden_at    TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts (id DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_iphash  ON posts (ip_hash, created_at);
 CREATE INDEX IF NOT EXISTS idx_posts_dupkey  ON posts (dup_key, created_at);
+CREATE INDEX IF NOT EXISTS idx_posts_popular ON posts (like_count DESC, id DESC);
+
+CREATE TABLE IF NOT EXISTS likes (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  ip_hash    TEXT    NOT NULL,
+  created_at TEXT    NOT NULL,
+  UNIQUE (post_id, ip_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_likes_iphash ON likes (ip_hash, created_at);
 
 CREATE TABLE IF NOT EXISTS reports (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,

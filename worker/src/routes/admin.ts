@@ -32,7 +32,7 @@ export async function handleAdminGetPosts(
       : '';
 
   const { results } = await env.DB.prepare(
-    `SELECT id, body, author_tag, created_at, report_count, hidden_at
+    `SELECT id, body, author_tag, created_at, report_count, like_count, hidden_at
      FROM posts ${where} ORDER BY id DESC`
   ).all<PostRow>();
 
@@ -50,6 +50,7 @@ export async function handleAdminGetPosts(
         authorTag: row.author_tag,
         createdAt: row.created_at,
         reportCount: row.report_count,
+        likeCount: row.like_count,
         hiddenAt: row.hidden_at,
         reports: reportRows.map((r) => ({
           reason: r.reason,

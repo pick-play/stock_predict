@@ -20,6 +20,7 @@ function rowToPost(row: PostRow): BoardPost {
     authorTag: row.author_tag,
     createdAt: row.created_at,
     reportCount: row.report_count,
+    likeCount: row.like_count,
   };
 }
 
@@ -34,10 +35,10 @@ export async function handleGetPosts(
 
   const stmt = cursor
     ? env.DB.prepare(
-        'SELECT id, body, author_tag, created_at, report_count FROM posts WHERE hidden_at IS NULL AND id < ? ORDER BY id DESC LIMIT ?'
+        'SELECT id, body, author_tag, created_at, report_count, like_count FROM posts WHERE hidden_at IS NULL AND id < ? ORDER BY id DESC LIMIT ?'
       ).bind(Number(cursor), limit + 1)
     : env.DB.prepare(
-        'SELECT id, body, author_tag, created_at, report_count FROM posts WHERE hidden_at IS NULL ORDER BY id DESC LIMIT ?'
+        'SELECT id, body, author_tag, created_at, report_count, like_count FROM posts WHERE hidden_at IS NULL ORDER BY id DESC LIMIT ?'
       ).bind(limit + 1);
 
   const { results } = await stmt.all<PostRow>();
@@ -76,6 +77,7 @@ export async function handleCreatePost(
       authorTag: '익명#0000',
       createdAt: new Date().toISOString(),
       reportCount: 0,
+      likeCount: 0,
     };
     return jsonResponse({ post: fake }, 201, request, env);
   }
@@ -152,7 +154,38 @@ export async function handleCreatePost(
     authorTag,
     createdAt: now,
     reportCount: 0,
+    likeCount: 0,
   };
 
   return jsonResponse({ post }, 201, request, env);
+}
+
+/**
+ * GET /api/posts/popular?limit=8
+ *
+ * Feeds the main-screen ticker. Ranks by likes and falls back to recency so a
+ * brand-new board still has something to show. Scoped to the last 7 days so a
+ * single old favourite cannot occupy the ticker forever.
+ */
+export async function handleGetPopularPosts(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  const url = new URL(request.url);
+  const limitRaw = parseInt(url.searchParams.get('limit') ?? '8', 10);
+  const limit = Math.min(Number.isNaN(limitRaw) || limitRaw <= 0 ? 8 : limitRaw, 20);
+
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { results } = await env.DB.prepare(
+    `SELECT id, body, author_tag, created_at, report_count, like_count
+     FROM posts
+     WHERE hidden_at IS NULL AND created_at >= ?
+     ORDER BY like_count DESC, id DESC
+     LIMIT ?`
+  )
+    .bind(since, limit)
+    .all<PostRow>();
+
+  return jsonResponse({ posts: (results ?? []).map(rowToPost) }, 200, request, env);
 }

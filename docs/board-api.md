@@ -28,6 +28,7 @@ interface BoardPost {
   authorTag: string;     // 예: "익명#a3f2" — IP해시+일자솔트에서 파생, 날마다 바뀜
   createdAt: string;     // ISO 8601 UTC
   reportCount: number;
+  likeCount: number;
 }
 ```
 
@@ -54,6 +55,24 @@ interface BoardPost {
 - 429 `rate-limited`: 같은 IP 해시가 60초 내 1건 초과, 또는 10분 내 5건 초과,
   또는 24시간 내 동일 `duplicateKey` 재등록.
 - 403 `captcha-failed`: Turnstile 검증 실패.
+
+### GET /api/posts/popular
+
+메인 화면 티커용. 최근 7일 글을 공감 수 내림차순, 동률이면 최신순으로 반환한다.
+공감이 아직 없는 새 게시판에서도 최신 글이 채워지도록 설계됐다.
+
+- 쿼리: `limit`(선택, 기본 8, 최대 20)
+- 200: `{ "posts": BoardPost[] }`  ※ `nextCursor` 없음
+- 숨김 글 제외.
+
+### POST /api/posts/:id/like
+
+공감. 익명, 인증 없음.
+
+- 200: `{ "ok": true, "likeCount": number, "alreadyLiked": boolean }`
+- 같은 IP 해시가 같은 글에 다시 누르면 카운트를 올리지 않고 `alreadyLiked: true`로 200을 반환한다(오류 아님).
+- 공감 취소는 없다. 계정이 없으면 취소와 타인의 기기를 구분할 수 없기 때문이다.
+- 404 `not-found`: 없는 글이거나 숨김 처리된 글.
 
 ### POST /api/posts/:id/report
 

@@ -13,6 +13,7 @@ export interface BoardPost {
   authorTag: string;
   createdAt: string;
   reportCount: number;
+  likeCount: number;
 }
 
 /** Raw D1 row from the posts table. */
@@ -24,5 +25,6 @@ export interface PostRow {
   dup_key: string;
   created_at: string;
   report_count: number;
+  like_count: number;
   hidden_at: string | null;
 }
