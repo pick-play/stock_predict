@@ -1,53 +1,69 @@
 /**
  * scripts/update-baseline.mjs
  *
- * Refreshes public/data/baseline.json after each KRX trading session.
+ * Refreshes public/data/baseline.json with KRX anchor prices.
  *
- * Data sources:
- *   1차 (KRX 종가):    Yahoo Finance v8 chart API (인증 불필요)
- *   1차 (바이낸스 기준가): fapi.binance.com markPriceKlines (KRX 마감 시점 = 06:30 UTC)
+ * Data source: Yahoo Finance v8 chart API only (no auth, no geo-block).
+ *
+ * Binance is deliberately NOT called here: GitHub-hosted runners are US-based
+ * and Binance answers them with HTTP 451, which previously aborted every run
+ * and froze the baseline for nine days. The matching futures anchor price is
+ * derived in the browser (src/lib/binance/klines.ts) from anchorTimeUtc.
+ *
+ * Sessions:
+ *   --session=open   09:20 KST run — records today's opening price
+ *   --session=close  15:40 KST run — records today's opening AND closing price
  *
  * Exit codes:
- *   0  – 정상 종료 (baseline 갱신 완료 OR 스킵: 주말/장 마감 전/이미 최신/공휴일)
- *   1  – 치명적 오류 (네트워크 실패, 검증 실패 등)
+ *   0  – updated, or skipped safely (weekend, too early, already current, holiday)
+ *   1  – fatal error (network failure, validation failure); existing file kept
  */
 
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, renameSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 const DATA_DIR = join(ROOT, "public", "data");
+const BASELINE_PATH = join(DATA_DIR, "baseline.json");
 
 const YAHOO_USER_AGENT = "Mozilla/5.0 (compatible; stock-predict-bot/1.0)";
-const BINANCE_FUTURES_REST = "https://fapi.binance.com";
+const REFERENCE_PRICE_MODE = "mark";
 
 const SYMBOLS = {
   samsung: {
     displayName: "삼성전자",
     koreanTicker: "005930",
     yahooSymbol: "005930.KS",
-    binanceSymbol: "SAMSUNGUSDT",
-    referencePriceMode: "mark",
   },
   skHynix: {
     displayName: "SK하이닉스",
     koreanTicker: "000660",
     yahooSymbol: "000660.KS",
-    binanceSymbol: "SKHYNIXUSDT",
-    referencePriceMode: "mark",
   },
 };
 
+const STOCK_IDS = Object.keys(SYMBOLS);
+
+// KRX regular session in KST. Open anchor = 09:00, close anchor = 15:30.
+const KRX_OPEN_UTC_HOUR = 0; // 09:00 KST
+const KRX_OPEN_UTC_MINUTE = 0;
+const KRX_CLOSE_UTC_HOUR = 6; // 15:30 KST
+const KRX_CLOSE_UTC_MINUTE = 30;
+
+// Earliest KST time each session may run (Yahoo needs a few minutes to settle).
+const OPEN_SESSION_READY = { hour: 9, minute: 15 };
+const CLOSE_SESSION_READY = { hour: 15, minute: 31 };
+
 // ─── 시간 유틸리티 ────────────────────────────────────────────────────────────
 
-/** 현재 KST 날짜를 "YYYY-MM-DD" 형식으로 반환 */
 function todayKST() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
+    new Date()
+  );
 }
 
-/** 현재 KST 요일(약자)을 반환 (예: "Mon", "Sat") */
 function weekdayKST() {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Seoul",
@@ -55,7 +71,6 @@ function weekdayKST() {
   }).format(new Date());
 }
 
-/** 현재 KST 시각(시, 분)을 반환 */
 function currentKSTTime() {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Seoul",
@@ -68,31 +83,28 @@ function currentKSTTime() {
   return { hour, minute };
 }
 
-/**
- * KRX 정규장 마감(15:30 KST) 이후인지 확인.
- * Yahoo Finance 데이터 반영 여유를 위해 15:31 이후를 기준으로 한다.
- */
-function isAfterKRXClose() {
-  const { hour, minute } = currentKSTTime();
-  return hour > 15 || (hour === 15 && minute >= 31);
+function isAtOrAfter({ hour, minute }) {
+  const now = currentKSTTime();
+  return now.hour > hour || (now.hour === hour && now.minute >= minute);
 }
 
-/**
- * KST 날짜 문자열(YYYY-MM-DD)로부터 KRX 마감 시각의 UTC 타임스탬프(ms)를 계산.
- * KRX 마감 = 15:30 KST = 06:30 UTC
- */
-function krxCloseUTCMs(kstDateStr) {
+/** Anchor instant for a session, as an ISO UTC string. */
+function anchorTimeUtc(kstDateStr, session) {
   const [year, month, day] = kstDateStr.split("-").map(Number);
-  return Date.UTC(year, month - 1, day, 6, 30, 0, 0);
+  const [h, m] =
+    session === "open"
+      ? [KRX_OPEN_UTC_HOUR, KRX_OPEN_UTC_MINUTE]
+      : [KRX_CLOSE_UTC_HOUR, KRX_CLOSE_UTC_MINUTE];
+  return new Date(Date.UTC(year, month - 1, day, h, m, 0, 0)).toISOString();
 }
 
 // ─── API 호출 ─────────────────────────────────────────────────────────────────
 
 /**
- * Yahoo Finance v8 차트 API에서 일봉 데이터를 조회.
- * 반환값: { timestamp: number[], close: number[], regularMarketTime: number }
+ * Yahoo Finance daily candles. Returns the most recent bar with its trading
+ * date, opening price and closing price.
  */
-async function fetchYahooChart(yahooSymbol) {
+async function fetchYahooDaily(yahooSymbol) {
   const url =
     `https://query1.finance.yahoo.com/v8/finance/chart/` +
     `${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`;
@@ -105,106 +117,137 @@ async function fetchYahooChart(yahooSymbol) {
   }
   const json = await res.json();
   const result = json?.chart?.result?.[0];
-  if (!result) {
-    throw new Error(`Yahoo Finance: no result for ${yahooSymbol}`);
-  }
+  if (!result) throw new Error(`Yahoo Finance: no result for ${yahooSymbol}`);
+
   const timestamps = result.timestamp ?? [];
-  const closes = result.indicators?.quote?.[0]?.close ?? [];
-  if (timestamps.length === 0 || closes.length === 0) {
+  const quote = result.indicators?.quote?.[0] ?? {};
+  const opens = quote.open ?? [];
+  const closes = quote.close ?? [];
+  if (timestamps.length === 0) {
     throw new Error(`Yahoo Finance: 빈 데이터 for ${yahooSymbol}`);
   }
-  return { timestamps, closes };
-}
 
-/**
- * Binance USDT-M Futures markPriceKlines에서 KRX 마감 시점의 마크가격을 조회.
- * KRX 마감(06:30 UTC) 1분봉의 시가(open)를 사용 — 마감 시각의 마크가격에 가장 가까운 값.
- */
-async function fetchBinanceMarkAtClose(binanceSymbol, kstDateStr) {
-  const startMs = krxCloseUTCMs(kstDateStr);
-  const url =
-    `${BINANCE_FUTURES_REST}/fapi/v1/markPriceKlines` +
-    `?symbol=${encodeURIComponent(binanceSymbol)}&interval=1m&startTime=${startMs}&limit=1`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-  if (!res.ok) {
-    throw new Error(`Binance markPriceKlines HTTP ${res.status} for ${binanceSymbol}`);
-  }
-  const data = await res.json();
-  if (!Array.isArray(data) || data.length === 0) {
-    throw new Error(
-      `Binance markPriceKlines: 빈 응답 for ${binanceSymbol} at ${kstDateStr}`
-    );
-  }
-  // Klines 형식: [openTime, open, high, low, close, ...]
-  // close[4] = 06:30 UTC 1분봉 종가 = 15:30:59 KST 마크가격
-  // open[1]보다 close[4]가 안정적 (open 스파이크 방지)
-  const closePrice = parseFloat(data[0][4]);
-  if (!Number.isFinite(closePrice) || closePrice <= 0) {
-    throw new Error(
-      `Binance markPriceKlines: 유효하지 않은 종가 for ${binanceSymbol}: ${data[0][4]}`
-    );
-  }
-  return closePrice;
+  const i = timestamps.length - 1;
+  // KRX daily bars are stamped at the session open (00:00 UTC = 09:00 KST),
+  // so the UTC date of the timestamp is the trading date.
+  return {
+    tradingDate: new Date(timestamps[i] * 1000).toISOString().slice(0, 10),
+    open: opens[i],
+    close: closes[i],
+  };
 }
 
 // ─── 파일 I/O ─────────────────────────────────────────────────────────────────
 
 function loadBaseline() {
-  const path = join(DATA_DIR, "baseline.json");
-  if (!existsSync(path)) return null;
+  if (!existsSync(BASELINE_PATH)) return null;
   try {
-    return JSON.parse(readFileSync(path, "utf-8"));
+    return JSON.parse(readFileSync(BASELINE_PATH, "utf-8"));
   } catch {
     return null;
   }
 }
 
+/** Convert a legacy v1 baseline into the v2 close anchor so history is kept. */
+function migrateV1(existing) {
+  if (!existing || existing.schemaVersion === 2) return existing;
+  const marketDate = existing.marketDate;
+  const legacy = existing.stocks;
+  if (!marketDate || !legacy) return null;
+
+  const stocks = {};
+  for (const id of STOCK_IDS) {
+    const price = legacy[id]?.krxClose;
+    if (!(price > 0)) return null;
+    stocks[id] = { krxPrice: price };
+  }
+  return {
+    schemaVersion: 2,
+    timezone: "Asia/Seoul",
+    updatedAt: existing.capturedAt ?? new Date().toISOString(),
+    referencePriceMode: existing.stocks?.samsung?.referencePriceMode ?? REFERENCE_PRICE_MODE,
+    close: {
+      marketDate,
+      anchorTimeUtc: anchorTimeUtc(marketDate, "close"),
+      stocks,
+    },
+    open: null,
+  };
+}
+
+/** Atomic write so a crash never leaves a truncated baseline behind. */
+function writeBaseline(baseline) {
+  const tmp = `${BASELINE_PATH}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(baseline, null, 2)}\n`);
+  renameSync(tmp, BASELINE_PATH);
+}
+
+// ─── 검증 ─────────────────────────────────────────────────────────────────────
+
+function assertSanePrice(displayName, label, price) {
+  if (!(price > 0)) {
+    throw new Error(`${displayName}: ${label} (${price}) > 0 조건 미충족`);
+  }
+  if (price < 1_000 || price > 10_000_000) {
+    throw new Error(
+      `${displayName}: ${label} ${price} 범위 이탈 (1,000 ~ 10,000,000)`
+    );
+  }
+}
+
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 
-async function main() {
-  console.log("[update-baseline] 시작...");
+function parseSession() {
+  const arg = process.argv.find((a) => a.startsWith("--session="));
+  const value = (arg ? arg.split("=")[1] : process.env.BASELINE_SESSION) || "close";
+  if (value !== "open" && value !== "close") {
+    throw new Error(`알 수 없는 session: ${value} (open 또는 close)`);
+  }
+  return value;
+}
 
-  // ── 1단계: 주말 확인 ──────────────────────────────────────────────────────
+async function main() {
+  const session = parseSession();
+  console.log(`[update-baseline] 시작 (session=${session})...`);
+
   const weekday = weekdayKST();
   if (weekday === "Sat" || weekday === "Sun") {
     console.log(`[update-baseline] 주말 휴장 스킵 (${weekday} KST). 정상 종료.`);
-    process.exit(0);
+    return;
   }
 
-  // ── 2단계: 장 마감 확인 ───────────────────────────────────────────────────
-  if (!isAfterKRXClose()) {
+  const readyAt = session === "open" ? OPEN_SESSION_READY : CLOSE_SESSION_READY;
+  if (!isAtOrAfter(readyAt)) {
     const { hour, minute } = currentKSTTime();
     console.log(
-      `[update-baseline] 장 마감 전 스킵 (현재 ${hour}:${String(minute).padStart(2, "0")} KST, 기준 15:31). 정상 종료.`
+      `[update-baseline] ${session} 세션 시각 이전 스킵 ` +
+        `(현재 ${hour}:${String(minute).padStart(2, "0")} KST, 기준 ` +
+        `${readyAt.hour}:${String(readyAt.minute).padStart(2, "0")}). 정상 종료.`
     );
-    process.exit(0);
+    return;
   }
 
   const targetDateKST = todayKST();
   console.log(`[update-baseline] 대상 거래일: ${targetDateKST}`);
 
-  // ── 3단계: 이미 최신 baseline인지 확인 ──────────────────────────────────
-  const existing = loadBaseline();
-  if (existing?.marketDate === targetDateKST) {
+  const existing = migrateV1(loadBaseline());
+  if (existing?.[session]?.marketDate === targetDateKST) {
     console.log(
-      `[update-baseline] baseline.json이 이미 ${targetDateKST} 기준으로 최신 상태. 스킵.`
+      `[update-baseline] ${session} 앵커가 이미 ${targetDateKST} 기준으로 최신. 스킵.`
     );
-    process.exit(0);
+    return;
   }
 
-  // ── 4단계: Yahoo Finance에서 KRX 종가 조회 (1차 데이터 소스) ────────────
-  const stockIds = Object.keys(SYMBOLS);
-  const stockData = {};
-
-  console.log("[update-baseline] Yahoo Finance에서 KRX 종가 조회 중...");
-  const yahooResults = await Promise.allSettled(
-    stockIds.map((id) => fetchYahooChart(SYMBOLS[id].yahooSymbol))
+  console.log("[update-baseline] Yahoo Finance에서 KRX 시가·종가 조회 중...");
+  const results = await Promise.allSettled(
+    STOCK_IDS.map((id) => fetchYahooDaily(SYMBOLS[id].yahooSymbol))
   );
 
-  for (let i = 0; i < stockIds.length; i++) {
-    const stockId = stockIds[i];
+  const collected = {};
+  for (let i = 0; i < STOCK_IDS.length; i++) {
+    const stockId = STOCK_IDS[i];
     const config = SYMBOLS[stockId];
-    const result = yahooResults[i];
+    const result = results[i];
 
     if (result.status === "rejected") {
       throw new Error(
@@ -212,118 +255,62 @@ async function main() {
       );
     }
 
-    const { timestamps, closes } = result.value;
-    const lastTs = timestamps[timestamps.length - 1];
-    const lastClose = closes[closes.length - 1];
-
-    // Yahoo 타임스탬프는 UTC 자정(초)이며, 이것이 해당 거래일의 날짜를 나타냄
-    const tradingDate = new Date(lastTs * 1000).toISOString().slice(0, 10);
-
+    const { tradingDate, open, close } = result.value;
     if (tradingDate !== targetDateKST) {
-      // 오늘 거래 없음 → 공휴일이거나 데이터 미반영
       console.log(
-        `[update-baseline] Yahoo Finance 최신 데이터: ${tradingDate} ≠ 오늘 ${targetDateKST}.` +
-        ` 공휴일이거나 데이터 미확정. 스킵. 정상 종료.`
+        `[update-baseline] Yahoo 최신 거래일 ${tradingDate} ≠ 오늘 ${targetDateKST}.` +
+          ` 공휴일이거나 데이터 미확정. 스킵. 정상 종료.`
       );
-      process.exit(0);
+      return;
     }
-
-    if (!(lastClose > 0)) {
-      throw new Error(
-        `Yahoo Finance: 유효하지 않은 종가 ${lastClose} for ${config.yahooSymbol}`
-      );
-    }
-
-    console.log(
-      `[update-baseline] ${config.displayName} (${config.koreanTicker}): KRX 종가 ${lastClose.toLocaleString("ko-KR")}원`
-    );
-    stockData[stockId] = { krxClose: lastClose, tradingDate };
+    collected[stockId] = { tradingDate, open, close };
   }
 
-  // 두 종목의 거래일 일치 검증
-  const uniqueDates = [...new Set(stockIds.map((id) => stockData[id].tradingDate))];
+  const uniqueDates = [...new Set(STOCK_IDS.map((id) => collected[id].tradingDate))];
   if (uniqueDates.length > 1) {
     throw new Error(`종목 간 거래일 불일치: ${uniqueDates.join(", ")}`);
   }
 
-  // ── 5단계: Binance markPriceKlines에서 KRX 마감 기준가 조회 ─────────────
-  console.log("[update-baseline] Binance markPriceKlines에서 기준가 조회 중...");
-  const binanceResults = await Promise.allSettled(
-    stockIds.map((id) =>
-      fetchBinanceMarkAtClose(SYMBOLS[id].binanceSymbol, targetDateKST)
-    )
-  );
+  // The close run also refreshes the opening anchor: by then the day's bar is
+  // final, so both anchors describe the same completed session.
+  const sessionsToWrite = session === "close" ? ["open", "close"] : ["open"];
 
-  for (let i = 0; i < stockIds.length; i++) {
-    const stockId = stockIds[i];
-    const config = SYMBOLS[stockId];
-    const result = binanceResults[i];
-
-    if (result.status === "rejected") {
-      throw new Error(
-        `Binance markPriceKlines 조회 실패 for ${config.binanceSymbol}: ${result.reason.message}`
-      );
-    }
-
-    const markPrice = result.value;
-    console.log(
-      `[update-baseline] ${config.displayName}: 바이낸스 마감 기준가 ${markPrice}`
-    );
-    stockData[stockId].binanceReferencePrice = markPrice;
-  }
-
-  // ── 6단계: 검증 및 baseline.json 작성 ────────────────────────────────────
-  for (const [stockId, data] of Object.entries(stockData)) {
-    const config = SYMBOLS[stockId];
-
-    if (!(data.krxClose > 0)) {
-      throw new Error(`${config.displayName}: krxClose (${data.krxClose}) > 0 조건 미충족`);
-    }
-    if (!(data.binanceReferencePrice > 0)) {
-      throw new Error(
-        `${config.displayName}: binanceReferencePrice (${data.binanceReferencePrice}) > 0 조건 미충족`
-      );
-    }
-    // 기준일이 미래가 아님 검증
-    const dateMs = new Date(targetDateKST + "T00:00:00+09:00").getTime();
-    if (dateMs > Date.now() + 24 * 60 * 60 * 1000) {
-      throw new Error(`기준일 ${targetDateKST}이 미래 날짜`);
-    }
-    // 가격 합리성 검사 (느슨한 범위)
-    if (data.krxClose < 1_000 || data.krxClose > 10_000_000) {
-      throw new Error(
-        `${config.displayName}: krxClose ${data.krxClose} 범위 이탈 (1,000 ~ 10,000,000)`
-      );
-    }
-  }
-
-  const capturedAt = new Date().toISOString();
-  const baseline = {
-    marketDate: targetDateKST,
-    capturedAt,
+  const next = existing ?? {
+    schemaVersion: 2,
     timezone: "Asia/Seoul",
-    stocks: {
-      samsung: {
-        krxClose: stockData.samsung.krxClose,
-        binanceReferencePrice: stockData.samsung.binanceReferencePrice,
-        referencePriceMode: SYMBOLS.samsung.referencePriceMode,
-      },
-      skHynix: {
-        krxClose: stockData.skHynix.krxClose,
-        binanceReferencePrice: stockData.skHynix.binanceReferencePrice,
-        referencePriceMode: SYMBOLS.skHynix.referencePriceMode,
-      },
-    },
+    updatedAt: new Date().toISOString(),
+    referencePriceMode: REFERENCE_PRICE_MODE,
+    close: null,
+    open: null,
   };
+  next.schemaVersion = 2;
+  next.timezone = "Asia/Seoul";
+  next.referencePriceMode = next.referencePriceMode ?? REFERENCE_PRICE_MODE;
 
-  writeFileSync(join(DATA_DIR, "baseline.json"), JSON.stringify(baseline, null, 2));
+  for (const kind of sessionsToWrite) {
+    const stocks = {};
+    for (const stockId of STOCK_IDS) {
+      const config = SYMBOLS[stockId];
+      const price = kind === "open" ? collected[stockId].open : collected[stockId].close;
+      assertSanePrice(config.displayName, kind === "open" ? "시가" : "종가", price);
+      stocks[stockId] = { krxPrice: price };
+      console.log(
+        `[update-baseline] ${config.displayName} (${config.koreanTicker}) ` +
+          `${kind === "open" ? "시가" : "종가"}: ${price.toLocaleString("ko-KR")}원`
+      );
+    }
+    next[kind] = {
+      marketDate: targetDateKST,
+      anchorTimeUtc: anchorTimeUtc(targetDateKST, kind),
+      stocks,
+    };
+  }
+
+  next.updatedAt = new Date().toISOString();
+  writeBaseline(next);
 
   console.log(
-    `[update-baseline] baseline.json 갱신 완료 (${targetDateKST})\n` +
-    `  삼성전자:  ${stockData.samsung.krxClose.toLocaleString("ko-KR")}원` +
-    ` / 바이낸스 ${stockData.samsung.binanceReferencePrice}\n` +
-    `  SK하이닉스: ${stockData.skHynix.krxClose.toLocaleString("ko-KR")}원` +
-    ` / 바이낸스 ${stockData.skHynix.binanceReferencePrice}`
+    `[update-baseline] baseline.json 갱신 완료 (${targetDateKST}, ${sessionsToWrite.join("+")})`
   );
 }
 

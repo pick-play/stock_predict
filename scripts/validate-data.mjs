@@ -87,34 +87,50 @@ function validateBaseline() {
     return;
   }
 
-  if (!data.marketDate) fail("marketDate missing");
-  if (!data.capturedAt) fail("capturedAt missing");
-  if (!data.stocks) { fail("stocks missing"); return; }
+  if (data.schemaVersion !== 2) {
+    fail(`baseline.json schemaVersion must be 2, got ${data.schemaVersion}`);
+    return;
+  }
+  if (!data.updatedAt) fail("updatedAt missing");
 
-  const marketDate = new Date(data.marketDate);
-  if (isNaN(marketDate.getTime())) fail(`marketDate invalid: ${data.marketDate}`);
-  if (marketDate.getTime() > Date.now()) fail(`marketDate is in the future: ${data.marketDate}`);
+  // At least one anchor must be usable, otherwise the app cannot estimate.
+  if (!data.open && !data.close) {
+    fail("baseline.json has neither an open nor a close anchor");
+    return;
+  }
 
-  let samsungDate = null;
-  let skHynixDate = null;
-
-  for (const [id, stock] of Object.entries(data.stocks)) {
-    // 0-value baselines are valid initial state (baseline not yet configured)
-    if (stock.krxClose === 0 && stock.binanceReferencePrice === 0) {
-      console.log(`[validate] INFO: ${id} baseline not yet configured (zeros OK for initial state)`);
+  for (const kind of ["open", "close"]) {
+    const anchor = data[kind];
+    if (!anchor) {
+      console.log(`[validate] INFO: ${kind} anchor not yet captured`);
       continue;
     }
-    if (!(stock.krxClose > 0)) fail(`${id}: krxClose must be > 0`);
-    if (!(stock.binanceReferencePrice > 0)) fail(`${id}: binanceReferencePrice must be > 0`);
 
-    if (id === "samsung") samsungDate = data.marketDate;
-    if (id === "skHynix") skHynixDate = data.marketDate;
+    if (!anchor.marketDate) fail(`${kind}: marketDate missing`);
+    const marketDate = new Date(`${anchor.marketDate}T00:00:00+09:00`);
+    if (isNaN(marketDate.getTime())) {
+      fail(`${kind}: marketDate invalid: ${anchor.marketDate}`);
+    } else if (marketDate.getTime() > Date.now() + 24 * 60 * 60 * 1000) {
+      fail(`${kind}: marketDate is in the future: ${anchor.marketDate}`);
+    }
+
+    const anchorTime = new Date(anchor.anchorTimeUtc);
+    if (!anchor.anchorTimeUtc || isNaN(anchorTime.getTime())) {
+      fail(`${kind}: anchorTimeUtc invalid: ${anchor.anchorTimeUtc}`);
+    }
+
+    if (!anchor.stocks) {
+      fail(`${kind}: stocks missing`);
+      continue;
+    }
+    for (const id of ["samsung", "skHynix"]) {
+      const price = anchor.stocks[id]?.krxPrice;
+      if (!(price > 0)) fail(`${kind}.${id}: krxPrice must be > 0`);
+    }
   }
 
-  if (samsungDate && skHynixDate && samsungDate !== skHynixDate) {
-    fail(`Samsung and SK Hynix baseline dates differ: ${samsungDate} vs ${skHynixDate}`);
-  }
-
+  // Both stocks live under one anchor, so their dates match by construction;
+  // the two anchors may legitimately differ (intraday open vs previous close).
   ok("baseline.json validated");
 }
 

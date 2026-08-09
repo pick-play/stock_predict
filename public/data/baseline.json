@@ -1,17 +1,30 @@
 {
-  "marketDate": "2026-08-07",
-  "capturedAt": "2026-08-07T06:31:00.000Z",
+  "schemaVersion": 2,
   "timezone": "Asia/Seoul",
-  "stocks": {
-    "samsung": {
-      "krxClose": 231000,
-      "binanceReferencePrice": 163.59,
-      "referencePriceMode": "mark"
-    },
-    "skHynix": {
-      "krxClose": 1422000,
-      "binanceReferencePrice": 1008.65,
-      "referencePriceMode": "mark"
+  "updatedAt": "2026-08-09T08:00:00.000Z",
+  "referencePriceMode": "mark",
+  "open": {
+    "marketDate": "2026-08-07",
+    "anchorTimeUtc": "2026-08-07T00:00:00.000Z",
+    "stocks": {
+      "samsung": {
+        "krxPrice": 235000
+      },
+      "skHynix": {
+        "krxPrice": 1521000
+      }
+    }
+  },
+  "close": {
+    "marketDate": "2026-08-07",
+    "anchorTimeUtc": "2026-08-07T06:30:00.000Z",
+    "stocks": {
+      "samsung": {
+        "krxPrice": 231000
+      },
+      "skHynix": {
+        "krxPrice": 1422000
+      }
     }
   }
 }
