@@ -15,7 +15,11 @@ import { fetchGithubHistory } from "../lib/githubFallback";
 
 const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  onNavigateBoard?: () => void;
+}
+
+export function DashboardPage({ onNavigateBoard }: DashboardPageProps) {
   const { stocks, lastUpdated, error, isLoading, usingFallback, anchor } =
     useMarketData();
 
@@ -62,6 +66,7 @@ export function DashboardPage() {
         isLoading={isLoading}
         usingFallback={usingFallback}
         lastUpdated={lastUpdated}
+        onNavigateBoard={onNavigateBoard}
       />
 
       <main className="px-4 md:px-6 pb-24 md:pb-10 space-y-4">

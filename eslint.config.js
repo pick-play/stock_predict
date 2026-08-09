@@ -5,7 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  { ignores: ["dist", "worker"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -24,5 +24,12 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
     },
+  },
+  // filter.ts is a shared browser+Worker contract (read-only per project rules).
+  // It contains intentional zero-width characters used as normalisation fixtures.
+  // This override must appear after the general block so it wins.
+  {
+    files: ["src/lib/moderation/filter.ts"],
+    rules: { "no-irregular-whitespace": "off" },
   }
 );

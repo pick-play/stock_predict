@@ -1,0 +1,172 @@
+import { useBoardPosts } from "../../hooks/useBoardPosts";
+import { isBoardConfigured } from "../../lib/board/api";
+import { BoardNotReady } from "./BoardNotReady";
+import { PostCard } from "./PostCard";
+import { PostForm } from "./PostForm";
+import type { BoardPost } from "../../types/board";
+import { DashboardLayout } from "../layout/DashboardLayout";
+
+interface BoardPageProps {
+  onNavigateDashboard: () => void;
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function PostListSkeleton() {
+  return (
+    <div
+      className="space-y-3"
+      aria-busy="true"
+      aria-label="글 목록 불러오는 중"
+    >
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 animate-pulse"
+          style={{ animationDelay: `${i * 80}ms` }}
+        >
+          <div className="flex justify-between mb-3">
+            <div className="h-2.5 w-20 rounded bg-[var(--surface-3)]" />
+            <div className="h-2.5 w-14 rounded bg-[var(--surface-3)]" />
+          </div>
+          <div className="space-y-2">
+            <div className="h-2.5 w-full rounded bg-[var(--surface-3)]" />
+            <div className="h-2.5 w-3/4 rounded bg-[var(--surface-3)]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
+  const { posts, isLoading, error, hasMore, loadMore, prependPost } =
+    useBoardPosts();
+
+  const handlePostCreated = (post: BoardPost) => {
+    prependPost(post);
+  };
+
+  return (
+    <DashboardLayout>
+      {/* ── Header ── */}
+      <header className="animate-fade-in flex items-center justify-between py-4 px-4 md:px-6 border-b border-[var(--border-mid)]">
+        <div className="flex items-center gap-3">
+          {/* Back to dashboard */}
+          <button
+            type="button"
+            onClick={onNavigateDashboard}
+            className="flex items-center justify-center w-8 h-8 rounded-lg border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+            aria-label="야간 예상가 대시보드로 돌아가기"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="text-[var(--text-secondary)]"
+            >
+              <path d="M19 12H5M12 5l-7 7 7 7" />
+            </svg>
+          </button>
+
+          <div>
+            <h1 className="text-sm font-semibold text-[var(--text-primary)] leading-none tracking-tight">
+              익명 토론방
+            </h1>
+            <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+              야간 반도체 예상가 · 참고 의견 공유
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isLoading && posts.length > 0 && (
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-[#f5b942] animate-pulse"
+              aria-label="갱신 중"
+              aria-hidden="true"
+            />
+          )}
+          <span className="text-[10px] text-[var(--text-muted)]">
+            익명 · 비로그인
+          </span>
+        </div>
+      </header>
+
+      {/* ── Main ── */}
+      <main className="px-4 md:px-6 pb-16 pt-4 space-y-4">
+        {!isBoardConfigured ? (
+          <BoardNotReady />
+        ) : (
+          <>
+            {/* Post creation form */}
+            <PostForm onPostCreated={handlePostCreated} />
+
+            {/* Error banner */}
+            {error && (
+              <div
+                className="animate-slide-fade-in rounded-xl border border-[rgba(255,93,108,0.18)] bg-[rgba(255,93,108,0.05)] px-4 py-3"
+                role="alert"
+              >
+                <p className="text-xs text-[#ff5d6c]">{error}</p>
+              </div>
+            )}
+
+            {/* Post list */}
+            {isLoading && posts.length === 0 ? (
+              <PostListSkeleton />
+            ) : !isLoading && posts.length === 0 ? (
+              <div className="animate-slide-fade-in text-center py-16">
+                <p className="text-sm text-[var(--text-tertiary)]">
+                  아직 글이 없습니다.
+                </p>
+                <p className="text-xs text-[var(--text-muted)] mt-1">
+                  첫 번째 글을 남겨보세요.
+                </p>
+              </div>
+            ) : (
+              <section
+                aria-label="토론 글 목록"
+                aria-busy={isLoading}
+              >
+                <div className="space-y-3">
+                  {posts.map((post) => (
+                    <PostCard key={post.id} post={post} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Load more */}
+            {hasMore && !isLoading && (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  className="px-5 py-2 rounded-lg text-xs font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+                  aria-label="더 많은 글 불러오기"
+                >
+                  더 보기
+                </button>
+              </div>
+            )}
+
+            {/* Disclaimer */}
+            <p className="text-[10px] text-[var(--text-muted)] text-center pt-2 leading-relaxed">
+              이 게시판은 익명이며 투자 권유가 아닙니다. 부적절한 게시물은
+              신고해 주세요.
+            </p>
+          </>
+        )}
+      </main>
+    </DashboardLayout>
+  );
+}
