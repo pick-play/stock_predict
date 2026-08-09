@@ -84,7 +84,7 @@ export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
             type="button"
             onClick={onNavigateDashboard}
             className="flex items-center justify-center w-8 h-8 rounded-lg border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
-            aria-label="야간 예상가 대시보드로 돌아가기"
+            aria-label="KOSPI NOW 대시보드로 돌아가기"
           >
             <svg
               width="14"
@@ -107,7 +107,7 @@ export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
               익명 토론방
             </h1>
             <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
-              야간 반도체 예상가 · 참고 의견 공유
+              KOSPI NOW · 참고 의견 공유
             </p>
           </div>
         </div>

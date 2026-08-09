@@ -32,7 +32,7 @@ export function Disclaimer({ short = false }: DisclaimerProps) {
             본 정보는 투자 권유 또는 매매 추천이 아닙니다.
           </p>
           <p className="text-[10px] text-[var(--text-muted)]">
-            야간 반도체 예상가 · 해외 선물가격 기반 참고 서비스
+            KOSPI NOW · 해외 선물가격 기반 참고 서비스
           </p>
         </div>
       </div>

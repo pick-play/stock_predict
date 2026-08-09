@@ -33,7 +33,7 @@ export function BoardNotReady() {
       <p className="text-sm text-[var(--text-tertiary)] max-w-xs leading-relaxed">
         익명 토론방이 곧 열립니다.
         <br />
-        지금은 야간 예상가 화면을 이용해주세요.
+        지금은 시세 화면을 이용해주세요.
       </p>
     </div>
   );

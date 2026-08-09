@@ -34,10 +34,10 @@ export function AppHeader({
         />
         <div>
           <h1 className="text-sm font-semibold text-[var(--text-primary)] leading-none tracking-tight">
-            야간 반도체 예상가
+            KOSPI NOW
           </h1>
           <p className="text-[10px] text-[var(--text-muted)] mt-0.5 tracking-wide">
-            해외 선물가격 기반
+            코스피 나우
           </p>
         </div>
       </div>
