@@ -184,7 +184,7 @@ export function StockEstimateCard({
                 {formatKrw(snapshot.estimatedPrice)}
               </p>
               <p className="text-[10px] text-[var(--text-muted)] mt-1.5 leading-none">
-                한국거래소 호가단위로 반올림한 참고 예상가
+                예상가
               </p>
             </div>
           )}
