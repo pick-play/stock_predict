@@ -1,10 +1,36 @@
 import { useState } from "react";
 import type { BoardPost } from "../../types/board";
 import { BoardApiError } from "../../types/board";
-import { reportPost } from "../../lib/board/api";
+import { reportPost, likePost } from "../../lib/board/api";
 
 interface PostCardProps {
   post: BoardPost;
+}
+
+const LIKED_STORAGE_KEY = "board:liked";
+
+/**
+ * Remembers which posts this browser already liked. The server enforces one
+ * like per daily IP hash; this only keeps the button in its pressed state
+ * across visits so the reader is not invited to press it again for nothing.
+ */
+function readLikedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(LIKED_STORAGE_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function rememberLiked(id: string): void {
+  try {
+    const ids = readLikedIds();
+    ids.add(id);
+    localStorage.setItem(LIKED_STORAGE_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Private mode or a full quota — the button still works for this session.
+  }
 }
 
 function formatBoardTime(isoString: string): string {
@@ -26,6 +52,30 @@ type ReportState = "idle" | "confirming" | "sending" | "done" | "error";
 export function PostCard({ post }: PostCardProps) {
   const [reportState, setReportState] = useState<ReportState>("idle");
   const [reportError, setReportError] = useState<string | null>(null);
+  const [likeCount, setLikeCount] = useState(post.likeCount);
+  const [liked, setLiked] = useState(() => readLikedIds().has(post.id));
+  const [likePending, setLikePending] = useState(false);
+
+  const handleLike = async () => {
+    if (liked || likePending) return;
+
+    // Optimistic: the press should feel instant, and the server is the source
+    // of truth for the count we settle on.
+    setLikePending(true);
+    setLiked(true);
+    setLikeCount((n) => n + 1);
+
+    try {
+      const result = await likePost(post.id);
+      setLikeCount(result.likeCount);
+      rememberLiked(post.id);
+    } catch {
+      setLiked(false);
+      setLikeCount(post.likeCount);
+    } finally {
+      setLikePending(false);
+    }
+  };
 
   const handleReportClick = () => setReportState("confirming");
   const handleReportCancel = () => setReportState("idle");
@@ -71,8 +121,29 @@ export function PostCard({ post }: PostCardProps) {
         {post.body}
       </p>
 
-      {/* ── Footer: report action ── */}
-      <div className="mt-3 flex items-center justify-end gap-2" aria-live="polite">
+      {/* ── Footer: like + report actions ── */}
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={handleLike}
+          disabled={liked || likePending}
+          aria-pressed={liked}
+          aria-label={
+            liked ? `공감함 · 공감 ${likeCount}개` : `이 글에 공감하기 · 현재 ${likeCount}개`
+          }
+          className={`min-h-[44px] -my-2 pr-3 flex items-center gap-1.5 text-xs rounded transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] ${
+            liked
+              ? "text-[#ff4d5e] cursor-default"
+              : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+          }`}
+        >
+          <span aria-hidden="true" className="text-sm leading-none">
+            {liked ? "♥" : "♡"}
+          </span>
+          <span className="tabular-nums">{likeCount}</span>
+        </button>
+
+        <div className="flex items-center gap-2" aria-live="polite">
         {reportState === "idle" && (
           <button
             type="button"
@@ -118,11 +189,12 @@ export function PostCard({ post }: PostCardProps) {
           </span>
         )}
 
-        {reportState === "error" && (
-          <span className="text-[10px] text-[#ff5d6c]">
-            {reportError ?? "신고 처리 중 오류가 발생했습니다."}
-          </span>
-        )}
+          {reportState === "error" && (
+            <span className="text-[10px] text-[#ff5d6c]">
+              {reportError ?? "신고 처리 중 오류가 발생했습니다."}
+            </span>
+          )}
+        </div>
       </div>
     </article>
   );
