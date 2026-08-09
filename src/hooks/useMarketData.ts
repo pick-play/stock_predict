@@ -56,6 +56,11 @@ export function useMarketData(): MarketDataState {
   // Written by the WS callback (no re-render), flushed to state at most once/s.
   const latestWsQuotesRef = useRef<Record<string, NormalizedQuote>>({});
 
+  // Gap between the REST mark price and the book mid at the same moment. Only
+  // the book streams live, so live ticks are quoted as mid + this offset to
+  // stay on the same scale as the anchor, which is a mark price.
+  const markMidOffsetRef = useRef<Partial<Record<StockId, number>>>({});
+
   const refresh = useCallback(async () => {
     const baseline = await fetchGithubBaseline();
 
@@ -186,6 +191,10 @@ export function useMarketData(): MarketDataState {
             ? ((ask - bid) / ask) * 100
             : null;
 
+        if (bid !== null && ask !== null && bid > 0 && ask > 0 && bid <= ask) {
+          markMidOffsetRef.current[stockId] = currentPrice - (bid + ask) / 2;
+        }
+
         newStocks[stockId] = {
           ...base,
           krxClose: anchorKrxPrice!,
@@ -248,9 +257,10 @@ export function useMarketData(): MarketDataState {
 
   useMinuteRefresh(refresh);
 
-  // WebSocket connection for real-time bid/ask updates (bid/ask only — markPrice
-  // is not emitted via WS for TradFi symbols; estimate recalculation stays on
-  // the 60s REST refresh path to preserve anchor-based outlier protection).
+  // Live prices come from the order book stream. Probing the futures socket
+  // showed markPrice, ticker and aggTrade emit nothing for these symbols, so
+  // bookTicker is the only live feed; the estimate is repriced from its mid
+  // once per second while REST keeps supplying the authoritative mark.
   useEffect(() => {
     const symbols = STOCK_IDS.map((id) => MARKET_SYMBOLS[id].binanceSymbol);
 
@@ -305,14 +315,51 @@ export function useMarketData(): MarketDataState {
               ? ((ask - bid) / ask) * 100
               : existing.spreadPercent;
 
-          if (bid !== existing.bidPrice || ask !== existing.askPrice) {
-            updated[id] = {
-              ...existing,
-              bidPrice: bid,
-              askPrice: ask,
-              spreadPercent,
-              eventTime: quote!.eventTime,
-            };
+          const next: StockSnapshot = {
+            ...existing,
+            bidPrice: bid,
+            askPrice: ask,
+            spreadPercent,
+            eventTime: quote!.eventTime,
+          };
+
+          // Reprice from the live book when the anchor is known. Without it the
+          // card is already showing "기준가격 갱신 필요" and must not start
+          // displaying a number.
+          if (
+            existing.status === "healthy" &&
+            existing.krxClose > 0 &&
+            existing.baselineBinancePrice > 0 &&
+            bid > 0 &&
+            ask > 0
+          ) {
+            const live =
+              (bid + ask) / 2 + (markMidOffsetRef.current[id] ?? 0);
+            const ratio = live / existing.currentBinancePrice;
+
+            if (live > 0 && ratio >= MIN_PRICE_RATIO && ratio <= MAX_PRICE_RATIO) {
+              try {
+                Object.assign(
+                  next,
+                  calculateEstimate({
+                    krxClose: existing.krxClose,
+                    currentBinancePrice: live,
+                    baselineBinancePrice: existing.baselineBinancePrice,
+                  })
+                );
+                next.currentBinancePrice = live;
+              } catch {
+                // Keep the last good numbers rather than blanking the card.
+              }
+            }
+          }
+
+          if (
+            next.bidPrice !== existing.bidPrice ||
+            next.askPrice !== existing.askPrice ||
+            next.estimatedPrice !== existing.estimatedPrice
+          ) {
+            updated[id] = next;
             changed = true;
           }
         }
