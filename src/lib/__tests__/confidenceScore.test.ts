@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { calculateConfidenceScore } from "../confidenceScore";
 import type { NormalizedQuote } from "../binance/types";
-import type { BaselineStock } from "../../types/market";
 
 const NOW = new Date("2026-08-03T12:00:00.000Z"); // 2026-08-03 = Monday (KST weekday)
 
@@ -22,12 +21,6 @@ function makeQuote(overrides: Partial<NormalizedQuote> = {}): NormalizedQuote {
   };
 }
 
-const goodBaseline: BaselineStock = {
-  krxClose: 100_000,
-  binanceReferencePrice: 71.77,
-  referencePriceMode: "mark",
-};
-
 describe("calculateConfidenceScore", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -41,8 +34,8 @@ describe("calculateConfidenceScore", () => {
   it("returns 100 for fully healthy data on a weekday", () => {
     const score = calculateConfidenceScore({
       quote: makeQuote(),
-      baseline: goodBaseline,
-      baselineDate: NOW.toISOString(),
+      hasAnchor: true,
+      anchorTimeMs: NOW.getTime(),
       usingFallback: false,
     });
     expect(score).toBe(100);
@@ -51,8 +44,8 @@ describe("calculateConfidenceScore", () => {
   it("returns 0 when quote is null", () => {
     const score = calculateConfidenceScore({
       quote: null,
-      baseline: goodBaseline,
-      baselineDate: NOW.toISOString(),
+      hasAnchor: true,
+      anchorTimeMs: NOW.getTime(),
       usingFallback: false,
     });
     expect(score).toBe(0);
@@ -62,8 +55,8 @@ describe("calculateConfidenceScore", () => {
     const oldTime = new Date(NOW.getTime() - 90_000).toISOString(); // 1.5 min ago
     const score = calculateConfidenceScore({
       quote: makeQuote({ eventTime: oldTime }),
-      baseline: goodBaseline,
-      baselineDate: NOW.toISOString(),
+      hasAnchor: true,
+      anchorTimeMs: NOW.getTime(),
       usingFallback: false,
     });
     expect(score).toBe(90);
@@ -73,8 +66,8 @@ describe("calculateConfidenceScore", () => {
     const oldTime = new Date(NOW.getTime() - 6 * 60_000).toISOString(); // 6 min ago
     const score = calculateConfidenceScore({
       quote: makeQuote({ eventTime: oldTime }),
-      baseline: goodBaseline,
-      baselineDate: NOW.toISOString(),
+      hasAnchor: true,
+      anchorTimeMs: NOW.getTime(),
       usingFallback: false,
     });
     // -10 (>1min) + -30 (>5min) = -40
@@ -85,8 +78,8 @@ describe("calculateConfidenceScore", () => {
     // spread = (ask - bid) / ask > 0.005
     const score = calculateConfidenceScore({
       quote: makeQuote({ bidPrice: 70.0, askPrice: 74.0 }), // spread ~5.4%
-      baseline: goodBaseline,
-      baselineDate: NOW.toISOString(),
+      hasAnchor: true,
+      anchorTimeMs: NOW.getTime(),
       usingFallback: false,
     });
     expect(score).toBe(90);
@@ -95,8 +88,8 @@ describe("calculateConfidenceScore", () => {
   it("deducts 10 points when bid/ask are missing", () => {
     const score = calculateConfidenceScore({
       quote: makeQuote({ bidPrice: null, askPrice: null }),
-      baseline: goodBaseline,
-      baselineDate: NOW.toISOString(),
+      hasAnchor: true,
+      anchorTimeMs: NOW.getTime(),
       usingFallback: false,
     });
     expect(score).toBe(90);
@@ -105,8 +98,8 @@ describe("calculateConfidenceScore", () => {
   it("deducts 15 points for low 24h volume", () => {
     const score = calculateConfidenceScore({
       quote: makeQuote({ volume24h: 500 }), // < 1000
-      baseline: goodBaseline,
-      baselineDate: NOW.toISOString(),
+      hasAnchor: true,
+      anchorTimeMs: NOW.getTime(),
       usingFallback: false,
     });
     expect(score).toBe(85);
@@ -115,46 +108,46 @@ describe("calculateConfidenceScore", () => {
   it("deducts 10 points when markPrice is null", () => {
     const score = calculateConfidenceScore({
       quote: makeQuote({ markPrice: null }),
-      baseline: goodBaseline,
-      baselineDate: NOW.toISOString(),
+      hasAnchor: true,
+      anchorTimeMs: NOW.getTime(),
       usingFallback: false,
     });
     expect(score).toBe(90);
   });
 
-  it("deducts 25 points when baseline is null", () => {
+  it("deducts 25 points when no anchor is available", () => {
     const score = calculateConfidenceScore({
       quote: makeQuote(),
-      baseline: null,
-      baselineDate: null,
+      hasAnchor: false,
+      anchorTimeMs: null,
       usingFallback: false,
     });
     expect(score).toBe(75);
   });
 
-  it("deducts 25 points when baseline predates the last KRX close", () => {
+  it("deducts 25 points when the anchor predates the last KRX close", () => {
     // NOW = 2026-08-03 Monday 21:00 KST (past close) → lastKrxClose = Aug 3 06:30 UTC
     // oldBaseline = 3 days earlier (Jul 31), which is before Aug 3 close → penalty
-    const oldBaseline = new Date(NOW.getTime() - 3 * 24 * 60 * 60_000).toISOString();
+    const oldAnchor = NOW.getTime() - 3 * 24 * 60 * 60_000;
     const score = calculateConfidenceScore({
       quote: makeQuote(),
-      baseline: goodBaseline,
-      baselineDate: oldBaseline,
+      hasAnchor: true,
+      anchorTimeMs: oldAnchor,
       usingFallback: false,
     });
     expect(score).toBe(75);
   });
 
-  it("does not penalise Friday baseline on Sunday (weekend gap is expected)", () => {
+  it("does not penalise a Friday anchor on Sunday (weekend gap is expected)", () => {
     // Sunday 2026-08-09 12:00 KST = 03:00 UTC
     // Last KRX close = Friday 2026-08-07 06:30 UTC
     // Baseline captured 1 minute after close = 06:31 UTC Friday → should NOT be stale
     vi.setSystemTime(new Date("2026-08-09T03:00:00.000Z"));
-    const fridayCloseCapture = "2026-08-07T06:31:00.000Z";
+    const fridayCloseAnchor = new Date("2026-08-07T06:30:00.000Z").getTime();
     const score = calculateConfidenceScore({
       quote: makeQuote({ eventTime: "2026-08-09T03:00:00.000Z" }),
-      baseline: goodBaseline,
-      baselineDate: fridayCloseCapture,
+      hasAnchor: true,
+      anchorTimeMs: fridayCloseAnchor,
       usingFallback: false,
     });
     // -10 for weekend; no staleness penalty
@@ -164,8 +157,8 @@ describe("calculateConfidenceScore", () => {
   it("deducts 20 points when using fallback data", () => {
     const score = calculateConfidenceScore({
       quote: makeQuote(),
-      baseline: goodBaseline,
-      baselineDate: NOW.toISOString(),
+      hasAnchor: true,
+      anchorTimeMs: NOW.getTime(),
       usingFallback: true,
     });
     expect(score).toBe(80);
@@ -181,8 +174,8 @@ describe("calculateConfidenceScore", () => {
         askPrice: null,
         volume24h: 100,
       }),
-      baseline: null,
-      baselineDate: null,
+      hasAnchor: false,
+      anchorTimeMs: null,
       usingFallback: true,
     });
     expect(score).toBeGreaterThanOrEqual(0);
@@ -195,8 +188,8 @@ describe("calculateConfidenceScore", () => {
     const weekendTime = new Date("2026-08-08T01:00:00.000Z").toISOString();
     const score = calculateConfidenceScore({
       quote: makeQuote({ eventTime: weekendTime }),
-      baseline: goodBaseline,
-      baselineDate: weekendTime,
+      hasAnchor: true,
+      anchorTimeMs: new Date(weekendTime).getTime(),
       usingFallback: false,
     });
     expect(score).toBe(90); // -10 for weekend

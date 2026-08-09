@@ -16,7 +16,7 @@ import { fetchGithubHistory } from "../lib/githubFallback";
 const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
 
 export function DashboardPage() {
-  const { stocks, lastUpdated, error, isLoading, usingFallback } =
+  const { stocks, lastUpdated, error, isLoading, usingFallback, anchor } =
     useMarketData();
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -65,7 +65,7 @@ export function DashboardPage() {
       />
 
       <main className="px-4 md:px-6 pb-24 md:pb-10 space-y-4">
-        <HeroSummary />
+        <HeroSummary anchor={anchor} />
 
         {/* Error banners */}
         {error && !hasAnyData && (

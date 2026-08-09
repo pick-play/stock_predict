@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   QuoteSchema,
-  BaselineStockSchema,
   BaselineSchema,
   LatestDataSchema,
   HistoryArraySchema,
@@ -77,82 +76,72 @@ describe("QuoteSchema", () => {
   });
 });
 
-describe("BaselineStockSchema", () => {
-  it("accepts valid baseline stock", () => {
-    expect(() =>
-      BaselineStockSchema.parse({
-        krxClose: 100_000,
-        binanceReferencePrice: 71.77,
-        referencePriceMode: "mark",
-      })
-    ).not.toThrow();
-  });
-
-  it("rejects krxClose of 0 (must be positive)", () => {
-    expect(() =>
-      BaselineStockSchema.parse({
-        krxClose: 0,
-        binanceReferencePrice: 71.77,
-        referencePriceMode: "mark",
-      })
-    ).toThrow();
-  });
-
-  it("rejects binanceReferencePrice of 0 (must be positive)", () => {
-    expect(() =>
-      BaselineStockSchema.parse({
-        krxClose: 100_000,
-        binanceReferencePrice: 0,
-        referencePriceMode: "mark",
-      })
-    ).toThrow();
-  });
-
-  it("rejects invalid referencePriceMode", () => {
-    expect(() =>
-      BaselineStockSchema.parse({
-        krxClose: 100_000,
-        binanceReferencePrice: 71.77,
-        referencePriceMode: "invalid",
-      })
-    ).toThrow();
-  });
-});
-
 describe("BaselineSchema", () => {
-  const validBaseline = {
-    marketDate: "2026-08-02",
-    capturedAt: "2026-08-02T06:31:00.000Z",
-    timezone: "Asia/Seoul",
+  const anchor = (marketDate: string, hour: string) => ({
+    marketDate,
+    anchorTimeUtc: `${marketDate}T${hour}:00.000Z`,
     stocks: {
-      samsung: {
-        krxClose: 100_000,
-        binanceReferencePrice: 71.77,
-        referencePriceMode: "mark",
-      },
-      skHynix: {
-        krxClose: 300_000,
-        binanceReferencePrice: 215.4,
-        referencePriceMode: "mark",
-      },
+      samsung: { krxPrice: 231_000 },
+      skHynix: { krxPrice: 1_422_000 },
     },
+  });
+
+  const validBaseline = {
+    schemaVersion: 2,
+    timezone: "Asia/Seoul",
+    updatedAt: "2026-08-07T06:40:00.000Z",
+    referencePriceMode: "mark",
+    open: anchor("2026-08-07", "00:00"),
+    close: anchor("2026-08-07", "06:30"),
   };
 
   it("accepts valid baseline", () => {
     expect(() => BaselineSchema.parse(validBaseline)).not.toThrow();
   });
 
-  it("rejects malformed marketDate", () => {
+  it("accepts a baseline with only the close anchor captured", () => {
     expect(() =>
-      BaselineSchema.parse({ ...validBaseline, marketDate: "20260802" })
+      BaselineSchema.parse({ ...validBaseline, open: null })
+    ).not.toThrow();
+  });
+
+  it("rejects a baseline with no anchor at all", () => {
+    expect(() =>
+      BaselineSchema.parse({ ...validBaseline, open: null, close: null })
     ).toThrow();
   });
 
-  it("rejects missing stock entry", () => {
+  it("rejects the legacy v1 shape", () => {
+    expect(() =>
+      BaselineSchema.parse({
+        marketDate: "2026-08-02",
+        capturedAt: "2026-08-02T06:31:00.000Z",
+        timezone: "Asia/Seoul",
+        stocks: {
+          samsung: { krxClose: 100_000, binanceReferencePrice: 71.77, referencePriceMode: "mark" },
+          skHynix: { krxClose: 300_000, binanceReferencePrice: 215.4, referencePriceMode: "mark" },
+        },
+      })
+    ).toThrow();
+  });
+
+  it("rejects malformed marketDate", () => {
     expect(() =>
       BaselineSchema.parse({
         ...validBaseline,
-        stocks: { samsung: validBaseline.stocks.samsung },
+        close: { ...validBaseline.close, marketDate: "20260807" },
+      })
+    ).toThrow();
+  });
+
+  it("rejects a non-positive krxPrice", () => {
+    expect(() =>
+      BaselineSchema.parse({
+        ...validBaseline,
+        close: {
+          ...validBaseline.close,
+          stocks: { samsung: { krxPrice: 0 }, skHynix: { krxPrice: 1_422_000 } },
+        },
       })
     ).toThrow();
   });

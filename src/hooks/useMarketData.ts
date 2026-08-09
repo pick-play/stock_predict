@@ -6,7 +6,8 @@ import { calculateEstimate } from "../lib/calculateEstimate";
 import { calculateConfidenceScore } from "../lib/confidenceScore";
 import { fetchGithubLatest, fetchGithubBaseline } from "../lib/githubFallback";
 import { fetchMarkPriceAtTime } from "../lib/binance/klinesClient";
-import { getLastKrxCloseMs } from "../lib/koreaMarket";
+import { resolveAnchor } from "../lib/marketSession";
+import type { ResolvedAnchor } from "../lib/marketSession";
 import { MARKET_SYMBOLS } from "../config/symbols";
 import { useMinuteRefresh } from "./useMinuteRefresh";
 import {
@@ -21,6 +22,7 @@ export interface MarketDataState {
   error: string | null;
   isLoading: boolean;
   usingFallback: boolean;
+  anchor: ResolvedAnchor | null;
 }
 
 const INITIAL_STATE: MarketDataState = {
@@ -29,8 +31,15 @@ const INITIAL_STATE: MarketDataState = {
   error: null,
   isLoading: true,
   usingFallback: false,
+  anchor: null,
 };
 
+const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
+
+const DISPLAY: Record<StockId, { displayName: string; koreanTicker: string }> = {
+  samsung: { displayName: "삼성전자", koreanTicker: "005930" },
+  skHynix: { displayName: "SK하이닉스", koreanTicker: "000660" },
+};
 
 export function useMarketData(): MarketDataState {
   const [state, setState] = useState<MarketDataState>(INITIAL_STATE);
@@ -39,32 +48,33 @@ export function useMarketData(): MarketDataState {
   currentStocksRef.current = state.stocks;
 
   const refresh = useCallback(async () => {
-    // Fetch baseline first so we know each stock's referencePriceMode (fixes M1/M3)
     const baseline = await fetchGithubBaseline();
 
-    // Determine the last KRX close time and fetch Binance mark prices at that
-    // exact moment via klines.  This gives a session-accurate anchor even when
-    // baseline.json has not yet been refreshed by GitHub Actions.
-    const lastKrxCloseMs = getLastKrxCloseMs();
-    const stockIds: StockId[] = ["samsung", "skHynix"];
+    // Which KRX price the estimate is measured from: today's open while the
+    // market is trading, the last close otherwise.
+    const anchor = resolveAnchor(baseline);
 
-    const klinesSettled = await Promise.allSettled(
-      stockIds.map((id) =>
-        fetchMarkPriceAtTime(MARKET_SYMBOLS[id].binanceSymbol, lastKrxCloseMs)
-      )
-    );
-    const klinesAnchor: Partial<Record<StockId, number | null>> = {};
-    klinesSettled.forEach((result, i) => {
-      const id = stockIds[i];
-      klinesAnchor[id] = result.status === "fulfilled" ? result.value : null;
+    // The futures price at that same instant. Actions cannot reach Binance
+    // (HTTP 451 from US runners), so the browser reads it from klines.
+    const anchorSettled = anchor
+      ? await Promise.allSettled(
+          STOCK_IDS.map((id) =>
+            fetchMarkPriceAtTime(
+              MARKET_SYMBOLS[id].binanceSymbol,
+              anchor.anchorTimeMs
+            )
+          )
+        )
+      : [];
+    const anchorFutures: Partial<Record<StockId, number>> = {};
+    anchorSettled.forEach((result, i) => {
+      const price = result.status === "fulfilled" ? result.value : null;
+      if (price !== null && price > 0) anchorFutures[STOCK_IDS[i]] = price;
     });
 
-    // Per-stock quote fetch using each stock's configured referencePriceMode.
-    // Default "last" — TradFi spot products have no markPrice.
+    const mode = baseline?.referencePriceMode ?? "mark";
     const quoteSettled = await Promise.allSettled(
-      stockIds.map((id) =>
-        fetchStockQuote(id, baseline?.stocks[id]?.referencePriceMode ?? "last")
-      )
+      STOCK_IDS.map((id) => fetchStockQuote(id, mode))
     );
 
     const quoteResults: Record<StockId, StockQuoteResult> = {} as Record<
@@ -72,7 +82,7 @@ export function useMarketData(): MarketDataState {
       StockQuoteResult
     >;
     quoteSettled.forEach((result, i) => {
-      const id = stockIds[i];
+      const id = STOCK_IDS[i];
       quoteResults[id] =
         result.status === "fulfilled"
           ? result.value
@@ -91,53 +101,47 @@ export function useMarketData(): MarketDataState {
       ...currentStocksRef.current,
     };
 
-    for (const stockId of stockIds) {
+    for (const stockId of STOCK_IDS) {
       const result = quoteResults[stockId];
-      const baselineStock = baseline?.stocks[stockId] ?? null;
+      if (result.error || !result.quote || !result.referencePrice) continue;
 
-      if (result.error || !result.quote || !result.referencePrice) {
-        continue;
-      }
+      const anchorKrxPrice = anchor?.krxPrice[stockId];
+      const anchorFuturesPrice = anchorFutures[stockId];
+      const base = {
+        displayName: DISPLAY[stockId].displayName,
+        koreanTicker: DISPLAY[stockId].koreanTicker,
+        binanceSymbol: result.quote.symbol,
+        currentBinancePrice: result.referencePrice,
+        referencePriceMode: mode,
+        bidPrice: result.quote.bidPrice,
+        askPrice: result.quote.askPrice,
+        eventTime: result.quote.eventTime,
+      };
 
-      if (!baselineStock) {
-        const conf = calculateConfidenceScore({
-          quote: result.quote,
-          baseline: null,
-          baselineDate: null,
-          usingFallback: false,
-        });
+      // Without both halves of the anchor there is no honest estimate to show.
+      if (!anchor || !(anchorKrxPrice! > 0) || !(anchorFuturesPrice! > 0)) {
         newStocks[stockId] = {
-          displayName: stockId === "samsung" ? "삼성전자" : "SK하이닉스",
-          koreanTicker: stockId === "samsung" ? "005930" : "000660",
-          binanceSymbol: result.quote.symbol,
+          ...base,
           krxClose: 0,
           baselineBinancePrice: 0,
-          currentBinancePrice: result.referencePrice,
-          referencePriceMode: baseline?.stocks[stockId]?.referencePriceMode ?? "last",
           rawEstimatedPrice: 0,
           estimatedPrice: 0,
           changeAmount: 0,
           changeRate: 0,
-          bidPrice: result.quote.bidPrice,
-          askPrice: result.quote.askPrice,
           spreadPercent: null,
-          confidenceScore: conf,
-          eventTime: result.quote.eventTime,
+          confidenceScore: calculateConfidenceScore({
+            quote: result.quote,
+            hasAnchor: false,
+            anchorTimeMs: null,
+            usingFallback: false,
+          }),
           status: "no-baseline",
         };
         continue;
       }
 
-      const prevPrice = previousPrices.current[stockId];
       const currentPrice = result.referencePrice;
-
-      // Prefer the klines-fetched anchor (mark price at exact KRX close time).
-      // Fall back to baseline.json's stored reference price if klines fail.
-      const klinesPrice = klinesAnchor[stockId] ?? null;
-      const anchorBinancePrice =
-        klinesPrice !== null && klinesPrice > 0
-          ? klinesPrice
-          : baselineStock.binanceReferencePrice;
+      const prevPrice = previousPrices.current[stockId];
 
       if (prevPrice !== undefined && prevPrice > 0) {
         const ratio = currentPrice / prevPrice;
@@ -147,20 +151,19 @@ export function useMarketData(): MarketDataState {
           );
           continue;
         }
-        const changeFromBaseline =
-          Math.abs(currentPrice / anchorBinancePrice - 1);
-        if (changeFromBaseline > MAX_CHANGE_RATE) {
+        const changeFromAnchor = Math.abs(currentPrice / anchorFuturesPrice! - 1);
+        if (changeFromAnchor > MAX_CHANGE_RATE) {
           console.warn(
-            `[useMarketData] Large change rate for ${stockId}: ${changeFromBaseline}`
+            `[useMarketData] Large change rate for ${stockId}: ${changeFromAnchor}`
           );
         }
       }
 
       try {
         const estimate = calculateEstimate({
-          krxClose: baselineStock.krxClose,
+          krxClose: anchorKrxPrice!,
           currentBinancePrice: currentPrice,
-          baselineBinancePrice: anchorBinancePrice,
+          baselineBinancePrice: anchorFuturesPrice!,
         });
 
         const bid = result.quote.bidPrice;
@@ -170,28 +173,21 @@ export function useMarketData(): MarketDataState {
             ? ((ask - bid) / ask) * 100
             : null;
 
-        const conf = calculateConfidenceScore({
-          quote: result.quote,
-          baseline: baselineStock,
-          baselineDate: baseline?.capturedAt ?? null,
-          usingFallback: false,
-        });
-
         newStocks[stockId] = {
-          displayName: stockId === "samsung" ? "삼성전자" : "SK하이닉스",
-          koreanTicker: stockId === "samsung" ? "005930" : "000660",
-          binanceSymbol: result.quote.symbol,
-          krxClose: baselineStock.krxClose,
-          baselineBinancePrice: anchorBinancePrice,
-          currentBinancePrice: currentPrice,
-          referencePriceMode: baselineStock.referencePriceMode,
+          ...base,
+          krxClose: anchorKrxPrice!,
+          baselineBinancePrice: anchorFuturesPrice!,
           ...estimate,
-          bidPrice: bid,
-          askPrice: ask,
           spreadPercent,
-          confidenceScore: conf,
-          eventTime: result.quote.eventTime,
+          confidenceScore: calculateConfidenceScore({
+            quote: result.quote,
+            hasAnchor: true,
+            anchorTimeMs: anchor.anchorTimeMs,
+            usingFallback: false,
+          }),
           status: "healthy",
+          anchorKind: anchor.kind,
+          anchorMarketDate: anchor.marketDate,
         };
 
         previousPrices.current[stockId] = currentPrice;
@@ -200,9 +196,8 @@ export function useMarketData(): MarketDataState {
       }
     }
 
-    // C2 fix: if all quotes failed and there is no prior state to show,
-    // fall back to GitHub latest.json so cards render as "no-baseline" / "error"
-    // rather than leaving the page blank.
+    // Every quote failed and nothing was shown before: fall back to the stored
+    // snapshot so the cards still render instead of leaving the page blank.
     if (Object.keys(newStocks).length === 0) {
       const fallback = await fetchGithubLatest();
       if (fallback) {
@@ -212,14 +207,16 @@ export function useMarketData(): MarketDataState {
           lastUpdated: fallback.generatedAt,
           usingFallback: true,
           isLoading: false,
+          anchor,
           error:
-            "선물가격 데이터를 조회할 수 없습니다. GitHub 저장 데이터를 표시합니다.",
+            "선물가격 데이터를 조회할 수 없습니다. 저장된 데이터를 표시합니다.",
         }));
         return;
       }
       setState((prev) => ({
         ...prev,
         isLoading: false,
+        anchor,
         error: "선물가격 데이터를 조회할 수 없습니다. 데이터 확인 중입니다.",
       }));
       return;
@@ -231,6 +228,7 @@ export function useMarketData(): MarketDataState {
       error: null,
       isLoading: false,
       usingFallback: false,
+      anchor,
     });
   }, []);
 

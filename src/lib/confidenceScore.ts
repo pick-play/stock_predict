@@ -1,11 +1,12 @@
 import type { NormalizedQuote } from "./binance/types";
-import type { BaselineStock } from "../types/market";
 import { isWeekend, getLastKrxCloseMs } from "./koreaMarket";
 
 interface ConfidenceInput {
   quote: NormalizedQuote | null;
-  baseline: BaselineStock | null;
-  baselineDate: string | null;
+  /** True once a usable KRX anchor price is available. */
+  hasAnchor: boolean;
+  /** UTC ms of the anchor instant, or null when no anchor resolved. */
+  anchorTimeMs: number | null;
   usingFallback: boolean;
 }
 
@@ -36,16 +37,14 @@ export function calculateConfidenceScore(input: ConfidenceInput): number {
 
   if (input.quote.markPrice === null) score -= 10;
 
-  if (input.baseline === null) {
+  if (!input.hasAnchor) {
     score -= 25;
-  } else if (input.baselineDate) {
-    const baselineMs = new Date(input.baselineDate).getTime();
-    // Penalise only when the baseline predates the last KRX close (1-min
-    // tolerance for scripts that capture 1 minute after close).
-    // This prevents false staleness penalties over weekends: a baseline
-    // captured on Friday is still valid on Sunday — no deduction needed.
-    const lastKrxCloseMs = getLastKrxCloseMs();
-    if (baselineMs < lastKrxCloseMs - 60_000) score -= 25;
+  } else if (input.anchorTimeMs !== null) {
+    // Penalise only when the anchor predates the last KRX close (1-min
+    // tolerance for collectors that capture just after the bell). A Friday
+    // anchor is still the correct reference on Sunday, so weekends alone
+    // must not trigger this deduction.
+    if (input.anchorTimeMs < getLastKrxCloseMs() - 60_000) score -= 25;
   }
 
   if (isWeekend()) score -= 10;

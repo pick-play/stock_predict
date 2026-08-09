@@ -1,6 +1,12 @@
 import { isWeekend, isKrxTradingHours } from "../../lib/koreaMarket";
+import { anchorBasisLabel } from "../../lib/marketSession";
+import type { ResolvedAnchor } from "../../lib/marketSession";
 
-export function HeroSummary() {
+interface HeroSummaryProps {
+  anchor?: ResolvedAnchor | null;
+}
+
+export function HeroSummary({ anchor }: HeroSummaryProps) {
   const weekend = isWeekend();
   const trading = isKrxTradingHours();
 
@@ -34,6 +40,15 @@ export function HeroSummary() {
         <span className="text-[#8b7cff]">{titleLine2Accent}</span>
       </h2>
       <p className="text-sm text-[var(--text-tertiary)] mt-2 leading-relaxed">{subtitle}</p>
+
+      {anchor && (
+        <p className="text-xs text-[var(--text-secondary)] mt-2">
+          <span className="font-semibold text-[var(--text-primary)]">
+            {anchorBasisLabel(anchor.kind)}
+          </span>
+          <span className="text-[var(--text-tertiary)]"> · {anchor.marketDate}</span>
+        </p>
+      )}
 
       {warning && (
         <div

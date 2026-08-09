@@ -10,17 +10,25 @@ export interface StockConfig {
   binanceSymbol: string;
 }
 
-export interface BaselineStock {
-  krxClose: number;
-  binanceReferencePrice: number;
-  referencePriceMode: ReferencePriceMode;
+export type AnchorKind = "open" | "close";
+
+/**
+ * One KRX reference point: the opening or closing price of a trading day,
+ * together with the instant the matching futures price must be read at.
+ */
+export interface BaselineAnchor {
+  marketDate: string;
+  anchorTimeUtc: string;
+  stocks: Record<StockId, { krxPrice: number }>;
 }
 
 export interface Baseline {
-  marketDate: string;
-  capturedAt: string;
+  schemaVersion: 2;
   timezone: string;
-  stocks: Record<StockId, BaselineStock>;
+  updatedAt: string;
+  referencePriceMode: ReferencePriceMode;
+  open: BaselineAnchor | null;
+  close: BaselineAnchor | null;
 }
 
 export interface StockSnapshot {
@@ -41,6 +49,10 @@ export interface StockSnapshot {
   confidenceScore: number;
   eventTime: string;
   status: StockStatus;
+  /** Which KRX reference the estimate is measured from. */
+  anchorKind?: AnchorKind;
+  /** Trading day that reference belongs to ("YYYY-MM-DD"). */
+  anchorMarketDate?: string;
 }
 
 export interface LatestData {

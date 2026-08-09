@@ -29,21 +29,35 @@ export const QuoteSchema = z
     }
   });
 
-export const BaselineStockSchema = z.object({
-  krxClose: z.number().positive(),
-  binanceReferencePrice: z.number().positive(),
-  referencePriceMode: z.enum(["mark", "mid", "last"]),
-});
-
-export const BaselineSchema = z.object({
+export const BaselineAnchorSchema = z.object({
   marketDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  capturedAt: z.string().datetime(),
-  timezone: z.string(),
+  anchorTimeUtc: z.string().datetime(),
   stocks: z.object({
-    samsung: BaselineStockSchema,
-    skHynix: BaselineStockSchema,
+    samsung: z.object({ krxPrice: z.number().positive() }),
+    skHynix: z.object({ krxPrice: z.number().positive() }),
   }),
 });
+
+/**
+ * schemaVersion 2 keeps the opening and closing anchors separately so the app
+ * can reference today's open during regular hours and the last close outside
+ * them. A v1 file fails this schema on purpose: it carries no open anchor, and
+ * silently reusing its close would mislabel the basis shown to the user.
+ */
+export const BaselineSchema = z
+  .object({
+    schemaVersion: z.literal(2),
+    timezone: z.string(),
+    updatedAt: z.string().datetime(),
+    referencePriceMode: z.enum(["mark", "mid", "last"]),
+    // default(null) keeps a missing anchor out of the parsed type as `null`
+    // rather than `undefined`, matching the Baseline interface exactly.
+    open: BaselineAnchorSchema.nullable().default(null),
+    close: BaselineAnchorSchema.nullable().default(null),
+  })
+  .refine((data) => data.open != null || data.close != null, {
+    message: "baseline must contain at least one anchor",
+  });
 
 export const StockSnapshotSchema = z.object({
   displayName: z.string(),

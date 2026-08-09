@@ -90,9 +90,19 @@ export function StockEstimateCard({
       ? `${snapshot.spreadPercent.toFixed(4)}%`
       : "—";
 
-  // Anchor date label: the KST date of the last KRX close (e.g. "08/07")
-  const anchorSeoul = getSeoulDate(new Date(getLastKrxCloseMs()));
-  const anchorLabel = `기준가 (${String(anchorSeoul.month).padStart(2, "0")}/${String(anchorSeoul.day).padStart(2, "0")} 종가)`;
+  // Which KRX price the estimate is measured from: today's open while the
+  // market is trading, the last close otherwise.
+  const anchorKind = snapshot.anchorKind ?? "close";
+  const anchorKindLabel = anchorKind === "open" ? "시가" : "종가";
+  const anchorSeoul = getSeoulDate(
+    snapshot.anchorMarketDate
+      ? new Date(`${snapshot.anchorMarketDate}T00:00:00+09:00`)
+      : new Date(getLastKrxCloseMs())
+  );
+  const anchorDate = `${String(anchorSeoul.month).padStart(2, "0")}/${String(anchorSeoul.day).padStart(2, "0")}`;
+  const anchorLabel = `기준가 (${anchorDate} ${anchorKindLabel})`;
+  const krxAnchorLabel =
+    anchorKind === "open" ? `국내 시가 (${anchorDate})` : `최근 국내 종가 (${anchorDate})`;
 
   const flashClass =
     flashKey > 0 && flashDir !== null
@@ -197,7 +207,7 @@ export function StockEstimateCard({
         {/* ── Metrics table ── */}
         <div className="border-t border-[var(--border-mid)] pt-3 mt-1">
           <MetricRow
-            label="최근 국내 종가"
+            label={krxAnchorLabel}
             value={snapshot.krxClose > 0 ? formatKrw(snapshot.krxClose) : "—"}
           />
           <MetricRow
