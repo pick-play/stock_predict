@@ -59,6 +59,13 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
+          # Both are public values baked into the bundle: the Worker URL is a
+          # public endpoint and the Turnstile site key is designed to be shipped
+          # to browsers. They live in repository variables so the board can be
+          # pointed elsewhere without a code change. Leave them unset and the
+          # board renders its "준비 중" notice instead of calling anything.
+          VITE_BOARD_API_BASE: ${{ vars.VITE_BOARD_API_BASE }}
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
