@@ -22,9 +22,14 @@ import { isTurnstileConfigured } from "../../lib/board/turnstileConfig";
 
 interface PostFormProps {
   onPostCreated: (post: BoardPost) => void;
+  /** Bearer token for logged-in posts. When provided the server records
+   *  the member's nickname as authorTag. Omit for anonymous posts. */
+  authToken?: string | null;
+  /** Display name of the logged-in user, for the "posting as" label. */
+  authorNickname?: string | null;
 }
 
-export function PostForm({ onPostCreated }: PostFormProps) {
+export function PostForm({ onPostCreated, authToken, authorNickname }: PostFormProps) {
   const [body, setBody] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [moderationWarning, setModerationWarning] = useState<string | null>(
@@ -90,6 +95,7 @@ export function PostForm({ onPostCreated }: PostFormProps) {
       const post = await submitPost({
         body: trimmed,
         turnstileToken: turnstileToken ?? "",
+        authToken: authToken ?? undefined,
       });
       setBody("");
       setModerationWarning(null);
@@ -191,7 +197,16 @@ export function PostForm({ onPostCreated }: PostFormProps) {
               ? `${remaining < 0 ? "+" + String(-remaining) + "자 초과" : remaining + "자 남음"}`
               : `최대 ${BODY_MAX_LENGTH}자`}
           </span>
-          <span className="text-[10px] text-[var(--text-muted)]">익명</span>
+          <span className="text-[10px] text-[var(--text-muted)]">
+            {authorNickname ? (
+              <>
+                <span className="text-[#8b7cff]">{authorNickname}</span>
+                {"으로 게시"}
+              </>
+            ) : (
+              "익명"
+            )}
+          </span>
         </div>
       </div>
 

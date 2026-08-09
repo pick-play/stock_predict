@@ -8,10 +8,15 @@ export interface BoardPost {
   /** Plain text — caller must render as text, never set as innerHTML. */
   body: string;
   authorTag: string;
+  /** true when authorTag is a member nickname; false for anonymous tags. */
+  isMember: boolean;
   createdAt: string;
   reportCount: number;
   likeCount: number;
 }
+
+/** Board post with optional hidden timestamp — returned by GET /api/me/posts. */
+export type MyPost = BoardPost & { hiddenAt: string | null };
 
 export interface LikeResponse {
   ok: boolean;
@@ -21,6 +26,11 @@ export interface LikeResponse {
 
 export interface BoardListResponse {
   posts: BoardPost[];
+  nextCursor: string | null;
+}
+
+export interface MyPostsResponse {
+  posts: MyPost[];
   nextCursor: string | null;
 }
 
@@ -38,6 +48,47 @@ export class BoardApiError extends Error {
   constructor(kind: SubmitErrorKind, message: string) {
     super(message);
     this.name = "BoardApiError";
+    this.kind = kind;
+  }
+}
+
+// ── Auth types ────────────────────────────────────────────────────────────────
+
+export interface AuthSession {
+  token: string;
+  nickname: string;
+}
+
+export interface SignupResult {
+  token: string;
+  nickname: string;
+  /** Returned exactly once. The server stores only a hash. */
+  recoveryCode: string;
+}
+
+export interface AuthUser {
+  nickname: string;
+  createdAt: string;
+  postCount: number;
+}
+
+export type AuthErrorKind =
+  | "nickname-taken"
+  | "invalid-nickname"
+  | "captcha-failed"
+  | "invalid-credentials"
+  | "invalid-recovery"
+  | "rate-limited"
+  | "unauthorized"
+  | "network";
+
+/** Typed error thrown by auth API calls. */
+export class AuthApiError extends Error {
+  readonly kind: AuthErrorKind;
+
+  constructor(kind: AuthErrorKind, message: string) {
+    super(message);
+    this.name = "AuthApiError";
     this.kind = kind;
   }
 }

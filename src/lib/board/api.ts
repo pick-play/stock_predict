@@ -58,6 +58,9 @@ export async function fetchPosts(
 interface SubmitPostOptions {
   body: string;
   turnstileToken: string;
+  /** Bearer token for logged-in posts. When supplied, the server uses the
+   *  member's nickname as authorTag and sets isMember: true. */
+  authToken?: string;
   signal?: AbortSignal;
 }
 
@@ -73,7 +76,10 @@ export async function submitPost(opts: SubmitPostOptions): Promise<BoardPost> {
   try {
     res = await fetch(`${BOARD_API_BASE}/api/posts`, {
       method: "POST",
-      headers: { "Content-Type": "application/json; charset=utf-8" },
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        ...(opts.authToken ? { Authorization: `Bearer ${opts.authToken}` } : {}),
+      },
       body: JSON.stringify({
         body: opts.body,
         turnstileToken: opts.turnstileToken,

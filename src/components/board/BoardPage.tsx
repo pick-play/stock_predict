@@ -1,9 +1,13 @@
+import { useState, useCallback } from "react";
 import { useBoardPosts } from "../../hooks/useBoardPosts";
+import { useAuth } from "../../hooks/useAuth";
 import { isBoardConfigured } from "../../lib/board/api";
 import { BoardNotReady } from "./BoardNotReady";
 import { PostCard } from "./PostCard";
 import { PostForm } from "./PostForm";
-import type { BoardPost } from "../../types/board";
+import { AuthModal } from "./auth/AuthModal";
+import { RecoveryCodeModal } from "./auth/RecoveryCodeModal";
+import type { BoardPost, SignupResult } from "../../types/board";
 import { DashboardLayout } from "../layout/DashboardLayout";
 
 interface BoardPageProps {
@@ -44,10 +48,31 @@ function PostListSkeleton() {
 export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
   const { posts, isLoading, error, hasMore, loadMore, prependPost } =
     useBoardPosts();
+  const auth = useAuth();
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [pendingRecovery, setPendingRecovery] = useState<SignupResult | null>(null);
 
   const handlePostCreated = (post: BoardPost) => {
     prependPost(post);
   };
+
+  const handleOpenAuth = useCallback(() => {
+    setAuthModalOpen(true);
+  }, []);
+
+  const handleCloseAuth = useCallback(() => {
+    setAuthModalOpen(false);
+  }, []);
+
+  const handleRecoveryCode = useCallback((result: SignupResult) => {
+    setAuthModalOpen(false);
+    setPendingRecovery(result);
+  }, []);
+
+  const handleRecoveryConfirmed = useCallback(() => {
+    setPendingRecovery(null);
+  }, []);
 
   return (
     <DashboardLayout>
@@ -95,9 +120,49 @@ export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
               aria-hidden="true"
             />
           )}
-          <span className="text-[10px] text-[var(--text-muted)]">
-            익명 · 비로그인
-          </span>
+          {/* Auth button — shows login state or triggers auth modal */}
+          {isBoardConfigured && (
+            <button
+              type="button"
+              onClick={handleOpenAuth}
+              aria-label={
+                auth.status === "authenticated"
+                  ? `내 계정: ${auth.nickname ?? ""}`
+                  : "로그인 또는 가입"
+              }
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+              style={{
+                borderColor:
+                  auth.status === "authenticated"
+                    ? "rgba(139,124,255,0.3)"
+                    : "var(--border-subtle)",
+                color:
+                  auth.status === "authenticated"
+                    ? "#8b7cff"
+                    : "var(--text-muted)",
+                background:
+                  auth.status === "authenticated"
+                    ? "rgba(139,124,255,0.07)"
+                    : "transparent",
+              }}
+            >
+              {auth.status === "checking" ? (
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)] animate-pulse" aria-hidden="true" />
+              ) : auth.status === "authenticated" ? (
+                <>
+                  <span aria-hidden="true">◆</span>
+                  <span className="max-w-[80px] truncate">{auth.nickname}</span>
+                </>
+              ) : (
+                "로그인"
+              )}
+            </button>
+          )}
+          {!isBoardConfigured && (
+            <span className="text-[10px] text-[var(--text-muted)]">
+              익명 · 비로그인
+            </span>
+          )}
         </div>
       </header>
 
@@ -108,7 +173,11 @@ export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
         ) : (
           <>
             {/* Post creation form */}
-            <PostForm onPostCreated={handlePostCreated} />
+            <PostForm
+              onPostCreated={handlePostCreated}
+              authToken={auth.token}
+              authorNickname={auth.nickname}
+            />
 
             {/* Error banner */}
             {error && (
@@ -167,6 +236,23 @@ export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
           </>
         )}
       </main>
+      {/* Auth modal — login / signup / reset / account */}
+      {authModalOpen && (
+        <AuthModal
+          auth={auth}
+          onClose={handleCloseAuth}
+          onRecoveryCode={handleRecoveryCode}
+        />
+      )}
+
+      {/* Recovery code modal — shown once after signup; cannot be skipped */}
+      {pendingRecovery && (
+        <RecoveryCodeModal
+          recoveryCode={pendingRecovery.recoveryCode}
+          nickname={pendingRecovery.nickname}
+          onConfirmed={handleRecoveryConfirmed}
+        />
+      )}
     </DashboardLayout>
   );
 }
