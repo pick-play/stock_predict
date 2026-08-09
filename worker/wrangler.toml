@@ -15,3 +15,4 @@ ALLOWED_ORIGIN = "https://pick-play.github.io"
 #   TURNSTILE_SECRET
 #   IP_SALT
 #   ADMIN_TOKEN
+#   PASSWORD_PEPPER  — server-side pepper for HMAC-SHA256 password hashing

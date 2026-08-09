@@ -8,6 +8,14 @@ import {
   handleAdminUnhidePost,
   handleAdminDeletePost,
 } from './routes/admin';
+import {
+  handleSignup,
+  handleLogin,
+  handleLogout,
+  handleGetMe,
+  handleResetPassword,
+} from './routes/auth';
+import { handleGetMyPosts } from './routes/me';
 import type { Env } from './types';
 
 export default {
@@ -68,6 +76,36 @@ export default {
     const deleteMatch = path.match(/^\/api\/admin\/posts\/(\d+)$/);
     if (method === 'DELETE' && deleteMatch) {
       return handleAdminDeletePost(request, env, deleteMatch[1]);
+    }
+
+    // POST /api/auth/signup
+    if (method === 'POST' && path === '/api/auth/signup') {
+      return handleSignup(request, env);
+    }
+
+    // POST /api/auth/login
+    if (method === 'POST' && path === '/api/auth/login') {
+      return handleLogin(request, env);
+    }
+
+    // POST /api/auth/logout
+    if (method === 'POST' && path === '/api/auth/logout') {
+      return handleLogout(request, env);
+    }
+
+    // GET /api/auth/me
+    if (method === 'GET' && path === '/api/auth/me') {
+      return handleGetMe(request, env);
+    }
+
+    // POST /api/auth/reset-password
+    if (method === 'POST' && path === '/api/auth/reset-password') {
+      return handleResetPassword(request, env);
+    }
+
+    // GET /api/me/posts
+    if (method === 'GET' && path === '/api/me/posts') {
+      return handleGetMyPosts(request, env);
     }
 
     return errorResponse('not-found', '엔드포인트를 찾을 수 없습니다.', 404, request, env);

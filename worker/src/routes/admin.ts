@@ -32,7 +32,7 @@ export async function handleAdminGetPosts(
       : '';
 
   const { results } = await env.DB.prepare(
-    `SELECT id, body, author_tag, created_at, report_count, like_count, hidden_at
+    `SELECT id, body, author_tag, created_at, report_count, like_count, hidden_at, member_id
      FROM posts ${where} ORDER BY id DESC`
   ).all<PostRow>();
 
@@ -48,6 +48,7 @@ export async function handleAdminGetPosts(
         id: String(row.id),
         body: row.body,
         authorTag: row.author_tag,
+        isMember: row.member_id !== null,
         createdAt: row.created_at,
         reportCount: row.report_count,
         likeCount: row.like_count,

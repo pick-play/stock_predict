@@ -59,3 +59,40 @@ export async function isReportRateLimited(
 
   return (r?.cnt ?? 0) >= 10;
 }
+
+/**
+ * Returns true when the IP hash has already signed up 3 or more times in 24 h.
+ * Checked before the new user row is inserted, so the limit is enforced at 3.
+ */
+export async function isSignupRateLimited(
+  db: D1Database,
+  ipHash: string
+): Promise<boolean> {
+  const r = await db
+    .prepare(
+      'SELECT COUNT(*) AS cnt FROM users WHERE ip_hash = ? AND created_at >= ?'
+    )
+    .bind(ipHash, nowMinus(86400))
+    .first<{ cnt: number }>();
+
+  return (r?.cnt ?? 0) >= 3;
+}
+
+/**
+ * Returns true when the IP hash has logged more than 10 attempts in 10 min.
+ * The caller inserts the current attempt before calling this, so >10 means the
+ * 11th (or later) attempt is blocked — matching the spec's "10회 초과" wording.
+ */
+export async function isLoginRateLimited(
+  db: D1Database,
+  ipHash: string
+): Promise<boolean> {
+  const r = await db
+    .prepare(
+      'SELECT COUNT(*) AS cnt FROM login_attempts WHERE ip_hash = ? AND created_at >= ?'
+    )
+    .bind(ipHash, nowMinus(600))
+    .first<{ cnt: number }>();
+
+  return (r?.cnt ?? 0) > 10;
+}

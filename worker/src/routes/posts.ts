@@ -2,6 +2,7 @@ import { moderatePost, duplicateKey } from '../../../src/lib/moderation/filter';
 import { hashIp, toAuthorTag } from '../lib/ipHash';
 import { isPostRateLimited, isDuplicatePost } from '../lib/rateLimit';
 import { verifyTurnstile } from '../lib/turnstile';
+import { requireAuth } from '../lib/session';
 import { jsonResponse, errorResponse } from '../lib/cors';
 import type { Env, BoardPost, PostRow } from '../types';
 
@@ -18,6 +19,7 @@ function rowToPost(row: PostRow): BoardPost {
     id: String(row.id),
     body: row.body,
     authorTag: row.author_tag,
+    isMember: row.member_id !== null,
     createdAt: row.created_at,
     reportCount: row.report_count,
     likeCount: row.like_count,
@@ -35,10 +37,10 @@ export async function handleGetPosts(
 
   const stmt = cursor
     ? env.DB.prepare(
-        'SELECT id, body, author_tag, created_at, report_count, like_count FROM posts WHERE hidden_at IS NULL AND id < ? ORDER BY id DESC LIMIT ?'
+        'SELECT id, body, author_tag, created_at, report_count, like_count, member_id FROM posts WHERE hidden_at IS NULL AND id < ? ORDER BY id DESC LIMIT ?'
       ).bind(Number(cursor), limit + 1)
     : env.DB.prepare(
-        'SELECT id, body, author_tag, created_at, report_count, like_count FROM posts WHERE hidden_at IS NULL ORDER BY id DESC LIMIT ?'
+        'SELECT id, body, author_tag, created_at, report_count, like_count, member_id FROM posts WHERE hidden_at IS NULL ORDER BY id DESC LIMIT ?'
       ).bind(limit + 1);
 
   const { results } = await stmt.all<PostRow>();
@@ -75,6 +77,7 @@ export async function handleCreatePost(
       id: '0',
       body: typeof parsed.body === 'string' ? parsed.body : '',
       authorTag: '익명#0000',
+      isMember: false,
       createdAt: new Date().toISOString(),
       reportCount: 0,
       likeCount: 0,
@@ -139,19 +142,24 @@ export async function handleCreatePost(
     );
   }
 
+  // Optional auth: logged-in members post under their nickname
+  const authUser = await requireAuth(request, env);
+  const authorTag = authUser ? authUser.nickname : toAuthorTag(ipHash);
+  const memberId: number | null = authUser ? authUser.id : null;
+
   const now = new Date().toISOString();
-  const authorTag = toAuthorTag(ipHash);
 
   const { meta } = await env.DB.prepare(
-    'INSERT INTO posts (body, author_tag, ip_hash, dup_key, created_at) VALUES (?, ?, ?, ?, ?)'
+    'INSERT INTO posts (body, author_tag, ip_hash, dup_key, created_at, member_id) VALUES (?, ?, ?, ?, ?, ?)'
   )
-    .bind(rawBody, authorTag, ipHash, dupKey, now)
+    .bind(rawBody, authorTag, ipHash, dupKey, now, memberId)
     .run();
 
   const post: BoardPost = {
     id: String(meta.last_row_id),
     body: rawBody,
     authorTag,
+    isMember: memberId !== null,
     createdAt: now,
     reportCount: 0,
     likeCount: 0,
@@ -178,7 +186,7 @@ export async function handleGetPopularPosts(
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const { results } = await env.DB.prepare(
-    `SELECT id, body, author_tag, created_at, report_count, like_count
+    `SELECT id, body, author_tag, created_at, report_count, like_count, member_id
      FROM posts
      WHERE hidden_at IS NULL AND created_at >= ?
      ORDER BY like_count DESC, id DESC
