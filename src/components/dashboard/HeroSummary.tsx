@@ -10,21 +10,14 @@ export function HeroSummary({ anchor }: HeroSummaryProps) {
   const weekend = isWeekend();
   const trading = isKrxTradingHours();
 
-  const titleLine1 = trading
-    ? "현재 한국거래소"
-    : weekend
-    ? "주말 해외 선물가격"
-    : "오늘 밤 시장이 반영한";
-
-  const titleLine2Accent = trading
-    ? "정규장 진행 중"
-    : weekend
-    ? "한국 반도체 참고가격"
-    : "한국 반도체 예상가격";
+  // Brand line stays constant; the session-specific notice below carries the
+  // "market is open, trust the real ticks" warning instead of the headline.
+  const titleLine1 = "코스피 나우";
+  const titleLine2Accent = "해외 선물가격 기반 코스피 현재가";
 
   const subtitle = trading
     ? "본 예상가격보다 국내 실제 체결가격을 우선 확인하세요."
-    : "해외 선물가격 변동 기반 야간 참고 예상가입니다.";
+    : "야간, 주말 언제 어디서나 가격을 확인하세요.";
 
   const warning = trading
     ? "현재 한국거래소 정규장이 진행 중입니다. 실제 체결가 기준으로 거래하세요."

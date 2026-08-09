@@ -127,6 +127,40 @@ interface BoardPost {
 - 공감 취소는 없다. 계정이 없으면 취소와 타인의 기기를 구분할 수 없기 때문이다.
 - 404 `not-found`: 없는 글이거나 숨김 처리된 글.
 
+## 댓글
+
+댓글도 글과 같은 규칙을 따른다: **작성은 로그인 필수**, 읽기는 누구나.
+검열·도배 차단·신고 흐름 모두 글과 동일하며, `moderatePost()`를 공유한다.
+
+```ts
+interface BoardComment {
+  id: string;
+  postId: string;
+  body: string;          // 최대 500자
+  authorTag: string;     // 닉네임
+  createdAt: string;
+  reportCount: number;
+}
+```
+
+`BoardPost`에 `commentCount: number`가 추가된다.
+
+### GET /api/posts/:id/comments?cursor=&limit=
+- 오래된 순(대화 흐름). 기본 20, 최대 50. 숨김 댓글 제외.
+- 200: `{ "comments": BoardComment[], "nextCursor": string | null }`
+
+### POST /api/posts/:id/comments
+- **인증 필요.** 본문: `{ "body": string }` (캡차는 요구하지 않는다 — 이미 로그인 계정이고 도배 제한이 걸린다)
+- 201: `{ "comment": BoardComment }`
+- 401 `unauthorized` / 404 `not-found`(없거나 숨김 처리된 글) / 422 `rejected`(검열)
+- 429 `rate-limited`: 같은 계정이 20초 내 1건 초과, 또는 10분 내 15건 초과
+
+### POST /api/comments/:id/report
+- 글 신고와 동일. 같은 IP 해시 중복 신고는 200으로 무시. `report_count >= 3`이면 자동 숨김.
+
+### 관리
+- `GET /api/admin/comments?filter=reported|hidden|all`, `DELETE /api/admin/comments/:id` — 글 관리와 동일한 Bearer 인증.
+
 ### POST /api/posts/:id/report
 
 신고. 익명, 인증 없음.
