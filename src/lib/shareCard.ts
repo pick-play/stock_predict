@@ -18,13 +18,33 @@ import {
   formatBinancePrice,
   formatRelativeTime,
 } from "./format";
-import { COLORS, CONFIDENCE_THRESHOLDS } from "../config/theme";
+import { COLORS } from "../config/theme";
+
+
+/**
+ * The shared image always uses the light palette.
+ *
+ * It is viewed inside other apps — a messenger thread, a photo roll — which are
+ * usually light, and a dark rectangle dropped into a light chat reads as a
+ * screenshot of something else. Values mirror [data-theme="light"] in index.css.
+ * Rise/fall keep the site's Korean-market colours: red up, blue down.
+ */
+const LIGHT = {
+  background: "#f0f4f8",
+  surface: "#ffffff",
+  border: "rgba(0,0,0,0.09)",
+  divider: "rgba(0,0,0,0.06)",
+  textPrimary: "#0f172a",
+  textSecondary: "#475569",
+  textTertiary: "#64748b",
+  textMuted: "#94a3b8",
+} as const;
 
 // ── Canvas dimensions ──────────────────────────────────────────────────────
 const CARD_W = 480;
-// Tall enough for the disclaimer to wrap and the domain line beneath it.
-const CARD_H = 410;
-/** Exported PNG is CARD_W × CARD_H × this — 1440×1140, crisp on any phone. */
+// Sized for: price block, metrics, timestamp, wrapped disclaimer, domain line.
+const CARD_H = 378;
+/** Exported PNG is CARD_W × CARD_H × this — 1440×1134, crisp on any phone. */
 const EXPORT_SCALE = 3;
 const MARGIN = 20; // outer gap between canvas edge and card
 
@@ -104,31 +124,31 @@ export async function generateShareImage(
       ? COLORS.rise
       : direction === "fall"
         ? COLORS.fall
-        : "rgba(214,221,232,0.18)";
+        : "rgba(15,23,42,0.15)";
 
   const dirColor =
     direction === "rise"
       ? COLORS.rise
       : direction === "fall"
         ? COLORS.fall
-        : COLORS.neutral;
+        : LIGHT.textSecondary;
 
   const dirBadgeBg =
     direction === "rise"
       ? COLORS.riseSoft
       : direction === "fall"
         ? COLORS.fallSoft
-        : "rgba(214,221,232,0.07)";
+        : "rgba(15,23,42,0.05)";
 
   const dirBorderColor =
     direction === "rise"
       ? "rgba(255,77,94,0.22)"
       : direction === "fall"
         ? "rgba(63,130,255,0.22)"
-        : "rgba(214,221,232,0.12)";
+        : "rgba(15,23,42,0.10)";
 
   // ── Canvas background ──────────────────────────────────────────────────
-  ctx.fillStyle = COLORS.background;
+  ctx.fillStyle = LIGHT.background;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 
   // ── Card ──────────────────────────────────────────────────────────────
@@ -137,11 +157,11 @@ export async function generateShareImage(
   const cW = CARD_W - MARGIN * 2;
   const cH = CARD_H - MARGIN * 2;
 
-  ctx.fillStyle = COLORS.surface1;
+  ctx.fillStyle = LIGHT.surface;
   roundRect(ctx, cX, cY, cW, cH, 16);
   ctx.fill();
 
-  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.strokeStyle = LIGHT.border;
   ctx.lineWidth = 1;
   roundRect(ctx, cX, cY, cW, cH, 16);
   ctx.stroke();
@@ -162,25 +182,25 @@ export async function generateShareImage(
 
   // ── Header: company name + ticker + domain ────────────────────────────
   ctx.font = `700 14px ${FONT}`;
-  ctx.fillStyle = COLORS.textPrimary;
+  ctx.fillStyle = LIGHT.textPrimary;
   ctx.fillText(snapshot.displayName, iX, y);
   const nameW = ctx.measureText(snapshot.displayName).width;
 
   ctx.font = `500 10px ${MONO}`;
-  ctx.fillStyle = COLORS.textTertiary;
+  ctx.fillStyle = LIGHT.textTertiary;
   ctx.fillText(snapshot.koreanTicker, iX + nameW + 8, y - 1);
 
   y += 12;
 
   // ── Estimated price ───────────────────────────────────────────────────
   ctx.font = `700 42px ${FONT}`;
-  ctx.fillStyle = COLORS.textPrimary;
+  ctx.fillStyle = LIGHT.textPrimary;
   ctx.fillText(formatKrw(snapshot.estimatedPrice), iX, y + 42);
   y += 56;
 
   ctx.font = `400 9px ${FONT}`;
-  ctx.fillStyle = "#4a5568";
-  ctx.fillText("한국거래소 호가단위로 반올림한 참고 예상가", iX, y);
+  ctx.fillStyle = LIGHT.textMuted;
+  ctx.fillText("예상가", iX, y);
   y += 18;
 
   // ── Direction badge: symbol + change amount + percentage ──────────────
@@ -216,7 +236,7 @@ export async function generateShareImage(
   bx += changeW;
 
   ctx.font = `500 13px ${FONT}`;
-  ctx.fillStyle = COLORS.textTertiary;
+  ctx.fillStyle = LIGHT.textTertiary;
   ctx.fillText(sepStr, bx, bTextY);
   bx += sepW;
 
@@ -226,7 +246,7 @@ export async function generateShareImage(
   y += bH + 18;
 
   // ── Section divider ───────────────────────────────────────────────────
-  ctx.strokeStyle = "rgba(255,255,255,0.05)";
+  ctx.strokeStyle = LIGHT.divider;
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(iX, y);
@@ -270,17 +290,17 @@ export async function generateShareImage(
     const { label, value } = metrics[mi];
 
     ctx.font = `400 11px ${FONT}`;
-    ctx.fillStyle = COLORS.textTertiary;
+    ctx.fillStyle = LIGHT.textTertiary;
     ctx.fillText(label, iX, y);
 
     ctx.font = `500 11px ${MONO}`;
-    ctx.fillStyle = COLORS.textSecondary;
+    ctx.fillStyle = LIGHT.textSecondary;
     ctx.fillText(value, iR - ctx.measureText(value).width, y);
 
     y += 18;
 
     if (mi < metrics.length - 1) {
-      ctx.strokeStyle = "rgba(255,255,255,0.04)";
+      ctx.strokeStyle = LIGHT.divider;
       ctx.lineWidth = 0.5;
       ctx.beginPath();
       ctx.moveTo(iX, y - 5);
@@ -292,7 +312,7 @@ export async function generateShareImage(
   y += 4;
 
   // ── Section divider ───────────────────────────────────────────────────
-  ctx.strokeStyle = "rgba(255,255,255,0.05)";
+  ctx.strokeStyle = LIGHT.divider;
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(iX, y);
@@ -300,64 +320,19 @@ export async function generateShareImage(
   ctx.stroke();
   y += 12;
 
-  // ── Confidence indicator + relative timestamp ─────────────────────────
-  const cs = snapshot.confidenceScore;
-  const confColor =
-    cs >= CONFIDENCE_THRESHOLDS.good
-      ? COLORS.success
-      : cs >= CONFIDENCE_THRESHOLDS.fair
-        ? COLORS.warning
-        : COLORS.danger;
-  const confLabel =
-    cs >= CONFIDENCE_THRESHOLDS.good
-      ? "데이터 양호"
-      : cs >= CONFIDENCE_THRESHOLDS.fair
-        ? "참고 가능"
-        : cs >= CONFIDENCE_THRESHOLDS.caution
-          ? "변동성 주의"
-          : "신뢰도 낮음";
-
-  // Dot
-  ctx.fillStyle = confColor;
-  ctx.beginPath();
-  ctx.arc(iX + 5, y + 4, 3.5, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.font = `600 11px ${FONT}`;
-  ctx.fillStyle = confColor;
-  ctx.fillText(confLabel, iX + 14, y + 8);
-  const clW = ctx.measureText(confLabel).width;
-
-  ctx.font = `400 11px ${FONT}`;
-  ctx.fillStyle = "#4a5568";
-  ctx.fillText(` · ${cs}/100`, iX + 14 + clW, y + 8);
-
+  // ── Timestamp ─────────────────────────────────────────────────────────
   const relTime = formatRelativeTime(snapshot.eventTime);
   ctx.font = `400 10px ${FONT}`;
-  ctx.fillStyle = "#4a5568";
+  ctx.fillStyle = LIGHT.textMuted;
   ctx.fillText(relTime, iR - ctx.measureText(relTime).width, y + 8);
 
-  y += 18;
-
-  // Confidence progress bar
-  const barW = iR - iX;
-  ctx.fillStyle = "rgba(255,255,255,0.05)";
-  roundRect(ctx, iX, y, barW, 2, 1);
-  ctx.fill();
-
-  if (cs > 0) {
-    ctx.fillStyle = confColor;
-    roundRect(ctx, iX, y, Math.max(barW * (cs / 100), 4), 2, 1);
-    ctx.fill();
-  }
-
-  y += 14;
+  y += 20;
 
   // ── Disclaimer — mandatory per spec ───────────────────────────────────
   const disclaimer =
     "해외 선물가격 연계상품 기반 참고 예상가이며 실제 국내 체결가격과 다를 수 있습니다. 투자 권유가 아닙니다.";
   ctx.font = `400 9px ${FONT}`;
-  ctx.fillStyle = "#4a5568";
+  ctx.fillStyle = LIGHT.textMuted;
   const discLines = wrapText(ctx, disclaimer, iR - iX);
   for (const line of discLines) {
     ctx.fillText(line, iX, y);
@@ -369,7 +344,7 @@ export async function generateShareImage(
   y += 6;
   const domain = "kospinow.com";
   ctx.font = `600 12px ${FONT}`;
-  ctx.fillStyle = COLORS.textSecondary;
+  ctx.fillStyle = LIGHT.textSecondary;
   ctx.fillText(domain, (CARD_W - ctx.measureText(domain).width) / 2, y + 4);
 
   return new Promise<Blob>((resolve, reject) => {
