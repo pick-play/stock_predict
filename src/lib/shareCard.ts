@@ -4,7 +4,7 @@
  *
  * Mandatory elements per task spec:
  *   - Disclaimer text ("해외 선물가격 연계상품 기반 참고 예상가...")
- *   - Site domain "www.kospinow.com"
+ *   - Site domain "kospinow.com"
  *   - Direction symbols ▲ ▼ ― alongside colour coding
  */
 
@@ -367,7 +367,7 @@ export async function generateShareImage(
   // ── Domain, centred at the foot — this is what a reader types in after
   //    seeing the image somewhere else, so it sits last and stands alone.
   y += 6;
-  const domain = "www.kospinow.com";
+  const domain = "kospinow.com";
   ctx.font = `600 12px ${FONT}`;
   ctx.fillStyle = COLORS.textSecondary;
   ctx.fillText(domain, (CARD_W - ctx.measureText(domain).width) / 2, y + 4);

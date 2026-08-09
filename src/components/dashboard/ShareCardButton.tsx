@@ -27,7 +27,7 @@ function downloadBlob(blob: Blob, fileName: string): void {
  * an image without real numbers is never distributed.
  *
  * Share flow:
- *   1. Generate a PNG via Canvas (includes disclaimer + www.kospinow.com).
+ *   1. Generate a PNG via Canvas (includes disclaimer + kospinow.com).
  *   2. If the Web Share API can accept files → share sheet.
  *   3. Otherwise → trigger a file download.
  */
@@ -60,8 +60,8 @@ export function ShareCardButton({ snapshot }: ShareCardButtonProps) {
       if (supportsFileShare) {
         const file = new File([blob], fileName, { type: "image/png" });
         const shareData: ShareData = {
-          title: `${snapshot.displayName} 야간 예상가`,
-          text: `${snapshot.displayName} 참고 예상가격 | www.kospinow.com`,
+          title: `${snapshot.displayName} 참고 예상가 | KOSPI NOW`,
+          text: `${snapshot.displayName} 참고 예상가격 | kospinow.com`,
           files: [file],
         };
 

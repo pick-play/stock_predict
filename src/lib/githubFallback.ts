@@ -1,21 +1,11 @@
 /**
- * githubFallback.ts
+ * dataFetch (githubFallback.ts)
  *
- * Fetches latest.json / baseline.json / history.json from GitHub with an
- * ordered two-URL strategy.
+ * Loads baseline.json / latest.json / history.json from this site's own origin.
  *
- * Production order (raw FIRST):
- *   1. raw.githubusercontent.com — reflects every 5-minute data commit
- *      (deploy-pages.yml ignores public/data/**, so the Pages copies are
- *      frozen at the last code deploy). CORS: access-control-allow-origin: *.
- *   2. GitHub Pages CDN (relative URL) — same-origin backup if raw fails.
- *
- * Dev order (local FIRST):
- *   1. Local dev server relative URL (public/data/**) so local edits win.
- *   2. raw.githubusercontent.com as backup.
- *
- * Used by useMarketData when the Binance API is unavailable and by
- * DashboardPage for chart/sparkline history.
+ * baseline.json supplies the anchor the cards and chart are priced from.
+ * latest.json and history.json are only fallbacks: live prices come straight
+ * from the futures API and the chart builds its series from candles.
  */
 
 import type { LatestData, Baseline, HistoryEntry } from "../types/market";
@@ -29,9 +19,6 @@ import {
   LATEST_PATH,
   BASELINE_PATH,
   HISTORY_PATH,
-  GITHUB_RAW_LATEST_URL,
-  GITHUB_RAW_BASELINE_URL,
-  GITHUB_RAW_HISTORY_URL,
 } from "../config/market";
 
 type FetchResult<T> = T | null;
@@ -64,33 +51,28 @@ async function tryFetch<T>(
 }
 
 /**
- * Ordered candidate URLs for one data file.
- * Production prefers raw (fresh, updated every data commit); dev prefers the
- * local dev-server copy so local edits are visible without pushing.
+ * Data is read from this site's own origin only.
+ *
+ * An earlier version fetched raw.githubusercontent directly, which put the
+ * account and repository name into the shipped bundle for anyone who opened
+ * the network tab. Freshness is preserved instead by letting a data commit
+ * trigger a Pages rebuild, so the copy served here is the committed one.
  */
-export function orderedDataUrls(rawUrl: string, pagesPath: string): string[] {
-  return import.meta.env.PROD ? [rawUrl, pagesPath] : [pagesPath, rawUrl];
-}
-
-async function fetchWithFallback<T>(
-  rawUrl: string,
-  pagesPath: string,
+async function fetchSameOrigin<T>(
+  path: string,
   schema: { safeParse: (data: unknown) => { success: boolean; data?: T } },
   label: string
 ): Promise<FetchResult<T>> {
-  const candidates = orderedDataUrls(rawUrl, pagesPath);
-  for (const base of candidates) {
-    const result = await tryFetch<T>(`${base}?t=${Date.now()}`, schema);
-    if (result !== null) return result;
-    console.info(`[githubFallback] ${label}: ${base} failed, trying next source`);
+  const result = await tryFetch<T>(`${path}?t=${Date.now()}`, schema);
+  if (result === null) {
+    console.info(`[dataFetch] ${label}: unavailable`);
   }
-  return null;
+  return result;
 }
 
 /** Fetch latest.json. Returns null only if both URLs fail. */
 export async function fetchGithubLatest(): Promise<FetchResult<LatestData>> {
-  return fetchWithFallback<LatestData>(
-    GITHUB_RAW_LATEST_URL,
+  return fetchSameOrigin<LatestData>(
     LATEST_PATH,
     LatestDataSchema,
     "latest.json"
@@ -99,8 +81,7 @@ export async function fetchGithubLatest(): Promise<FetchResult<LatestData>> {
 
 /** Fetch baseline.json. Returns null only if both URLs fail. */
 export async function fetchGithubBaseline(): Promise<FetchResult<Baseline>> {
-  return fetchWithFallback<Baseline>(
-    GITHUB_RAW_BASELINE_URL,
+  return fetchSameOrigin<Baseline>(
     BASELINE_PATH,
     BaselineSchema,
     "baseline.json"
@@ -112,8 +93,7 @@ export async function fetchGithubHistory(): Promise<FetchResult<HistoryEntry[]>>
   // ValidatedHistoryEntry has optional per-stock fields (Zod schema);
   // HistoryEntry uses Record<StockId, ...>. The shapes are runtime-compatible —
   // same cast pattern the original inline fetch used (`result.data as HistoryEntry[]`).
-  const data = await fetchWithFallback<ValidatedHistoryEntry[]>(
-    GITHUB_RAW_HISTORY_URL,
+  const data = await fetchSameOrigin<ValidatedHistoryEntry[]>(
     HISTORY_PATH,
     HistoryArraySchema,
     "history.json"
