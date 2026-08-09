@@ -22,7 +22,10 @@ import { COLORS, CONFIDENCE_THRESHOLDS } from "../config/theme";
 
 // ── Canvas dimensions ──────────────────────────────────────────────────────
 const CARD_W = 480;
-const CARD_H = 380;
+// Tall enough for the disclaimer to wrap and the domain line beneath it.
+const CARD_H = 410;
+/** Exported PNG is CARD_W × CARD_H × this — 1440×1140, crisp on any phone. */
+const EXPORT_SCALE = 3;
 const MARGIN = 20; // outer gap between canvas edge and card
 
 // ── Font stacks (no web-font loading; rely on system Korean fonts) ─────────
@@ -80,14 +83,16 @@ export async function generateShareImage(
   snapshot: StockSnapshot,
 ): Promise<Blob> {
   const canvas = document.createElement("canvas");
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = CARD_W * dpr;
-  canvas.height = CARD_H * dpr;
+  // Fixed export scale rather than devicePixelRatio: the file is judged on the
+  // recipient's screen, not the sender's, and a 480px-wide image looks soft
+  // once a messenger opens it full width. Layout below stays in logical units.
+  canvas.width = CARD_W * EXPORT_SCALE;
+  canvas.height = CARD_H * EXPORT_SCALE;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context not available");
 
-  ctx.scale(dpr, dpr);
+  ctx.scale(EXPORT_SCALE, EXPORT_SCALE);
   ctx.textBaseline = "alphabetic";
 
   // Direction-dependent colours
@@ -164,12 +169,6 @@ export async function generateShareImage(
   ctx.font = `500 10px ${MONO}`;
   ctx.fillStyle = COLORS.textTertiary;
   ctx.fillText(snapshot.koreanTicker, iX + nameW + 8, y - 1);
-
-  // Domain — mandatory per spec
-  const domain = "www.kospinow.com";
-  ctx.font = `400 10px ${FONT}`;
-  ctx.fillStyle = "#6f7a8c";
-  ctx.fillText(domain, iR - ctx.measureText(domain).width, y);
 
   y += 12;
 
@@ -364,6 +363,14 @@ export async function generateShareImage(
     ctx.fillText(line, iX, y);
     y += 12;
   }
+
+  // ── Domain, centred at the foot — this is what a reader types in after
+  //    seeing the image somewhere else, so it sits last and stands alone.
+  y += 6;
+  const domain = "www.kospinow.com";
+  ctx.font = `600 12px ${FONT}`;
+  ctx.fillStyle = COLORS.textSecondary;
+  ctx.fillText(domain, (CARD_W - ctx.measureText(domain).width) / 2, y + 4);
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
