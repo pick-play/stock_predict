@@ -21,18 +21,14 @@ export function AppHeader({
     <header className="animate-fade-in flex items-center justify-between py-4 px-4 md:px-6 border-b border-[var(--border-mid)]">
       {/* Logo mark */}
       <div className="flex items-center gap-3">
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{
-            background:
-              "linear-gradient(135deg, #8b7cff 0%, #6b5ce7 100%)",
-          }}
+        <img
+          src={`${import.meta.env.BASE_URL}favicon-48.png`}
+          alt=""
+          width={32}
+          height={32}
+          className="w-8 h-8 rounded-lg flex-shrink-0"
           aria-hidden="true"
-        >
-          <span className="text-white text-xs font-bold tracking-tight">
-            야간
-          </span>
-        </div>
+        />
         <div>
           <h1 className="text-sm font-semibold text-[var(--text-primary)] leading-none tracking-tight">
             야간 반도체 예상가
