@@ -73,7 +73,9 @@ export interface HistoryEntry {
         estimatedPrice: number;
         changeRate: number;
         currentBinancePrice: number;
-        confidenceScore: number;
+        // Absent on series derived live from candles: a stored snapshot has a
+        // measured data-quality score, a recomputed point has nothing to score.
+        confidenceScore?: number;
       }
     >
   >;

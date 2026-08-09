@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useMarketData } from "../hooks/useMarketData";
+import { useChartHistory } from "../hooks/useChartHistory";
 import { AppHeader } from "../components/common/AppHeader";
 import { StockEstimateCard } from "../components/dashboard/StockEstimateCard";
 import { HeroSummary } from "../components/dashboard/HeroSummary";
@@ -10,9 +11,8 @@ import { ErrorState } from "../components/common/ErrorState";
 import { StockCardSkeleton } from "../components/common/LoadingSkeleton";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { MobileBottomBar } from "../components/layout/MobileBottomBar";
-import type { HistoryEntry, StockId } from "../types/market";
-import { HISTORY_REFRESH_INTERVAL_MS } from "../config/market";
-import { fetchGithubHistory } from "../lib/githubFallback";
+import type { StockId } from "../types/market";
+import type { ChartRange, StockAnchor } from "../lib/binance/klineHistory";
 
 const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
 
@@ -24,26 +24,25 @@ export function DashboardPage({ onNavigateBoard }: DashboardPageProps) {
   const { stocks, lastUpdated, error, isLoading, usingFallback, anchor } =
     useMarketData();
 
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [chartRange, setChartRange] = useState<ChartRange>("24h");
 
-  // Load history for sparklines and chart; refresh every 5 minutes to match
-  // the GitHub Actions data commit cadence (paused while the tab is hidden).
-  useEffect(() => {
-    let cancelled = false;
-    const load = () => {
-      void fetchGithubHistory().then((data) => {
-        if (!cancelled && data !== null) setHistory(data);
-      });
-    };
-    load();
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") load();
-    }, HISTORY_REFRESH_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, []);
+  // The candles are converted with the same anchor the cards are priced from,
+  // so the chart and the headline number always agree.
+  const anchors: Partial<Record<StockId, StockAnchor>> = {};
+  for (const id of STOCK_IDS) {
+    const s = stocks[id];
+    if (s && s.krxClose > 0 && s.baselineBinancePrice > 0) {
+      anchors[id] = {
+        krxPrice: s.krxClose,
+        anchorFuturesPrice: s.baselineBinancePrice,
+      };
+    }
+  }
+
+  const { history, isLoading: chartLoading } = useChartHistory(
+    chartRange,
+    anchors
+  );
 
   const hasAnyData = STOCK_IDS.some((id) => stocks[id] !== undefined);
 
@@ -114,7 +113,13 @@ export function DashboardPage({ onNavigateBoard }: DashboardPageProps) {
         </div>
 
         {/* Price chart — lazy-loaded to split Recharts from initial bundle */}
-        <LazyPriceChart history={history} krxClose={krxClose} />
+        <LazyPriceChart
+          history={history}
+          krxClose={krxClose}
+          range={chartRange}
+          onRangeChange={setChartRange}
+          isLoading={chartLoading}
+        />
 
         <Disclaimer />
       </main>

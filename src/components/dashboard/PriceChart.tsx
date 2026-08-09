@@ -9,14 +9,19 @@ import {
   ReferenceLine,
 } from "recharts";
 import type { HistoryEntry, StockId } from "../../types/market";
+import type { ChartRange } from "../../lib/binance/klineHistory";
 import { formatKrw, formatPercent } from "../../lib/format";
 
 interface PriceChartProps {
   history: HistoryEntry[];
   krxClose?: Partial<Record<StockId, number>>;
+  /** Owned by the page: the range decides which candles are fetched. */
+  range: ChartRange;
+  onRangeChange: (range: ChartRange) => void;
+  isLoading?: boolean;
 }
 
-type TimeRange = "1h" | "6h" | "24h" | "7d";
+type TimeRange = ChartRange;
 
 const TIME_RANGE_MS: Record<TimeRange, number> = {
   "1h": 60 * 60 * 1000,
@@ -37,9 +42,15 @@ const STOCK_LABELS: Record<StockId, string> = {
   skHynix: "SK하이닉스",
 };
 
-export function PriceChart({ history, krxClose }: PriceChartProps) {
+export function PriceChart({
+  history,
+  krxClose,
+  range,
+  onRangeChange,
+  isLoading = false,
+}: PriceChartProps) {
   const [activeStock, setActiveStock] = useState<StockId>("samsung");
-  const [timeRange, setTimeRange] = useState<TimeRange>("24h");
+  const timeRange = range;
   const rawId = useId();
   const uid = rawId.replace(/:/g, "");
   const gradientId = `pg-${uid}`;
@@ -93,7 +104,7 @@ export function PriceChart({ history, krxClose }: PriceChartProps) {
         activeStock={activeStock}
         timeRange={timeRange}
         onStockChange={setActiveStock}
-        onRangeChange={setTimeRange}
+        onRangeChange={onRangeChange}
       />
 
       {chartData.length < 2 ? (
@@ -117,10 +128,14 @@ export function PriceChart({ history, krxClose }: PriceChartProps) {
           </div>
           <div className="text-center">
             <p className="text-sm text-[#a6b0c0]">
-              가격 이력을 수집하고 있습니다.
+              {isLoading
+                ? "가격 추이를 불러오는 중입니다."
+                : "표시할 가격 추이가 없습니다."}
             </p>
             <p className="text-xs text-[#6f7a8c] mt-1">
-              데이터가 쌓이면 추이 차트가 표시됩니다.
+              {isLoading
+                ? "잠시만 기다려주세요."
+                : "네트워크 상태를 확인한 뒤 다시 시도해주세요."}
             </p>
           </div>
         </div>

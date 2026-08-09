@@ -1,9 +1,17 @@
 name: Update market data
 
+# The 5-minute schedule is disabled on purpose. GitHub-hosted runners are
+# US-based and the futures API answers them with HTTP 451, so every run since
+# deployment fetched nothing and exited without changes — 288 no-op runs a day.
+# The browser now builds both the live prices and the chart series from its own
+# connection, which is not blocked, so nothing depends on this collector.
+#
+# Re-enable the cron by restoring the schedule below if the block ever lifts or
+# a non-US proxy is added; the script itself still works and is left intact.
+#   schedule:
+#     - cron: "2-57/5 * * * *"
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "2-57/5 * * * *"
 
 permissions:
   contents: write
