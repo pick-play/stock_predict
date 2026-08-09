@@ -11,6 +11,7 @@ import {
   formatBinancePrice,
 } from "../../lib/format";
 import { CONFIDENCE_THRESHOLDS } from "../../config/theme";
+import { getLastKrxCloseMs, getSeoulDate } from "../../lib/koreaMarket";
 import { Sparkline } from "./Sparkline";
 
 interface StockEstimateCardProps {
@@ -88,6 +89,10 @@ export function StockEstimateCard({
     snapshot.spreadPercent !== null
       ? `${snapshot.spreadPercent.toFixed(4)}%`
       : "—";
+
+  // Anchor date label: the KST date of the last KRX close (e.g. "08/07")
+  const anchorSeoul = getSeoulDate(new Date(getLastKrxCloseMs()));
+  const anchorLabel = `기준가 (${String(anchorSeoul.month).padStart(2, "0")}/${String(anchorSeoul.day).padStart(2, "0")} 종가)`;
 
   const flashClass =
     flashKey > 0 && flashDir !== null
@@ -204,7 +209,7 @@ export function StockEstimateCard({
             }
           />
           <MetricRow
-            label="마감시 선물 기준가"
+            label={anchorLabel}
             value={
               snapshot.baselineBinancePrice > 0
                 ? formatBinancePrice(snapshot.baselineBinancePrice)

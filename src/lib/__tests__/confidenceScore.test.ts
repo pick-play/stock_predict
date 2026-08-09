@@ -132,7 +132,9 @@ describe("calculateConfidenceScore", () => {
     expect(score).toBe(75);
   });
 
-  it("deducts 25 points when baseline is older than 2 days", () => {
+  it("deducts 25 points when baseline predates the last KRX close", () => {
+    // NOW = 2026-08-03 Monday 21:00 KST (past close) → lastKrxClose = Aug 3 06:30 UTC
+    // oldBaseline = 3 days earlier (Jul 31), which is before Aug 3 close → penalty
     const oldBaseline = new Date(NOW.getTime() - 3 * 24 * 60 * 60_000).toISOString();
     const score = calculateConfidenceScore({
       quote: makeQuote(),
@@ -141,6 +143,22 @@ describe("calculateConfidenceScore", () => {
       usingFallback: false,
     });
     expect(score).toBe(75);
+  });
+
+  it("does not penalise Friday baseline on Sunday (weekend gap is expected)", () => {
+    // Sunday 2026-08-09 12:00 KST = 03:00 UTC
+    // Last KRX close = Friday 2026-08-07 06:30 UTC
+    // Baseline captured 1 minute after close = 06:31 UTC Friday → should NOT be stale
+    vi.setSystemTime(new Date("2026-08-09T03:00:00.000Z"));
+    const fridayCloseCapture = "2026-08-07T06:31:00.000Z";
+    const score = calculateConfidenceScore({
+      quote: makeQuote({ eventTime: "2026-08-09T03:00:00.000Z" }),
+      baseline: goodBaseline,
+      baselineDate: fridayCloseCapture,
+      usingFallback: false,
+    });
+    // -10 for weekend; no staleness penalty
+    expect(score).toBe(90);
   });
 
   it("deducts 20 points when using fallback data", () => {

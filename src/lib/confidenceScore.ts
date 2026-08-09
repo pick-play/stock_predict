@@ -1,6 +1,6 @@
 import type { NormalizedQuote } from "./binance/types";
 import type { BaselineStock } from "../types/market";
-import { isWeekend } from "./koreaMarket";
+import { isWeekend, getLastKrxCloseMs } from "./koreaMarket";
 
 interface ConfidenceInput {
   quote: NormalizedQuote | null;
@@ -39,8 +39,13 @@ export function calculateConfidenceScore(input: ConfidenceInput): number {
   if (input.baseline === null) {
     score -= 25;
   } else if (input.baselineDate) {
-    const baselineAge = now - new Date(input.baselineDate).getTime();
-    if (baselineAge > 2 * 24 * 60 * 60 * 1000) score -= 25;
+    const baselineMs = new Date(input.baselineDate).getTime();
+    // Penalise only when the baseline predates the last KRX close (1-min
+    // tolerance for scripts that capture 1 minute after close).
+    // This prevents false staleness penalties over weekends: a baseline
+    // captured on Friday is still valid on Sunday — no deduction needed.
+    const lastKrxCloseMs = getLastKrxCloseMs();
+    if (baselineMs < lastKrxCloseMs - 60_000) score -= 25;
   }
 
   if (isWeekend()) score -= 10;

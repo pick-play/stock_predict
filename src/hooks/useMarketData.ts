@@ -5,6 +5,9 @@ import type { StockQuoteResult } from "../lib/binance/client";
 import { calculateEstimate } from "../lib/calculateEstimate";
 import { calculateConfidenceScore } from "../lib/confidenceScore";
 import { fetchGithubLatest, fetchGithubBaseline } from "../lib/githubFallback";
+import { fetchMarkPriceAtTime } from "../lib/binance/klinesClient";
+import { getLastKrxCloseMs } from "../lib/koreaMarket";
+import { MARKET_SYMBOLS } from "../config/symbols";
 import { useMinuteRefresh } from "./useMinuteRefresh";
 import {
   MAX_CHANGE_RATE,
@@ -39,9 +42,25 @@ export function useMarketData(): MarketDataState {
     // Fetch baseline first so we know each stock's referencePriceMode (fixes M1/M3)
     const baseline = await fetchGithubBaseline();
 
+    // Determine the last KRX close time and fetch Binance mark prices at that
+    // exact moment via klines.  This gives a session-accurate anchor even when
+    // baseline.json has not yet been refreshed by GitHub Actions.
+    const lastKrxCloseMs = getLastKrxCloseMs();
+    const stockIds: StockId[] = ["samsung", "skHynix"];
+
+    const klinesSettled = await Promise.allSettled(
+      stockIds.map((id) =>
+        fetchMarkPriceAtTime(MARKET_SYMBOLS[id].binanceSymbol, lastKrxCloseMs)
+      )
+    );
+    const klinesAnchor: Partial<Record<StockId, number | null>> = {};
+    klinesSettled.forEach((result, i) => {
+      const id = stockIds[i];
+      klinesAnchor[id] = result.status === "fulfilled" ? result.value : null;
+    });
+
     // Per-stock quote fetch using each stock's configured referencePriceMode.
     // Default "last" — TradFi spot products have no markPrice.
-    const stockIds: StockId[] = ["samsung", "skHynix"];
     const quoteSettled = await Promise.allSettled(
       stockIds.map((id) =>
         fetchStockQuote(id, baseline?.stocks[id]?.referencePriceMode ?? "last")
@@ -112,6 +131,14 @@ export function useMarketData(): MarketDataState {
       const prevPrice = previousPrices.current[stockId];
       const currentPrice = result.referencePrice;
 
+      // Prefer the klines-fetched anchor (mark price at exact KRX close time).
+      // Fall back to baseline.json's stored reference price if klines fail.
+      const klinesPrice = klinesAnchor[stockId] ?? null;
+      const anchorBinancePrice =
+        klinesPrice !== null && klinesPrice > 0
+          ? klinesPrice
+          : baselineStock.binanceReferencePrice;
+
       if (prevPrice !== undefined && prevPrice > 0) {
         const ratio = currentPrice / prevPrice;
         if (ratio < MIN_PRICE_RATIO || ratio > MAX_PRICE_RATIO) {
@@ -121,7 +148,7 @@ export function useMarketData(): MarketDataState {
           continue;
         }
         const changeFromBaseline =
-          Math.abs(currentPrice / baselineStock.binanceReferencePrice - 1);
+          Math.abs(currentPrice / anchorBinancePrice - 1);
         if (changeFromBaseline > MAX_CHANGE_RATE) {
           console.warn(
             `[useMarketData] Large change rate for ${stockId}: ${changeFromBaseline}`
@@ -133,7 +160,7 @@ export function useMarketData(): MarketDataState {
         const estimate = calculateEstimate({
           krxClose: baselineStock.krxClose,
           currentBinancePrice: currentPrice,
-          baselineBinancePrice: baselineStock.binanceReferencePrice,
+          baselineBinancePrice: anchorBinancePrice,
         });
 
         const bid = result.quote.bidPrice;
@@ -155,7 +182,7 @@ export function useMarketData(): MarketDataState {
           koreanTicker: stockId === "samsung" ? "005930" : "000660",
           binanceSymbol: result.quote.symbol,
           krxClose: baselineStock.krxClose,
-          baselineBinancePrice: baselineStock.binanceReferencePrice,
+          baselineBinancePrice: anchorBinancePrice,
           currentBinancePrice: currentPrice,
           referencePriceMode: baselineStock.referencePriceMode,
           ...estimate,

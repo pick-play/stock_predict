@@ -77,3 +77,46 @@ export function getMarketStatusLabel(status: MarketStatus): string {
   };
   return labels[status];
 }
+
+/** UTC milliseconds for the 15:30 KST close on the given Seoul calendar date. */
+function seoulDateToCloseUtcMs(year: number, month: number, day: number): number {
+  // Korea Standard Time is UTC+9 year-round (no DST).
+  // 15:30 KST = (KRX_CLOSE_HOUR - 9)h KRX_CLOSE_MINUTE UTC = 06:30 UTC.
+  return Date.UTC(year, month - 1, day, KRX_CLOSE_HOUR - 9, KRX_CLOSE_MINUTE);
+}
+
+/**
+ * Returns the UTC timestamp (ms) of the most recent KRX market close
+ * (Mon–Fri 15:30 KST = 06:30 UTC). Does not account for Korean public holidays.
+ *
+ * Logic:
+ * - If today (KST) is a weekday AND current time is at or past 15:30 → today's close.
+ * - Otherwise walk back day-by-day (max 7) to the last Mon–Fri.
+ *
+ * Examples (now = 2026-08-09 Sunday KST):
+ *   getLastKrxCloseMs() → 2026-08-07T06:30:00.000Z  (Friday close)
+ */
+export function getLastKrxCloseMs(now: Date = new Date()): number {
+  const seoul = getSeoulDate(now);
+
+  const isPastClose =
+    seoul.hour * 60 + seoul.minute >= KRX_CLOSE_HOUR * 60 + KRX_CLOSE_MINUTE;
+
+  // Weekday and already past today's close → today is the anchor
+  if (seoul.dayOfWeek >= 1 && seoul.dayOfWeek <= 5 && isPastClose) {
+    return seoulDateToCloseUtcMs(seoul.year, seoul.month, seoul.day);
+  }
+
+  // Walk back day-by-day (max 7 attempts covers any long weekend / holiday run)
+  let probe = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  for (let i = 0; i < 7; i++) {
+    const s = getSeoulDate(probe);
+    if (s.dayOfWeek >= 1 && s.dayOfWeek <= 5) {
+      return seoulDateToCloseUtcMs(s.year, s.month, s.day);
+    }
+    probe = new Date(probe.getTime() - 24 * 60 * 60 * 1000);
+  }
+
+  // Fallback – unreachable under normal calendar rules
+  return seoulDateToCloseUtcMs(seoul.year, seoul.month, seoul.day - 3);
+}
