@@ -1,0 +1,17 @@
+name = "stock-predict-board"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+account_id = "b695c192e7633379ca1f2cf5b5bfe416"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "stock-predict-board"
+database_id = "f77f5931-cbfa-457a-aecf-35428e521e06"
+
+[vars]
+ALLOWED_ORIGIN = "https://pick-play.github.io"
+
+# Secrets (set via `wrangler secret put`, never in this file):
+#   TURNSTILE_SECRET
+#   IP_SALT
+#   ADMIN_TOKEN

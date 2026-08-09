@@ -1,0 +1,6 @@
+# Copy to .dev.vars (gitignored) for local `wrangler dev` sessions.
+# These are NOT needed for production — set them via `wrangler secret put`.
+
+TURNSTILE_SECRET=1x0000000000000000000000000000000AA   # Cloudflare test secret (always passes)
+IP_SALT=dev-salt-change-in-production
+ADMIN_TOKEN=dev-admin-token
