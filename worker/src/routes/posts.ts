@@ -23,6 +23,7 @@ function rowToPost(row: PostRow): BoardPost {
     createdAt: row.created_at,
     reportCount: row.report_count,
     likeCount: row.like_count,
+    commentCount: row.comment_count ?? 0,
   };
 }
 
@@ -37,10 +38,10 @@ export async function handleGetPosts(
 
   const stmt = cursor
     ? env.DB.prepare(
-        'SELECT id, body, author_tag, created_at, report_count, like_count, member_id FROM posts WHERE hidden_at IS NULL AND id < ? ORDER BY id DESC LIMIT ?'
+        'SELECT id, body, author_tag, created_at, report_count, like_count, comment_count, member_id FROM posts WHERE hidden_at IS NULL AND id < ? ORDER BY id DESC LIMIT ?'
       ).bind(Number(cursor), limit + 1)
     : env.DB.prepare(
-        'SELECT id, body, author_tag, created_at, report_count, like_count, member_id FROM posts WHERE hidden_at IS NULL ORDER BY id DESC LIMIT ?'
+        'SELECT id, body, author_tag, created_at, report_count, like_count, comment_count, member_id FROM posts WHERE hidden_at IS NULL ORDER BY id DESC LIMIT ?'
       ).bind(limit + 1);
 
   const { results } = await stmt.all<PostRow>();
@@ -81,6 +82,7 @@ export async function handleCreatePost(
       createdAt: new Date().toISOString(),
       reportCount: 0,
       likeCount: 0,
+      commentCount: 0,
     };
     return jsonResponse({ post: fake }, 201, request, env);
   }
@@ -175,6 +177,7 @@ export async function handleCreatePost(
     createdAt: now,
     reportCount: 0,
     likeCount: 0,
+    commentCount: 0,
   };
 
   return jsonResponse({ post }, 201, request, env);
@@ -198,7 +201,7 @@ export async function handleGetPopularPosts(
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const { results } = await env.DB.prepare(
-    `SELECT id, body, author_tag, created_at, report_count, like_count, member_id
+    `SELECT id, body, author_tag, created_at, report_count, like_count, comment_count, member_id
      FROM posts
      WHERE hidden_at IS NULL AND created_at >= ?
      ORDER BY like_count DESC, id DESC

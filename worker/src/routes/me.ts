@@ -23,11 +23,11 @@ export async function handleGetMyPosts(request: Request, env: Env): Promise<Resp
 
   const stmt = cursor
     ? env.DB.prepare(
-        `SELECT id, body, author_tag, created_at, report_count, like_count, hidden_at
+        `SELECT id, body, author_tag, created_at, report_count, like_count, comment_count, hidden_at
          FROM posts WHERE member_id = ? AND id < ? ORDER BY id DESC LIMIT ?`
       ).bind(user.id, Number(cursor), limit + 1)
     : env.DB.prepare(
-        `SELECT id, body, author_tag, created_at, report_count, like_count, hidden_at
+        `SELECT id, body, author_tag, created_at, report_count, like_count, comment_count, hidden_at
          FROM posts WHERE member_id = ? ORDER BY id DESC LIMIT ?`
       ).bind(user.id, limit + 1);
 
@@ -47,6 +47,7 @@ export async function handleGetMyPosts(request: Request, env: Env): Promise<Resp
     createdAt: row.created_at,
     reportCount: row.report_count,
     likeCount: row.like_count,
+    commentCount: row.comment_count ?? 0,
     hiddenAt: row.hidden_at,
   }));
 

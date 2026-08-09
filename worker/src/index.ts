@@ -7,7 +7,14 @@ import {
   handleAdminHidePost,
   handleAdminUnhidePost,
   handleAdminDeletePost,
+  handleAdminGetComments,
+  handleAdminDeleteComment,
 } from './routes/admin';
+import {
+  handleGetComments,
+  handleCreateComment,
+  handleReportComment,
+} from './routes/comments';
 import {
   handleSignup,
   handleLogin,
@@ -106,6 +113,34 @@ export default {
     // GET /api/me/posts
     if (method === 'GET' && path === '/api/me/posts') {
       return handleGetMyPosts(request, env);
+    }
+
+    // GET /api/posts/:id/comments
+    const commentsMatch = path.match(/^\/api\/posts\/(\d+)\/comments$/);
+    if (method === 'GET' && commentsMatch) {
+      return handleGetComments(request, env, commentsMatch[1]);
+    }
+
+    // POST /api/posts/:id/comments
+    if (method === 'POST' && commentsMatch) {
+      return handleCreateComment(request, env, commentsMatch[1]);
+    }
+
+    // POST /api/comments/:id/report
+    const commentReportMatch = path.match(/^\/api\/comments\/(\d+)\/report$/);
+    if (method === 'POST' && commentReportMatch) {
+      return handleReportComment(request, env, commentReportMatch[1]);
+    }
+
+    // GET /api/admin/comments?filter=reported|hidden|all
+    if (method === 'GET' && path === '/api/admin/comments') {
+      return handleAdminGetComments(request, env);
+    }
+
+    // DELETE /api/admin/comments/:id
+    const adminCommentDeleteMatch = path.match(/^\/api\/admin\/comments\/(\d+)$/);
+    if (method === 'DELETE' && adminCommentDeleteMatch) {
+      return handleAdminDeleteComment(request, env, adminCommentDeleteMatch[1]);
     }
 
     return errorResponse('not-found', '엔드포인트를 찾을 수 없습니다.', 404, request, env);

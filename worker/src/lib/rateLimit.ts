@@ -96,3 +96,46 @@ export async function isLoginRateLimited(
 
   return (r?.cnt ?? 0) > 10;
 }
+
+/**
+ * Returns true when the member has hit either:
+ *  - 1 comment in the last 20 s, or
+ *  - 15 comments in the last 10 min.
+ */
+export async function isCommentRateLimited(
+  db: D1Database,
+  memberId: number
+): Promise<boolean> {
+  const r20 = await db
+    .prepare(
+      'SELECT COUNT(*) AS cnt FROM comments WHERE member_id = ? AND created_at >= ?'
+    )
+    .bind(memberId, nowMinus(20))
+    .first<{ cnt: number }>();
+
+  if ((r20?.cnt ?? 0) >= 1) return true;
+
+  const r600 = await db
+    .prepare(
+      'SELECT COUNT(*) AS cnt FROM comments WHERE member_id = ? AND created_at >= ?'
+    )
+    .bind(memberId, nowMinus(600))
+    .first<{ cnt: number }>();
+
+  return (r600?.cnt ?? 0) >= 15;
+}
+
+/** Returns true when the IP hash has filed more than 10 comment reports in 10 min. */
+export async function isCommentReportRateLimited(
+  db: D1Database,
+  ipHash: string
+): Promise<boolean> {
+  const r = await db
+    .prepare(
+      'SELECT COUNT(*) AS cnt FROM comment_reports WHERE ip_hash = ? AND created_at >= ?'
+    )
+    .bind(ipHash, nowMinus(600))
+    .first<{ cnt: number }>();
+
+  return (r?.cnt ?? 0) >= 10;
+}
