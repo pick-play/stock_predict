@@ -13,6 +13,7 @@ import {
 import { CONFIDENCE_THRESHOLDS } from "../../config/theme";
 import { getLastKrxCloseMs, getSeoulDate } from "../../lib/koreaMarket";
 import { Sparkline } from "./Sparkline";
+import { ShareCardButton } from "./ShareCardButton";
 
 interface StockEstimateCardProps {
   snapshot: StockSnapshot;
@@ -276,6 +277,13 @@ export function StockEstimateCard({
               style={{ width: `${confScore}%`, backgroundColor: confColor }}
             />
           </div>
+
+          {/* Share / download button — hidden when no real estimate available */}
+          {snapshot.status === "healthy" && (
+            <div className="flex justify-end mt-3">
+              <ShareCardButton snapshot={snapshot} />
+            </div>
+          )}
         </div>
       </div>
     </article>
