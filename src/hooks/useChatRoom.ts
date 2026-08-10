@@ -248,6 +248,14 @@ export function useChatRoom(): ChatRoomController {
     [connect]
   );
 
+  /**
+   * Latest join, readable from the mount effect without listing it as a
+   * dependency — a dependency would tear the socket down and rebuild it every
+   * time the callback is recreated.
+   */
+  const joinRef = useRef(join);
+  joinRef.current = join;
+
   const send = useCallback((body: string): boolean => {
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) return false;
@@ -268,8 +276,16 @@ export function useChatRoom(): ChatRoomController {
       return;
     }
 
+    // No door any more: the entry CAPTCHA was removed, so a visitor should never
+    // see a "join" step. A cached ticket connects straight away; otherwise one is
+    // fetched and used immediately. join() stays exported for a retry after a
+    // failure, and its ref lock keeps this call from racing that one.
     const cached = loadCachedTicket();
-    if (cached) connect(cached);
+    if (cached) {
+      connect(cached);
+    } else {
+      joinRef.current("");
+    }
 
     return () => {
       liveRef.current = false;

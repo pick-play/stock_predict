@@ -1,6 +1,5 @@
 import { errorResponse, jsonResponse } from '../lib/cors';
 import { hashIp } from '../lib/ipHash';
-import { verifyTurnstile } from '../lib/turnstile';
 import { issueChatTicket, verifyChatTicket } from '../lib/chatTicket';
 import { getChatRoomNamespace } from '../chatEnv';
 import {
@@ -48,17 +47,19 @@ function unavailable(request: Request, env: Env): Response {
 
 // ─── POST /api/chat/ticket ─────────────────────────────────────────────────
 
-interface TicketBody {
-  turnstileToken?: unknown;
-}
-
 /**
- * Trades a Turnstile token for a short-lived join ticket.
+ * Issues a short-lived join ticket.
  *
- * Turnstile is required here rather than on every message because the room is
- * login-free: without a challenge at the door, per-IP rate limiting is the only
- * defence and a botnet defeats it by definition. One challenge per ticket
- * lifetime is the smallest amount of friction that still forces a real browser.
+ * There is no CAPTCHA at the door any more: it was removed by owner decision
+ * because the challenge cost seconds on a phone before a reader could type
+ * anything. The ticket survives it as the connection credential — it binds a
+ * socket to an IP hash and is verified before the Durable Object is touched, so
+ * a probe costs a Worker request rather than waking the room.
+ *
+ * What this costs: the room no longer has anything that forces a real browser.
+ * The remaining defences are the per-IP-hash send limit, the moderation filter,
+ * and a per-IP-hash cap on concurrent sockets in the room itself. All three are
+ * now load-bearing; removing any one leaves the room open to a script.
  */
 export async function handleChatTicket(
   request: Request,
@@ -66,34 +67,9 @@ export async function handleChatTicket(
 ): Promise<Response> {
   if (!getChatRoomNamespace(env)) return unavailable(request, env);
 
-  let parsed: TicketBody;
-  try {
-    parsed = (await request.json()) as TicketBody;
-  } catch {
-    return errorResponse(
-      'invalid-body',
-      '요청 형식이 올바르지 않습니다.',
-      400,
-      request,
-      env
-    );
-  }
-
-  const token =
-    typeof parsed.turnstileToken === 'string' ? parsed.turnstileToken : '';
+  // The body is ignored. Kept accepting POST so an older cached bundle asking
+  // for a ticket the previous way still gets one instead of a hard failure.
   const ip = getClientIp(request);
-
-  const captchaOk = await verifyTurnstile(token, env.TURNSTILE_SECRET, ip);
-  if (!captchaOk) {
-    return errorResponse(
-      'captcha-failed',
-      'CAPTCHA 검증에 실패했습니다. 다시 시도해주세요.',
-      403,
-      request,
-      env
-    );
-  }
-
   const ipHash = await hashIp(ip, env.IP_SALT);
   const expiresAt = Date.now() + CHAT_TICKET_TTL_MS;
   const ticket = await issueChatTicket(ipHash, env.IP_SALT, expiresAt);

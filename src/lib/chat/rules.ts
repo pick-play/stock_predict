@@ -3,15 +3,16 @@
  * warn while typing and the Worker can make the same call authoritatively —
  * one rule set, no drift. Same arrangement as moderation/filter.ts.
  *
- * The browser check is a courtesy only. The room is anonymous, so these rules
- * plus the join ticket are the entire abuse defence; every one of them must
- * hold server-side.
+ * The browser check is a courtesy only. The room is anonymous and the entry
+ * CAPTCHA was removed, so these rules plus the socket cap are the entire abuse
+ * defence; every one of them must hold server-side.
  */
 
 import { moderatePost } from "../moderation/filter";
 import { HANDLE_ADJECTIVES, HANDLE_NOUNS } from "./handleWords";
 import type { ChatClientEvent, ChatMessage, ChatRejectCode } from "../../types/chat";
 import {
+  CHAT_MAX_SOCKETS_PER_IP,
   CHAT_MESSAGE_CAP,
   CHAT_MESSAGE_MAX_LENGTH,
   CHAT_RATE_WINDOW_MAX,
@@ -133,6 +134,19 @@ function wordIndex(ipHash: string, offset: number, length: number): number {
   const parsed = Number.parseInt(slice, 16);
   if (!Number.isFinite(parsed) || parsed < 0) return 0;
   return parsed % length;
+}
+
+// ── Connection limiting ───────────────────────────────────────────────────────
+
+/**
+ * Whether an IP hash already holds as many sockets as it is allowed.
+ *
+ * Pure so the boundary is testable: the room calls this before accepting a
+ * socket, and an off-by-one here either locks a reader out of their second tab
+ * or hands a script one more connection than intended.
+ */
+export function isAtSocketLimit(currentSockets: number): boolean {
+  return currentSockets >= CHAT_MAX_SOCKETS_PER_IP;
 }
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────

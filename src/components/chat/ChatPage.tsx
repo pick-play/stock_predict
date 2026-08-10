@@ -2,16 +2,16 @@
  * Real-time chat room.
  *
  * Login-free by owner decision of 2026-08-10 (CLAUDE.md §28.3). The board's
- * login requirement is untouched — only this room is anonymous, and the
- * defences that replace an account are the join challenge, the per-IP send
- * limit, and the shared moderation filter.
+ * login requirement is untouched — only this room is anonymous. The entry
+ * CAPTCHA was removed the same day for the seconds it cost on a phone, so the
+ * defences that replace an account are the per-IP-hash send limit, the shared
+ * moderation filter, and a per-IP-hash cap on concurrent sockets.
  */
 
 import { useChatRoom } from "../../hooks/useChatRoom";
 import { DashboardLayout } from "../layout/DashboardLayout";
 import { CHAT_MESSAGE_CAP } from "../../lib/chat/config";
 import { ChatComposer } from "./ChatComposer";
-import { ChatJoinGate } from "./ChatJoinGate";
 import { ChatMessageList } from "./ChatMessageList";
 import { ChatNotReady } from "./ChatNotReady";
 import { ParticipantCount } from "./ParticipantCount";
@@ -24,7 +24,7 @@ interface ChatPageProps {
 
 /** Status text and dot colour. Never colour alone — the label always shows. */
 const STATUS_LABEL: Record<ChatConnectionStatus, string> = {
-  gated: "입장 확인 필요",
+  gated: "연결 준비 중…",
   connecting: "연결 중…",
   open: "실시간 연결",
   reconnecting: "재연결 중…",
@@ -33,7 +33,7 @@ const STATUS_LABEL: Record<ChatConnectionStatus, string> = {
 };
 
 const STATUS_COLOR: Record<ChatConnectionStatus, string> = {
-  gated: "var(--text-muted)",
+  gated: "#f5b942",
   connecting: "#f5b942",
   open: "#31c48d",
   reconnecting: "#f5b942",
@@ -134,12 +134,6 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
         {/* ── Body ── */}
         {room.status === "unavailable" ? (
           <ChatNotReady />
-        ) : room.status === "gated" ? (
-          <ChatJoinGate
-            onJoin={room.join}
-            isJoining={room.isJoining}
-            error={room.error}
-          />
         ) : (
           <>
             <ChatMessageList messages={room.messages} ownHandle={room.handle} />

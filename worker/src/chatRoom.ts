@@ -28,6 +28,7 @@ import type {
 import {
   chatHandleFromIpHash,
   evaluateChatRate,
+  isAtSocketLimit,
   parseChatClientEvent,
   validateChatMessage,
 } from '../../src/lib/chat/rules';
@@ -109,6 +110,15 @@ export class ChatRoom implements DurableObject {
     const ipHash = request.headers.get(CHAT_IP_HASH_HEADER) ?? '';
     if (ipHash === '') {
       return new Response('missing identity', { status: 400 });
+    }
+
+    // Replaces the entry CAPTCHA that used to force a real browser. Nothing else
+    // stops a script from holding sockets open now: the send limiter would keep
+    // it quiet, but the head count and the room's wakefulness are still its to
+    // abuse. Counted from the attachments, because instance memory does not
+    // survive hibernation.
+    if (isAtSocketLimit(this.socketsForIpHash(ipHash))) {
+      return new Response('too many connections', { status: 429 });
     }
 
     const handle = chatHandleFromIpHash(ipHash);
@@ -226,6 +236,15 @@ export class ChatRoom implements DurableObject {
       { type: 'presence', participants: this.participantCount(socket) },
       socket
     );
+  }
+
+  /** How many live sockets this IP hash already holds. */
+  private socketsForIpHash(ipHash: string): number {
+    let count = 0;
+    for (const socket of this.ctx.getWebSockets()) {
+      if (readIdentity(socket)?.ipHash === ipHash) count++;
+    }
+    return count;
   }
 
   /**

@@ -57,6 +57,17 @@ export const CHAT_PONG_FRAME = "pong";
 export const CHAT_IP_HASH_HEADER = "X-Chat-Ip-Hash";
 
 /**
+ * Concurrent sockets one IP hash may hold in the room.
+ *
+ * This is the control that replaced the entry CAPTCHA. Without a challenge at
+ * the door nothing forces a real browser, so a script could otherwise hold
+ * thousands of sockets open — inflating the head count and keeping the room
+ * awake even though the send limiter would stop it from posting. Three allows
+ * the ordinary case of a second tab or a phone beside a laptop on one network.
+ */
+export const CHAT_MAX_SOCKETS_PER_IP = 3;
+
+/**
  * Path the Worker calls on the room stub to read the transcript over plain HTTP.
  *
  * The dashboard shows the latest few lines without joining, and a socket per

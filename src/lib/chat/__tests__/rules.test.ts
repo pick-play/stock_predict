@@ -7,8 +7,10 @@ import {
   isChatMessage,
   parseChatClientEvent,
   validateChatMessage,
+  isAtSocketLimit,
 } from "../rules";
 import {
+  CHAT_MAX_SOCKETS_PER_IP,
   CHAT_MESSAGE_CAP,
   CHAT_MESSAGE_MAX_LENGTH,
   CHAT_RATE_WINDOW_MAX,
@@ -281,5 +283,32 @@ describe("isChatMessage", () => {
   it("rejects a non-object", () => {
     expect(isChatMessage("hi")).toBe(false);
     expect(isChatMessage(null)).toBe(false);
+  });
+});
+
+// ─── isAtSocketLimit ─────────────────────────────────────────────────────────
+
+describe("isAtSocketLimit", () => {
+  /*
+   * This cap replaced the entry CAPTCHA, so its boundary carries weight both
+   * ways: one too low locks a reader out of a second tab, one too high hands a
+   * script another connection.
+   */
+  it("allows connections below the cap", () => {
+    expect(isAtSocketLimit(0)).toBe(false);
+    expect(isAtSocketLimit(CHAT_MAX_SOCKETS_PER_IP - 1)).toBe(false);
+  });
+
+  it("refuses once the cap is reached", () => {
+    expect(isAtSocketLimit(CHAT_MAX_SOCKETS_PER_IP)).toBe(true);
+  });
+
+  it("refuses above the cap", () => {
+    expect(isAtSocketLimit(CHAT_MAX_SOCKETS_PER_IP + 5)).toBe(true);
+  });
+
+  // A second tab on one network is ordinary, not abuse.
+  it("leaves room for more than one tab", () => {
+    expect(CHAT_MAX_SOCKETS_PER_IP).toBeGreaterThanOrEqual(2);
   });
 });

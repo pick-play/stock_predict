@@ -21,7 +21,7 @@
 
 ```text
 브라우저
-  │  ① POST /api/chat/ticket   (Turnstile 토큰 → 입장 티켓)
+  │  ① POST /api/chat/ticket   (본문 없음 → 입장 티켓)
   │  ② GET  /api/chat/room     (WebSocket 업그레이드, ?ticket=)
   ▼
 Cloudflare Worker  ── 오리진 검사 · 티켓 검증 · IP 해시 산출
@@ -98,22 +98,23 @@ UI 문구도 "명 접속 중"으로 쓰고 사람 수라고 단정하지 않는�
 
 ### POST /api/chat/ticket
 
-Turnstile 토큰을 짧은 수명의 입장 티켓으로 교환한다.
+짧은 수명의 입장 티켓을 발급한다. **캡차는 요구하지 않는다.**
 
-- 본문: `{ "turnstileToken": string }`
+- 본문: 없음(무시된다). 구버전 번들이 `turnstileToken`을 보내도 그대로 발급한다.
 - 200: `{ "ticket": string, "expiresAt": string }` — `expiresAt`은 ISO 8601 UTC, 유효기간 30분
 - 400 `invalid-body`: JSON 형식 오류
-- 403 `captcha-failed`: Turnstile 검증 실패
 - 503 `chat-unavailable`: `CHAT_ROOM` Durable Object 바인딩이 없는 배포
 
-**왜 티켓인가.** Turnstile 토큰은 1회용이다. 매 재연결마다 캡차를 다시 요구하면
-회선이 불안정한 사용자만 계속 벌을 받는다. 티켓은 서명에 IP 해시를 묶어 두므로
-다른 곳에 넘겨도 쓸 수 없다. 서명 키는 새 시크릿을 만들지 않고 기존 `IP_SALT`에
-도메인 구분자(`|chat-ticket-v1`)를 붙여 파생한다.
+**왜 티켓인가.** 캡차가 사라진 뒤에도 티켓은 **연결 자격증명**으로 남는다.
+소켓을 IP 해시에 묶고 Durable Object를 깨우기 전에 Worker에서 검증하므로,
+탐색성 요청은 Worker 요청 하나만 소모하고 방을 깨우지 못한다.
 
-**왜 로그인 대신 캡차인가.** 방이 익명이면 IP 해시 단위 레이트리밋만 남고,
-그건 봇넷 앞에서 정의상 무력하다. 티켓 수명당 캡차 1회는 실제 브라우저를 강제하는
-가장 가벼운 마찰이다.
+**캡차는 왜 없앴나(2026-08-10, 소유자 결정).** 모바일에서 서드파티 챌린지를 받아
+푸는 데 수 초가 걸려 입장 자체가 느렸다. 그 대가로 **진짜 브라우저임을 강제하는
+장치가 사라졌다.** 남은 방어선은 IP 해시 전송 제한, 검열 필터, 그리고
+IP 해시당 동시 소켓 수 제한(`CHAT_MAX_SOCKETS_PER_IP`, 기본 3)뿐이다.
+마지막 항목이 캡차를 대체한다 — 없으면 스크립트가 소켓을 무한히 열어
+접속자 수를 부풀리고 방을 계속 깨워 둘 수 있다. 초과 연결은 **429**로 거절된다.
 
 ### GET /api/chat/room?ticket=&lt;ticket&gt;
 
@@ -138,6 +139,7 @@ WebSocket 업그레이드. 성공하면 101을 반환하고 이후 통신은 위
 | `CHAT_SEND_MIN_INTERVAL_MS` | 2,000 | 같은 IP 해시의 연속 전송 최소 간격 |
 | `CHAT_RATE_WINDOW_MS` / `MAX` | 60,000 / 15 | 같은 IP 해시의 1분당 전송 상한 |
 | `CHAT_TICKET_TTL_MS` | 1,800,000 | 입장 티켓 수명(30분) |
+| `CHAT_MAX_SOCKETS_PER_IP` | 3 | 같은 IP 해시의 동시 소켓 상한. 초과 시 429 |
 | `CHAT_PING_INTERVAL_MS` | 45,000 | 클라이언트 keepalive 주기 |
 
 ### 거부 순서
@@ -187,7 +189,7 @@ chat:cursor           → { oldestSeq, nextSeq }
 | 이름 | 종류 | 용도 |
 | --- | --- | --- |
 | `CHAT_ROOM` | Durable Object 바인딩 | `ChatRoom` 클래스. `new_sqlite_classes`로 마이그레이션 |
-| `TURNSTILE_SECRET` | Secret | 입장 티켓 발급 시 Turnstile 검증 (게시판과 공유) |
+| `TURNSTILE_SECRET` | Secret | 게시판 회원가입에만 쓰인다. 채팅은 사용하지 않는다 |
 | `IP_SALT` | Secret | IP 해시 + 티켓 서명 키 파생 (게시판과 공유) |
 | `ALLOWED_ORIGIN` | 환경변수 | CORS 및 WebSocket `Origin` 검사 (게시판과 공유) |
 
@@ -206,5 +208,5 @@ npm run dev                      # http://localhost:8787 — Durable Object도 �
 ```
 
 프론트는 `.env`에 `VITE_BOARD_API_BASE=http://localhost:8787`을 넣으면 붙는다.
-`VITE_TURNSTILE_SITE_KEY`가 비어 있으면 입장 화면이 캡차 없이 바로 통과를 시도하고,
-서버는 `TURNSTILE_SECRET`이 비어 있을 때만 이를 받아준다(운영에서는 항상 설정되어 거부된다).
+채팅은 `VITE_TURNSTILE_SITE_KEY`도 `TURNSTILE_SECRET`도 쓰지 않는다(둘 다 게시판 전용).
+입장 티켓은 캡차 없이 발급되므로 로컬에서도 바로 붙는다.
