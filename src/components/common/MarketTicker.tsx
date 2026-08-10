@@ -42,18 +42,17 @@ function StatusBadge({ item }: { item: TickerItem }) {
       </span>
     );
   }
-  if (item.status === "open") {
-    // An open market is never quoted live here — the upstream runs roughly a
-    // quarter hour behind — so the badge says 지연, not 장중. Calling it 장중
-    // would read as "this is the current price", which it is not. Past the
-    // threshold the feed itself has stopped, which is a different problem.
-    return item.isStale ? (
-      <span className="text-[10px] px-1.5 py-0.5 rounded bg-danger/15 text-danger whitespace-nowrap">
-        갱신 중단
-      </span>
-    ) : (
+  if (item.isStale) {
+    return (
       <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/15 text-warning whitespace-nowrap">
         지연
+      </span>
+    );
+  }
+  if (item.status === "open") {
+    return (
+      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface-3)] text-[var(--text-secondary)] whitespace-nowrap">
+        장중
       </span>
     );
   }

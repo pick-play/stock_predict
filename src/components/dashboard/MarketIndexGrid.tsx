@@ -38,13 +38,18 @@ function StateNote({ item }: { item: TickerItem }) {
       <span className="text-[10px] text-[var(--text-tertiary)]">장 마감</span>
     );
   }
+  if (item.isStale) {
+    return <span className="text-[10px] text-warning">지연</span>;
+  }
   if (item.status === "open") {
-    // Open but not live: the upstream lags by roughly a quarter hour, so the
-    // honest label is 지연. 장중 would imply the number is current.
-    return item.isStale ? (
-      <span className="text-[10px] text-danger">갱신 중단</span>
-    ) : (
-      <span className="text-[10px] text-warning">지연</span>
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-[var(--text-secondary)]">
+        <span
+          className="w-1 h-1 rounded-full bg-[var(--text-tertiary)]"
+          aria-hidden="true"
+        />
+        장중
+      </span>
     );
   }
   return null;

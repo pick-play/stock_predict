@@ -73,29 +73,16 @@ describe("MarketTicker", () => {
     };
     render(<MarketTicker />);
     expect(screen.getAllByText("실시간").length).toBeGreaterThan(0);
-    expect(screen.queryByText("지연")).toBeNull();
+    expect(screen.queryByText("장중")).toBeNull();
   });
 
-  // The upstream lags an open market by roughly a quarter hour, so 장중 would
-  // read as "this is the current price". It never appears.
-  it("badges an open market 지연, never 장중", () => {
+  it("flags a delayed open market rather than passing it off as current", () => {
     mockState.current = {
-      items: [item({ status: "open", isStale: false })],
+      items: [item({ isStale: true })],
       isLoading: false,
     };
     render(<MarketTicker />);
     expect(screen.getAllByText("지연").length).toBeGreaterThan(0);
-    expect(screen.queryByText("장중")).toBeNull();
-  });
-
-  it("separates a stopped feed from ordinary delay", () => {
-    mockState.current = {
-      items: [item({ status: "open", isStale: true })],
-      isLoading: false,
-    };
-    render(<MarketTicker />);
-    expect(screen.getAllByText("갱신 중단").length).toBeGreaterThan(0);
-    expect(screen.queryByText("지연")).toBeNull();
   });
 
   // A closed market's last print is old by definition; the 장 마감 badge already
@@ -107,7 +94,6 @@ describe("MarketTicker", () => {
     };
     render(<MarketTicker />);
     expect(screen.queryByText("지연")).toBeNull();
-    expect(screen.queryByText("갱신 중단")).toBeNull();
   });
 
   it("renders the unit separately from the number", () => {

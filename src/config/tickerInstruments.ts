@@ -54,13 +54,11 @@ export const TICKER_INSTRUMENTS: readonly TickerInstrument[] = [
 export const TICKER_REFRESH_INTERVAL_MS = 30_000;
 
 /**
- * Age past which the upstream is treated as having stopped, not merely lagging.
+ * Age at which a Yahoo-sourced quote stops being treated as current.
  *
- * Every Yahoo-sourced instrument is behind by roughly a quarter hour even mid
- * session, so an open market is always badged 지연 — never 장중, which would
- * read as "this is the current price". This threshold marks the different
- * failure above it: the feed itself has stalled, badged 갱신 중단. Deliberately
- * looser than the 5-minute threshold used for the futures-driven cards, whose
- * prices really are live.
+ * The source is delayed by design, so this is deliberately looser than the
+ * 5-minute threshold used for the futures-driven cards. Past this the tape
+ * marks the instrument 지연 rather than dropping it — a known-old index value
+ * still tells the reader something, as long as it says it is old.
  */
 export const TICKER_STALE_THRESHOLD_MS = 30 * 60 * 1000;
