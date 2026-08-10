@@ -204,3 +204,49 @@
   .delay-350 { animation-delay: 350ms; }
   .delay-450 { animation-delay: 450ms; }
 }
+
+/* ── Market ticker tape ──
+   The track carries the item list twice and travels exactly -50%, so the copy
+   lands where the original started and the loop has no visible seam. */
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.market-ticker__viewport {
+  overflow: hidden;
+}
+
+.market-ticker__track {
+  display: flex;
+  align-items: center;
+  /* max-content keeps both copies on one line; a shrunk track would make the
+     -50% travel land somewhere other than the seam. */
+  width: max-content;
+  min-height: 2.25rem;
+  animation-name: ticker-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  /* Duration is set inline from the item count so a longer tape keeps its pace. */
+}
+
+/* Give a reader a way to stop the motion long enough to read a row. */
+.market-ticker:hover .market-ticker__track,
+.market-ticker:focus-within .market-ticker__track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The global rule above collapses animation-duration to 0.01ms, which for a
+     marquee is not "no motion" — it snaps the track to translateX(-50%) and
+     hides the first copy. Cancel the animation outright and let the strip be an
+     ordinary horizontally scrollable row instead. */
+  .market-ticker__track {
+    animation-name: none !important;
+    transform: none !important;
+  }
+
+  .market-ticker__viewport {
+    overflow-x: auto;
+  }
+}

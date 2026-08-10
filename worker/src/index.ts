@@ -23,6 +23,7 @@ import {
   handleResetPassword,
 } from './routes/auth';
 import { handleGetMyPosts } from './routes/me';
+import { handleGetMarkets } from './routes/markets';
 import type { Env } from './types';
 
 export default {
@@ -34,6 +35,11 @@ export default {
 
     const { pathname: path } = new URL(request.url);
     const { method } = request;
+
+    // GET /api/markets — ticker tape quotes (proxies Yahoo, which sends no CORS)
+    if (method === 'GET' && path === '/api/markets') {
+      return handleGetMarkets(request, env);
+    }
 
     // GET /api/posts/popular — must be matched before the :id routes
     if (method === 'GET' && path === '/api/posts/popular') {
