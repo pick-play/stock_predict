@@ -117,7 +117,19 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
           </div>
         </header>
 
-        <StockMiniCards onNavigateDashboard={onNavigateDashboard} />
+        {/*
+         * Held back until the room is actually open.
+         *
+         * StockMiniCards runs the full market feed — a baseline read, two kline
+         * requests, two quote requests and a Binance socket. Mounted alongside
+         * the join it competed with the ticket round-trip and the socket upgrade
+         * for a phone's connection, which is what made entering the room feel
+         * slow. The prices are context here, not the point of the page, so they
+         * can arrive after the conversation does.
+         */}
+        {isConnected && (
+          <StockMiniCards onNavigateDashboard={onNavigateDashboard} />
+        )}
 
         {/* ── Body ── */}
         {room.status === "unavailable" ? (

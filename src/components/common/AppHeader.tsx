@@ -29,7 +29,18 @@ export function AppHeader({
 }: AppHeaderProps) {
   const now = useNow();
   return (
-    <header className="animate-fade-in flex items-center justify-between py-4 px-4 md:px-6 border-b border-[var(--border-mid)]">
+    /*
+     * relative z-40 is load-bearing, not decoration.
+     *
+     * animate-fade-in animates opacity with fill-mode both, which makes this
+     * element a stacking context for as long as the animation applies. Left
+     * static, the whole header subtree — including the overflow menu's z-50
+     * panel — painted as one unit at the header's place in the order, and <main>
+     * comes later in the DOM, so the page content covered the open menu. The
+     * panel was both invisible where they overlapped and unclickable, because
+     * the taps landed on the content in front of it.
+     */
+    <header className="animate-fade-in relative z-40 flex items-center justify-between py-4 px-4 md:px-6 border-b border-[var(--border-mid)]">
       {/* Logo mark */}
       <div className="flex items-center gap-3">
         <img
