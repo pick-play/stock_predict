@@ -145,8 +145,15 @@ export function HeaderMenu({
         <div
           role="menu"
           aria-label="메뉴"
-          className="animate-fade-in absolute right-0 top-[calc(100%+6px)] z-30 w-40 overflow-hidden rounded-xl border border-[var(--border-strong)] py-1 shadow-xl shadow-black/30"
-          style={{ background: "var(--surface-2)" }}
+          /*
+           * --surface-menu rather than --surface-2: both surface tokens sit only
+           * a few steps from --bg, so a panel painted with one read as
+           * see-through against the page even though it was fully opaque. A
+           * dedicated token, a strong border and a deep shadow give the panel an
+           * edge instead of asking the reader to find one.
+           */
+          className="animate-fade-in absolute right-0 top-[calc(100%+6px)] z-50 w-40 overflow-hidden rounded-xl border border-[var(--border-strong)] py-1 shadow-2xl shadow-black/40"
+          style={{ backgroundColor: "var(--surface-menu)" }}
         >
           {onNavigateBoard && (
             <button

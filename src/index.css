@@ -6,6 +6,7 @@
 :root {
   --bg:            #080b10;
   --surface-1:     #0d1118;
+  --surface-menu:  #1b2434;
   --surface-2:     #121824;
   --surface-3:     #18202e;
 
@@ -29,6 +30,7 @@
   :root {
     --bg:            #f0f4f8;
     --surface-1:     #ffffff;
+    --surface-menu:  #ffffff;
     --surface-2:     #f7f9fc;
     --surface-3:     #eef2f7;
 
@@ -52,6 +54,7 @@
 [data-theme="dark"] {
   --bg:            #080b10;
   --surface-1:     #0d1118;
+  --surface-menu:  #1b2434;
   --surface-2:     #121824;
   --surface-3:     #18202e;
   --border-subtle: rgba(255, 255, 255, 0.07);
@@ -70,6 +73,7 @@
 [data-theme="light"] {
   --bg:            #f0f4f8;
   --surface-1:     #ffffff;
+  --surface-menu:  #ffffff;
   --surface-2:     #f7f9fc;
   --surface-3:     #eef2f7;
   --border-subtle: rgba(0, 0, 0, 0.07);
@@ -248,5 +252,18 @@
 
   .market-ticker__viewport {
     overflow-x: auto;
+  }
+}
+
+/* ── Mobile form fields ──
+   iOS Safari zooms the viewport when focusing a field whose font-size is under
+   16px, which threw readers out of position every time they tapped the chat box.
+   Set centrally so a newly added input cannot bring the behaviour back. The
+   !important is required: a utility class beats a bare element selector. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
   }
 }

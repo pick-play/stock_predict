@@ -98,6 +98,24 @@ describe("HeaderMenu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
+  /*
+   * The panel is painted with a dedicated opaque token. It previously used
+   * --surface-2, which sits close enough to --bg in both themes that the menu
+   * read as see-through and the page text behind it appeared to bleed in.
+   */
+  it("paints the panel on the dedicated opaque surface", async () => {
+    const user = userEvent.setup();
+    render(<HeaderMenu onNavigateBoard={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "메뉴" }));
+
+    const panel = screen.getByRole("menu");
+    expect(panel.style.backgroundColor).toBe("var(--surface-menu)");
+    // A transparent panel is the bug; anything alpha-capable must not creep back.
+    expect(panel.style.backgroundColor).not.toContain("transparent");
+    expect(panel.style.backgroundColor).not.toContain("rgba");
+  });
+
   it("omits an entry it was given no destination for", async () => {
     const user = userEvent.setup();
     render(<HeaderMenu onNavigateBoard={() => {}} />);
