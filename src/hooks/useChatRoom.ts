@@ -236,7 +236,7 @@ export function useChatRoom(): ChatRoomController {
           setError(
             e instanceof ChatApiError
               ? e.message
-              : "채팅방에 입장할 수 없습니다. 잠시 후 다시 시도해주세요."
+              : "실시간 채팅에 입장할 수 없습니다. 잠시 후 다시 시도해주세요."
           );
           setStatus("gated");
         })

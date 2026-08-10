@@ -50,7 +50,7 @@ export function ChatJoinGate({ onJoin, isJoining, error }: ChatJoinGateProps) {
   return (
     <div className="animate-slide-fade-in flex flex-col items-center justify-center px-6 py-16 text-center">
       <h2 className="text-base font-semibold text-[var(--text-primary)] tracking-tight">
-        실시간 채팅방 입장
+        실시간 채팅 입장
       </h2>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-[var(--text-secondary)]">
         로그인 없이 바로 참여할 수 있습니다.
@@ -72,7 +72,7 @@ export function ChatJoinGate({ onJoin, isJoining, error }: ChatJoinGateProps) {
         type="button"
         onClick={() => onJoin(token)}
         disabled={!canJoin}
-        aria-label={isJoining ? "입장 중" : "채팅방 입장하기"}
+        aria-label={isJoining ? "입장 중" : "실시간 채팅 입장하기"}
         className="mt-5 min-h-[44px] px-6 rounded-lg text-sm font-semibold transition-opacity duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff] disabled:cursor-not-allowed disabled:opacity-40"
         style={{
           background: canJoin

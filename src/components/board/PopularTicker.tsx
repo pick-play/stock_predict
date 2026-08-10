@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { MouseEvent } from "react";
 import { usePopularTicker } from "../../hooks/usePopularTicker";
 import { likePost, isBoardConfigured } from "../../lib/board/api";
 
@@ -58,7 +59,12 @@ function HeartOutlineIcon() {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export function PopularTicker() {
+interface PopularTickerProps {
+  /** Opens the board. Without it the strip stays a read-only display. */
+  onNavigateBoard?: () => void;
+}
+
+export function PopularTicker({ onNavigateBoard }: PopularTickerProps) {
   const { posts } = usePopularTicker();
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -103,7 +109,10 @@ export function PopularTicker() {
     pending: false,
   };
 
-  const handleLike = async () => {
+  const handleLike = async (event: MouseEvent<HTMLButtonElement>) => {
+    // The strip around this button opens the board; a tap on the heart must
+    // only like, so the click stops here.
+    event.stopPropagation();
     if (ls.pending) return;
     const snapshot = ls;
     // Optimistic update
@@ -132,13 +141,31 @@ export function PopularTicker() {
 
   return (
     <div
-      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] px-3 py-2.5 overflow-hidden"
+      className={`rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] px-3 py-2.5 overflow-hidden${
+        onNavigateBoard
+          ? " cursor-pointer transition-colors duration-150 hover:border-[var(--border-strong)]"
+          : ""
+      }`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
-      role="region"
-      aria-label="토론방 인기글"
+      /* Activating the strip opens the board. The like button inside stops
+         propagation, so a tap on the heart still only likes. */
+      onClick={onNavigateBoard}
+      onKeyDown={
+        onNavigateBoard &&
+        ((event) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onNavigateBoard();
+          }
+        })
+      }
+      role={onNavigateBoard ? "button" : "region"}
+      tabIndex={onNavigateBoard ? 0 : undefined}
+      aria-label={onNavigateBoard ? "토론방 인기글 — 눌러서 토론방 열기" : "토론방 인기글"}
     >
       <div className="flex items-center gap-2.5 min-w-0">
         {/* Label */}

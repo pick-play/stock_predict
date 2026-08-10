@@ -67,9 +67,33 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
   const lines = [...data.messages].reverse().slice(0, 4);
 
   return (
+    /*
+     * The whole card activates the room rather than only a corner link — on a
+     * phone the lines themselves are the obvious tap target, and a reader who
+     * wants in should not have to find a small "열기".
+     */
     <section
-      className="animate-fade-in rounded-2xl border border-[var(--border-subtle)] bg-surface-1 px-4 py-3"
-      aria-label="최근 채팅"
+      className={`animate-fade-in rounded-2xl border border-[var(--border-subtle)] bg-surface-1 px-4 py-3${
+        onNavigateChat
+          ? " cursor-pointer transition-colors duration-150 hover:border-[var(--border-strong)]"
+          : ""
+      }`}
+      onClick={onNavigateChat}
+      onKeyDown={
+        onNavigateChat &&
+        ((event) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onNavigateChat();
+          }
+        })
+      }
+      role={onNavigateChat ? "button" : undefined}
+      tabIndex={onNavigateChat ? 0 : undefined}
+      aria-label={
+        onNavigateChat ? "최근 채팅 — 눌러서 실시간 채팅 열기" : "최근 채팅"
+      }
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -85,13 +109,12 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
           </span>
         </div>
         {onNavigateChat && (
-          <button
-            type="button"
-            onClick={onNavigateChat}
-            className="min-h-[36px] rounded-lg px-2.5 py-1 text-[11px] text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[rgba(255,255,255,0.06)] hover:text-[var(--text-primary)]"
+          <span
+            className="shrink-0 text-[11px] text-[var(--text-tertiary)]"
+            aria-hidden="true"
           >
-            채팅방 열기 →
-          </button>
+            →
+          </span>
         )}
       </div>
 

@@ -1,4 +1,5 @@
 import { ConnectionBadge } from "./ConnectionBadge";
+import { HeaderMenu } from "./HeaderMenu";
 import { ThemeToggle } from "./ThemeToggle";
 import { MarketStatusBadge } from "./MarketStatusBadge";
 import { formatRelativeTime } from "../../lib/format";
@@ -51,7 +52,9 @@ export function AppHeader({
 
       {/* Right controls */}
       <div className="flex items-center gap-2">
-        <ThemeToggle />
+        <span className="hidden md:inline-flex">
+          <ThemeToggle />
+        </span>
         <MarketStatusBadge />
         <ConnectionBadge
           isLoading={isLoading}
@@ -68,7 +71,7 @@ export function AppHeader({
           <button
             type="button"
             onClick={onNavigateBoard}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+            className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
             aria-label="익명 토론방 열기"
           >
             <svg
@@ -84,15 +87,15 @@ export function AppHeader({
             >
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
-            <span className="hidden sm:inline">토론방</span>
+            <span>토론방</span>
           </button>
         )}
         {onNavigateChat && (
           <button
             type="button"
             onClick={onNavigateChat}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
-            aria-label="실시간 채팅방 열기 (로그인 없이 참여)"
+            className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+            aria-label="실시간 채팅 열기 (로그인 없이 참여)"
           >
             <svg
               width="11"
@@ -108,9 +111,14 @@ export function AppHeader({
               <path d="M8 10h8M8 14h5" />
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
-            <span className="hidden sm:inline">채팅방</span>
+            <span>실시간 채팅</span>
           </button>
         )}
+
+        <HeaderMenu
+          onNavigateBoard={onNavigateBoard}
+          onNavigateChat={onNavigateChat}
+        />
       </div>
     </header>
   );

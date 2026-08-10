@@ -31,10 +31,10 @@ export function ChatNotReady() {
       </div>
 
       <h2 className="text-base font-semibold text-[var(--text-primary)] mb-2 tracking-tight">
-        실시간 채팅방 준비 중
+        실시간 채팅 준비 중
       </h2>
       <p className="text-sm text-[var(--text-tertiary)] max-w-xs leading-relaxed">
-        채팅방이 곧 열립니다.
+        실시간 채팅이 곧 열립니다.
         <br />
         지금은 시세 화면을 이용해주세요.
       </p>

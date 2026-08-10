@@ -76,7 +76,7 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
 
               <div className="min-w-0">
                 <h1 className="truncate text-sm font-semibold leading-none tracking-tight text-[var(--text-primary)]">
-                  실시간 채팅방
+                  실시간 채팅
                 </h1>
                 <p className="mt-1 truncate text-[10px] text-[var(--text-muted)]">
                   KOSPI NOW · 로그인 없이 참여

@@ -62,7 +62,7 @@ export async function requestChatTicket(
     | null;
   throw new ChatApiError(
     ERROR_KIND_MAP[errBody?.error ?? ""] ?? "network",
-    errBody?.message ?? "채팅방에 입장할 수 없습니다."
+    errBody?.message ?? "실시간 채팅에 입장할 수 없습니다."
   );
 }
 
