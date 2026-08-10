@@ -56,6 +56,15 @@ export interface ChatRoomController {
  */
 export const VISIBILITY_RETRY_MIN_GAP_MS = 1_500;
 
+/**
+ * Failed handshakes before the held ticket is thrown away and a new one fetched.
+ *
+ * One is not enough — a single failure is more often a network blip than a bad
+ * ticket, and a new ticket costs a round trip. Two is cheap and bounds the worst
+ * case at one wasted retry.
+ */
+export const HANDSHAKE_FAILURES_BEFORE_REFRESH = 2;
+
 function reconnectDelay(attempt: number): number {
   const index = Math.min(attempt, CHAT_RECONNECT_DELAYS_MS.length - 1);
   return CHAT_RECONNECT_DELAYS_MS[index];
@@ -84,6 +93,15 @@ export function useChatRoom(): ChatRoomController {
    * switch — and the focus recovery below would otherwise retry on each one.
    */
   const lastAttemptAtRef = useRef(0);
+  /**
+   * Consecutive attempts that closed without ever opening.
+   *
+   * A browser is told nothing about why a WebSocket handshake failed — no status
+   * reaches JS — so a ticket the server refuses looks exactly like a flaky
+   * network. Counting handshakes that never opened is the only signal available,
+   * and past a couple of them the ticket is the likelier culprit.
+   */
+  const handshakeFailuresRef = useRef(0);
   /** Guards every async continuation against running after unmount. */
   const liveRef = useRef(true);
   /** Set while tearing down on purpose, so cleanup does not reconnect. */
@@ -166,6 +184,7 @@ export function useChatRoom(): ChatRoomController {
       lastAttemptAtRef.current = Date.now();
       setStatus(attemptRef.current === 0 ? "connecting" : "reconnecting");
 
+      let opened = false;
       let socket: WebSocket;
       try {
         socket = new WebSocket(url);
@@ -178,7 +197,9 @@ export function useChatRoom(): ChatRoomController {
 
       socket.onopen = () => {
         if (!liveRef.current) return;
+        opened = true;
         attemptRef.current = 0;
+        handshakeFailuresRef.current = 0;
         setStatus("open");
         setError(null);
         pingTimerRef.current = window.setInterval(() => {
@@ -205,9 +226,27 @@ export function useChatRoom(): ChatRoomController {
         socketRef.current = null;
         if (!liveRef.current || closingRef.current) return;
 
+        // A socket that closed without opening never completed a handshake.
+        if (socket.readyState !== WebSocket.OPEN && !opened) {
+          handshakeFailuresRef.current += 1;
+        }
+
         const held = ticketRef.current;
+        /*
+         * Unexpired is not the same as accepted.
+         *
+         * The ticket used to be signed over the caller's IP hash, so it stopped
+         * verifying whenever a phone changed network and for everyone at UTC
+         * midnight when the hash salt rotates — while still being well inside its
+         * thirty minutes. This branch only asked about expiry, so the client
+         * retried a ticket the server was refusing, forever, which is what left
+         * phones in "재연결 중…" on re-entry. The binding is gone now; this guard
+         * stays so any future refusal is survivable rather than terminal.
+         */
+        const refused =
+          handshakeFailuresRef.current >= HANDSHAKE_FAILURES_BEFORE_REFRESH;
         const stillValid =
-          held !== null && Date.parse(held.expiresAt) > Date.now();
+          held !== null && Date.parse(held.expiresAt) > Date.now() && !refused;
 
         if (!stillValid) {
           /*
@@ -258,6 +297,7 @@ export function useChatRoom(): ChatRoomController {
           if (!liveRef.current) return;
           storeTicket(ticket);
           attemptRef.current = 0;
+          handshakeFailuresRef.current = 0;
           connect(ticket);
         })
         .catch((e: unknown) => {

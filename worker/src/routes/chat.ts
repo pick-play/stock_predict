@@ -69,10 +69,12 @@ export async function handleChatTicket(
 
   // The body is ignored. Kept accepting POST so an older cached bundle asking
   // for a ticket the previous way still gets one instead of a hard failure.
-  const ip = getClientIp(request);
-  const ipHash = await hashIp(ip, env.IP_SALT);
+  //
+  // No IP is read here: the ticket is no longer bound to one. The room still
+  // gets its identity from the hash the Worker computes on the socket request,
+  // which is the only place it has ever mattered.
   const expiresAt = Date.now() + CHAT_TICKET_TTL_MS;
-  const ticket = await issueChatTicket(ipHash, env.IP_SALT, expiresAt);
+  const ticket = await issueChatTicket(env.IP_SALT, expiresAt);
 
   return jsonResponse(
     { ticket, expiresAt: new Date(expiresAt).toISOString() },
@@ -121,7 +123,7 @@ export async function handleChatRoom(
   const ip = getClientIp(request);
   const ipHash = await hashIp(ip, env.IP_SALT);
 
-  if (!(await verifyChatTicket(ticket, ipHash, env.IP_SALT, Date.now()))) {
+  if (!(await verifyChatTicket(ticket, env.IP_SALT, Date.now()))) {
     return errorResponse(
       'invalid-ticket',
       '입장 확인이 만료되었습니다. 다시 입장해주세요.',

@@ -13,7 +13,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { CHAT_RECONNECT_DELAYS_MS } from "../../lib/chat/config";
-import { VISIBILITY_RETRY_MIN_GAP_MS } from "../useChatRoom";
+import {
+  VISIBILITY_RETRY_MIN_GAP_MS,
+  HANDSHAKE_FAILURES_BEFORE_REFRESH,
+} from "../useChatRoom";
 
 const NOW = 1_786_000_000_000;
 
@@ -170,6 +173,70 @@ describe("useChatRoom reconnection", () => {
     expect(result.current.status).not.toBe("gated");
   });
 
+  /*
+   * The reported bug: re-entering the room on a phone and sitting in
+   * "재연결 중…" indefinitely.
+   *
+   * The server was refusing the cached ticket with a 403 — it had been signed
+   * over an IP hash that changes with the handset's network and rotates for
+   * everyone at UTC midnight. A browser sees no status from a failed WebSocket
+   * handshake, so the client only checked expiry, found the ticket fresh, and
+   * retried the refused ticket forever.
+   */
+  it("stops reusing a ticket whose handshakes keep failing", async () => {
+    api.cached = ticket(25 * 60_000);
+    renderHook(() => useChatRoom());
+    await act(async () => {});
+
+    // Every attempt closes without ever opening, exactly as a refusal looks.
+    for (let i = 0; i < HANDSHAKE_FAILURES_BEFORE_REFRESH; i++) {
+      await act(async () => {
+        FakeSocket.instances[FakeSocket.instances.length - 1].drop();
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(CHAT_RECONNECT_DELAYS_MS[i] ?? 30_000);
+      });
+      await act(async () => {});
+    }
+
+    // A fresh ticket was fetched rather than the refused one retried again.
+    expect(api.requestChatTicket).toHaveBeenCalled();
+    expect(api.cleared).toBeGreaterThan(0);
+  });
+
+  it("keeps the ticket through a single blip", async () => {
+    api.cached = ticket(25 * 60_000);
+    renderHook(() => useChatRoom());
+    await act(async () => {});
+    await act(async () => FakeSocket.instances[0].drop());
+    await act(async () => {
+      vi.advanceTimersByTime(CHAT_RECONNECT_DELAYS_MS[0]);
+    });
+
+    // One failure is more often the network than the ticket, and a ticket costs
+    // a round trip.
+    expect(api.requestChatTicket).not.toHaveBeenCalled();
+    expect(FakeSocket.instances).toHaveLength(2);
+  });
+
+  it("forgets the failure count once a socket opens", async () => {
+    api.cached = ticket(25 * 60_000);
+    renderHook(() => useChatRoom());
+    await act(async () => {});
+    await act(async () => FakeSocket.instances[0].drop());
+    await act(async () => {
+      vi.advanceTimersByTime(CHAT_RECONNECT_DELAYS_MS[0]);
+    });
+    await act(async () => FakeSocket.instances[1].open());
+    await act(async () => FakeSocket.instances[1].drop());
+    await act(async () => {
+      vi.advanceTimersByTime(CHAT_RECONNECT_DELAYS_MS[0]);
+    });
+
+    // The successful open cleared the tally, so this is failure one again.
+    expect(api.requestChatTicket).not.toHaveBeenCalled();
+  });
+
   it("does not spin when the ticket endpoint keeps failing", async () => {
     api.cached = ticket(1_000);
     api.requestChatTicket.mockRejectedValue(new Error("down"));
@@ -254,39 +321,39 @@ describe("useChatRoom reconnection", () => {
       expect(FakeSocket.instances).toHaveLength(1);
     });
 
-    it("lets the backoff grow when reconnects keep failing", async () => {
-      api.cached = ticket(20 * 60_000);
+    /*
+     * Progress toward recovery must survive a focus event.
+     *
+     * The attempt counter is no longer reset here, and neither is the tally of
+     * failed handshakes — otherwise a phone flipping visibility would keep
+     * resetting its own way out of a refused ticket and never reach the refresh.
+     */
+    it("counts a focus-triggered retry toward the refusal tally", async () => {
+      api.cached = ticket(25 * 60_000);
       renderHook(() => useChatRoom());
       await act(async () => {});
-      await act(async () => FakeSocket.instances[0].open());
 
-      // Three failures in a row, each recovered through a focus event.
-      for (let i = 0; i < 3; i++) {
-        await act(async () => {
-          FakeSocket.instances[FakeSocket.instances.length - 1].drop();
-        });
-        await act(async () => {
-          vi.advanceTimersByTime(VISIBILITY_RETRY_MIN_GAP_MS);
-        });
-        show();
-        await act(async () => {
-          document.dispatchEvent(new Event("visibilitychange"));
-        });
-      }
+      // Failure one, recovered through a focus event rather than the timer.
+      await act(async () => FakeSocket.instances[0].drop());
+      await act(async () => {
+        vi.advanceTimersByTime(VISIBILITY_RETRY_MIN_GAP_MS);
+      });
+      show();
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      expect(FakeSocket.instances).toHaveLength(2);
+      expect(api.requestChatTicket).not.toHaveBeenCalled();
 
-      /*
-       * The socket that never opened must not have reset the counter, so the
-       * scheduled delay has climbed past the first rung. Checked by showing that
-       * the first delay alone no longer produces a reconnect.
-       */
-      const built = FakeSocket.instances.length;
+      // Failure two reaches the threshold, so the ticket is replaced.
+      await act(async () => FakeSocket.instances[1].drop());
       await act(async () => {
-        FakeSocket.instances[built - 1].drop();
+        vi.advanceTimersByTime(30_000);
       });
-      await act(async () => {
-        vi.advanceTimersByTime(CHAT_RECONNECT_DELAYS_MS[0]);
-      });
-      expect(FakeSocket.instances).toHaveLength(built);
+      await act(async () => {});
+
+      expect(api.cleared).toBeGreaterThan(0);
+      expect(api.requestChatTicket).toHaveBeenCalled();
     });
 
     it("leaves a live socket alone but prods it", async () => {

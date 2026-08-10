@@ -1,12 +1,24 @@
 /**
  * Join tickets for the anonymous chat room.
  *
- * A ticket is an HMAC over (version, expiry, IP hash) that the Worker hands out
- * only after Turnstile passes. It exists because Turnstile tokens are
- * single-use: without a ticket every dropped socket would demand a fresh
- * CAPTCHA, which punishes exactly the people on flaky mobile networks. Binding
- * the signature to the IP hash means a ticket cannot be shared with a botnet —
- * the hash it was minted for has to match the hash presented at reconnect.
+ * A ticket is an HMAC over (version, expiry). It is verified in the Worker
+ * before the Durable Object is touched, so an unverified probe costs a Worker
+ * request rather than waking the room.
+ *
+ * It used to be signed over the IP hash as well, to stop a ticket being shared.
+ * That binding was removed, for two reasons.
+ *
+ * It had stopped protecting anything. The rationale was that a ticket cost a
+ * CAPTCHA, so a shared one was worth having; with the CAPTCHA gone anyone can
+ * mint their own with a bare POST, and the binding guards a door that is open.
+ *
+ * And it was actively breaking phones. The IP hash changes when the handset
+ * changes network — cell handoff, Wi-Fi to cellular — and it changes for
+ * everyone at UTC midnight, because hashIp rotates its salt by date. Either way
+ * the ticket became unverifiable while still unexpired, so the client retried a
+ * ticket the server would refuse forever and sat in "재연결 중…". Identity is
+ * unaffected: the room reads it from the header the Worker sets per request,
+ * never from the ticket.
  *
  * The signing key is derived from the existing IP_SALT secret with a domain
  * separator rather than from a new secret, so the owner has nothing extra to
@@ -40,8 +52,8 @@ async function sign(payload: string, salt: string): Promise<string> {
     .join('');
 }
 
-function payloadFor(expiresAt: number, ipHash: string): string {
-  return `${TICKET_VERSION}.${expiresAt}.${ipHash}`;
+function payloadFor(expiresAt: number): string {
+  return `${TICKET_VERSION}.${expiresAt}`;
 }
 
 /** Compares two hex digests without leaking where they first differ. */
@@ -56,22 +68,20 @@ function timingSafeEqual(a: string, b: string): boolean {
 
 /** Mints a ticket valid until `expiresAt` (epoch ms). */
 export async function issueChatTicket(
-  ipHash: string,
   salt: string,
   expiresAt: number
 ): Promise<string> {
-  const signature = await sign(payloadFor(expiresAt, ipHash), salt);
+  const signature = await sign(payloadFor(expiresAt), salt);
   return `${TICKET_VERSION}.${expiresAt}.${signature}`;
 }
 
 /**
- * True only when the ticket is well-formed, unexpired, and was minted for this
- * IP hash. Every failure path returns the same false — a caller learns nothing
- * about which check tripped.
+ * True only when the ticket is well-formed, unexpired and correctly signed.
+ * Every failure path returns the same false — a caller learns nothing about
+ * which check tripped.
  */
 export async function verifyChatTicket(
   ticket: string,
-  ipHash: string,
   salt: string,
   now: number
 ): Promise<boolean> {
@@ -84,6 +94,6 @@ export async function verifyChatTicket(
   const expiresAt = Number(expiresRaw);
   if (!Number.isSafeInteger(expiresAt) || expiresAt <= now) return false;
 
-  const expected = await sign(payloadFor(expiresAt, ipHash), salt);
+  const expected = await sign(payloadFor(expiresAt), salt);
   return timingSafeEqual(signature, expected);
 }
