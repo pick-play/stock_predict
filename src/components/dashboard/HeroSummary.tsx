@@ -1,12 +1,12 @@
 import { isWeekend, isKrxTradingHours } from "../../lib/koreaMarket";
-import { anchorBasisLabel } from "../../lib/marketSession";
-import type { ResolvedAnchor } from "../../lib/marketSession";
 
-interface HeroSummaryProps {
-  anchor?: ResolvedAnchor | null;
-}
-
-export function HeroSummary({ anchor }: HeroSummaryProps) {
+/**
+ * The anchor basis and its date used to sit under the subtitle. Removed by owner
+ * decision: every stock card already carries the same two facts next to the
+ * price they explain ("최근 국내 종가 (08/10)" and "기준가 (08/10 종가)"), so the
+ * line was a fourth heading row that only added height above the fold.
+ */
+export function HeroSummary() {
   const weekend = isWeekend();
   const trading = isKrxTradingHours();
 
@@ -33,15 +33,6 @@ export function HeroSummary({ anchor }: HeroSummaryProps) {
         <span className="text-[#8b7cff]">{titleLine2Accent}</span>
       </h2>
       <p className="text-sm text-[var(--text-tertiary)] mt-2 leading-relaxed">{subtitle}</p>
-
-      {anchor && (
-        <p className="text-xs text-[var(--text-secondary)] mt-2">
-          <span className="font-semibold text-[var(--text-primary)]">
-            {anchorBasisLabel(anchor.kind)}
-          </span>
-          <span className="text-[var(--text-tertiary)]"> · {anchor.marketDate}</span>
-        </p>
-      )}
 
       {warning && (
         <div

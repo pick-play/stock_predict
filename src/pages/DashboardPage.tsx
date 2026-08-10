@@ -26,7 +26,7 @@ export function DashboardPage({
   onNavigateBoard,
   onNavigateChat,
 }: DashboardPageProps) {
-  const { stocks, lastUpdated, error, isLoading, usingFallback, anchor, wsStatus } =
+  const { stocks, lastUpdated, error, isLoading, usingFallback, wsStatus } =
     useMarketData();
 
   const [chartRange, setChartRange] = useState<ChartRange>("24h");
@@ -77,7 +77,7 @@ export function DashboardPage({
       />
 
       <main className="px-4 md:px-6 pb-24 md:pb-10 space-y-4">
-        <HeroSummary anchor={anchor} />
+        <HeroSummary />
 
         {/* Error banners */}
         {error && !hasAnyData && (

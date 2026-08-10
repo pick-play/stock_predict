@@ -84,7 +84,3 @@ export function resolveAnchor(
 export function anchorLabel(kind: AnchorKind): string {
   return kind === "open" ? "오늘 시가" : "최근 종가";
 }
-
-export function anchorBasisLabel(kind: AnchorKind): string {
-  return kind === "open" ? "오늘 시가 기준" : "최근 종가 기준";
-}

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { resolveAnchor, seoulDateString, anchorBasisLabel } from "../marketSession";
+import { resolveAnchor, seoulDateString } from "../marketSession";
 import type { Baseline } from "../../types/market";
 
 function makeBaseline(overrides: Partial<Baseline> = {}): Baseline {
@@ -114,9 +114,3 @@ describe("resolveAnchor", () => {
   });
 });
 
-describe("anchorBasisLabel", () => {
-  it("describes each basis in Korean", () => {
-    expect(anchorBasisLabel("open")).toBe("오늘 시가 기준");
-    expect(anchorBasisLabel("close")).toBe("최근 종가 기준");
-  });
-});
