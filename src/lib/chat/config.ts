@@ -59,13 +59,19 @@ export const CHAT_IP_HASH_HEADER = "X-Chat-Ip-Hash";
 /**
  * Concurrent sockets one IP hash may hold in the room.
  *
- * This is the control that replaced the entry CAPTCHA. Without a challenge at
- * the door nothing forces a real browser, so a script could otherwise hold
- * thousands of sockets open — inflating the head count and keeping the room
- * awake even though the send limiter would stop it from posting. Three allows
- * the ordinary case of a second tab or a phone beside a laptop on one network.
+ * This is the control that replaced the entry CAPTCHA. Its job is resource
+ * exhaustion, not spam — the send limiter handles spam — so it only has to stop
+ * a script holding sockets open to inflate the head count and keep the room
+ * awake.
+ *
+ * It was 3, which was wrong the moment more than three people shared an address.
+ * One office, one café, one school, or one mobile carrier behind CGNAT all
+ * present a single public IP, so the fourth real person was refused with a 429
+ * and had no way to tell why. Sized instead for a plausible group on one
+ * network; a script bounded at this many sockets is still bounded, because the
+ * per-IP send limit caps what those sockets can actually say.
  */
-export const CHAT_MAX_SOCKETS_PER_IP = 3;
+export const CHAT_MAX_SOCKETS_PER_IP = 25;
 
 /**
  * Path the Worker calls on the room stub to read the transcript over plain HTTP.

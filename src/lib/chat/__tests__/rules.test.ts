@@ -307,8 +307,12 @@ describe("isAtSocketLimit", () => {
     expect(isAtSocketLimit(CHAT_MAX_SOCKETS_PER_IP + 5)).toBe(true);
   });
 
-  // A second tab on one network is ordinary, not abuse.
-  it("leaves room for more than one tab", () => {
-    expect(CHAT_MAX_SOCKETS_PER_IP).toBeGreaterThanOrEqual(2);
+  /*
+   * An office, a café, a school and a mobile carrier behind CGNAT each present
+   * one public IP. A cap sized for "a couple of tabs" refuses real people, so
+   * the floor here is a plausible group, not a plausible device count.
+   */
+  it("leaves room for a group sharing one address", () => {
+    expect(CHAT_MAX_SOCKETS_PER_IP).toBeGreaterThanOrEqual(20);
   });
 });
