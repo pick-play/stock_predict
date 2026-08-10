@@ -11,7 +11,7 @@ function makeStore(cap?: number) {
 function line(n: number) {
   return {
     body: `메시지 ${n}`,
-    handle: "손님#a3f2",
+    handle: "차분한 강아지",
     createdAt: new Date(1_760_000_000_000 + n * 1_000).toISOString(),
   };
 }

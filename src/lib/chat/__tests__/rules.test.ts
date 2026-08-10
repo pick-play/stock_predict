@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { HANDLE_ADJECTIVES, HANDLE_NOUNS } from "../handleWords";
 import {
   appendWithCap,
   chatHandleFromIpHash,
@@ -129,16 +130,47 @@ describe("parseChatClientEvent", () => {
 // ─── chatHandleFromIpHash ─────────────────────────────────────────────────────
 
 describe("chatHandleFromIpHash", () => {
-  it("uses the first four hex characters of the hash", () => {
-    expect(chatHandleFromIpHash("a3f2bc9900112233")).toBe("손님#a3f2");
+  it("pairs an adjective with a noun", () => {
+    expect(chatHandleFromIpHash("a3f2bc9900112233")).toBe("차분한 강아지");
+  });
+
+  // A name that changed between messages would make a conversation impossible
+  // to follow, so the same hash must always give the same name.
+  it("is stable for the same hash", () => {
+    const first = chatHandleFromIpHash("77aa11bb99cc0011");
+    const second = chatHandleFromIpHash("77aa11bb99cc0011");
+    expect(first).toBe(second);
+  });
+
+  it("varies with the hash", () => {
+    const a = chatHandleFromIpHash("0000000000000000");
+    const b = chatHandleFromIpHash("ffffffffffffffff");
+    expect(a).not.toBe(b);
   });
 
   it("does not reuse the retired board 익명 prefix", () => {
     expect(chatHandleFromIpHash("a3f2bc99")).not.toContain("익명");
   });
 
-  it("falls back to a padded suffix for a short hash", () => {
-    expect(chatHandleFromIpHash("ab")).toBe("손님#0000");
+  it("has no hash digits left in the name", () => {
+    expect(chatHandleFromIpHash("a3f2bc9900112233")).not.toMatch(/[0-9a-f]{4}/);
+  });
+
+  // A malformed hash should cost a dull name, not a failed join.
+  it("still produces a usable name from a short hash", () => {
+    const handle = chatHandleFromIpHash("ab");
+    expect(handle).toBe("부지런한 고양이");
+    expect(handle.split(" ")).toHaveLength(2);
+  });
+
+  it("draws from both full word lists", () => {
+    expect(HANDLE_ADJECTIVES.length).toBeGreaterThanOrEqual(40);
+    expect(HANDLE_NOUNS.length).toBeGreaterThanOrEqual(40);
+    // Every entry must be a single token, or the two-word split above breaks.
+    for (const word of [...HANDLE_ADJECTIVES, ...HANDLE_NOUNS]) {
+      expect(word).not.toContain(" ");
+      expect(word.length).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -234,14 +266,14 @@ describe("isChatMessage", () => {
       isChatMessage({
         id: "1",
         body: "hi",
-        handle: "손님#a3f2",
+        handle: "차분한 강아지",
         createdAt: "2026-08-10T00:00:00.000Z",
       })
     ).toBe(true);
   });
 
   it("rejects a message missing a field", () => {
-    expect(isChatMessage({ id: "1", body: "hi", handle: "손님#a3f2" })).toBe(
+    expect(isChatMessage({ id: "1", body: "hi", handle: "차분한 강아지" })).toBe(
       false
     );
   });

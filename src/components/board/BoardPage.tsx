@@ -9,11 +9,11 @@ import { AuthModal } from "./auth/AuthModal";
 import { RecoveryCodeModal } from "./auth/RecoveryCodeModal";
 import type { BoardPost, SignupResult } from "../../types/board";
 import { DashboardLayout } from "../layout/DashboardLayout";
+import { StockMiniCards } from "../common/StockMiniCards";
 
 interface BoardPageProps {
   onNavigateDashboard: () => void;
   /** Optional so the board still renders if the chat route is not mounted. */
-  onNavigateChat?: () => void;
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -49,7 +49,6 @@ function PostListSkeleton() {
 
 export function BoardPage({
   onNavigateDashboard,
-  onNavigateChat,
 }: BoardPageProps) {
   const { posts, isLoading, error, hasMore, loadMore, prependPost } =
     useBoardPosts();
@@ -118,31 +117,6 @@ export function BoardPage({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Chat entry. The board requires login to write; the chat room does
-              not (CLAUDE.md §28.3), so the label says so up front. */}
-          {onNavigateChat && (
-            <button
-              type="button"
-              onClick={onNavigateChat}
-              aria-label="실시간 채팅방 열기 (로그인 없이 참여)"
-              className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-2.5 text-[10px] font-medium text-[var(--text-secondary)] transition-all duration-150 hover:border-[var(--border-strong)] hover:bg-[var(--surface-overlay)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              채팅방
-            </button>
-          )}
           {isLoading && posts.length > 0 && (
             <span
               className="w-1.5 h-1.5 rounded-full bg-[#f5b942] animate-pulse"
@@ -195,6 +169,8 @@ export function BoardPage({
           )}
         </div>
       </header>
+
+      <StockMiniCards onNavigateDashboard={onNavigateDashboard} />
 
       {/* ── Main ── */}
       <main className="px-4 md:px-6 pb-16 pt-4 space-y-4">

@@ -4,7 +4,9 @@ import { verifyTurnstile } from '../lib/turnstile';
 import { issueChatTicket, verifyChatTicket } from '../lib/chatTicket';
 import { getChatRoomNamespace } from '../chatEnv';
 import {
+  CHAT_HISTORY_PATH,
   CHAT_IP_HASH_HEADER,
+  CHAT_PREVIEW_TTL_MS,
   CHAT_ROOM_NAME,
   CHAT_TICKET_TTL_MS,
 } from '../../../src/lib/chat/config';
@@ -160,4 +162,62 @@ export async function handleChatRoom(
 
   const stub = namespace.get(namespace.idFromName(CHAT_ROOM_NAME));
   return stub.fetch(request.url, { method: request.method, headers });
+}
+
+// ─── GET /api/chat/recent (read-only preview) ──────────────────────────────
+
+/**
+ * Cached preview payload, shared by every dashboard reader.
+ *
+ * Held in module scope rather than proxied straight through: without it each
+ * dashboard view would wake the room, which defeats hibernation. The object is
+ * only cheap while asleep, and a read-only strip has no business being the
+ * thing that keeps it up.
+ */
+let previewCache: { payload: unknown; storedAtMs: number } | null = null;
+
+/**
+ * The last few lines and the current head count, for the strip on the dashboard.
+ *
+ * No ticket and no captcha — the room is public to read, matching the board.
+ */
+export async function handleChatRecent(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  const namespace = getChatRoomNamespace(env);
+  if (!namespace) return unavailable(request, env);
+
+  const cachedAge = previewCache ? Date.now() - previewCache.storedAtMs : -1;
+  if (previewCache && cachedAge >= 0 && cachedAge < CHAT_PREVIEW_TTL_MS) {
+    return jsonResponse(previewCache.payload, 200, request, env);
+  }
+
+  const stub = namespace.get(namespace.idFromName(CHAT_ROOM_NAME));
+
+  try {
+    const upstream = await stub.fetch(
+      `https://chat-room.internal${CHAT_HISTORY_PATH}`
+    );
+    if (!upstream.ok) {
+      throw new Error(`room responded ${upstream.status}`);
+    }
+    const payload: unknown = await upstream.json();
+    previewCache = { payload, storedAtMs: Date.now() };
+    return jsonResponse(payload, 200, request, env);
+  } catch (error) {
+    console.warn('[chat] preview read failed', error);
+    // A stale preview beats an empty strip, and every line carries its own
+    // timestamp, so a reader can still see how old the conversation is.
+    if (previewCache) {
+      return jsonResponse(previewCache.payload, 200, request, env);
+    }
+    return errorResponse(
+      'room-unavailable',
+      '채팅 미리보기를 불러올 수 없습니다.',
+      503,
+      request,
+      env
+    );
+  }
 }

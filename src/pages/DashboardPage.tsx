@@ -7,6 +7,7 @@ import { HeroSummary } from "../components/dashboard/HeroSummary";
 import { MarketIndexGrid } from "../components/dashboard/MarketIndexGrid";
 import { Disclaimer } from "../components/common/Disclaimer";
 import { PopularTicker } from "../components/board/PopularTicker";
+import { RecentChatStrip } from "../components/dashboard/RecentChatStrip";
 import { ErrorState } from "../components/common/ErrorState";
 import { StockCardSkeleton } from "../components/common/LoadingSkeleton";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
@@ -78,8 +79,10 @@ export function DashboardPage({
       <main className="px-4 md:px-6 pb-24 md:pb-10 space-y-4">
         <HeroSummary anchor={anchor} />
 
-        {/* Community ticker — calm secondary strip, only visible when board is live */}
+        {/* Community strips — calm secondary content, each hides itself when its
+            backend is not configured or has nothing to show. */}
         <PopularTicker />
+        <RecentChatStrip onNavigateChat={onNavigateChat} />
 
         {/* Error banners */}
         {error && !hasAnyData && (

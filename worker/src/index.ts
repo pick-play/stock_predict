@@ -24,7 +24,11 @@ import {
 } from './routes/auth';
 import { handleGetMyPosts } from './routes/me';
 import { handleGetMarkets } from './routes/markets';
-import { handleChatTicket, handleChatRoom } from './routes/chat';
+import {
+  handleChatTicket,
+  handleChatRoom,
+  handleChatRecent,
+} from './routes/chat';
 import type { Env } from './types';
 
 // The Durable Object class has to be exported from the Worker entry module for
@@ -163,6 +167,11 @@ export default {
     // GET /api/chat/room — WebSocket upgrade proxied to the ChatRoom Durable Object
     if (method === 'GET' && path === '/api/chat/room') {
       return handleChatRoom(request, env);
+    }
+
+    // GET /api/chat/recent — read-only transcript preview for the dashboard
+    if (method === 'GET' && path === '/api/chat/recent') {
+      return handleChatRecent(request, env);
     }
 
     return errorResponse('not-found', '엔드포인트를 찾을 수 없습니다.', 404, request, env);

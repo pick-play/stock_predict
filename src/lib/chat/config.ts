@@ -55,3 +55,26 @@ export const CHAT_PONG_FRAME = "pong";
 
 /** Header the Worker uses to hand the server-derived identity to the room. */
 export const CHAT_IP_HASH_HEADER = "X-Chat-Ip-Hash";
+
+/**
+ * Path the Worker calls on the room stub to read the transcript over plain HTTP.
+ *
+ * The dashboard shows the latest few lines without joining, and a socket per
+ * visitor for a read-only strip would wake the room for every page view.
+ */
+export const CHAT_HISTORY_PATH = "/history";
+
+/** How many lines the dashboard preview asks for. */
+export const CHAT_PREVIEW_LIMIT = 8;
+
+/**
+ * How long the Worker may serve a cached preview.
+ *
+ * Long enough that the strip costs the room roughly one read per interval no
+ * matter how many people are on the dashboard, short enough that the preview
+ * does not look abandoned next to a live room.
+ */
+export const CHAT_PREVIEW_TTL_MS = 10_000;
+
+/** How often the dashboard strip re-reads the preview. */
+export const CHAT_PREVIEW_REFRESH_MS = 20_000;

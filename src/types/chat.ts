@@ -13,7 +13,7 @@ export interface ChatMessage {
   id: string;
   /** Plain text — caller must render as text, never set as innerHTML. */
   body: string;
-  /** Server-generated display handle, e.g. "손님#a3f2". Rotates daily. */
+  /** Server-generated display handle, e.g. "느긋한 수달". Rotates daily. */
   handle: string;
   createdAt: string;
 }

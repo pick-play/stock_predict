@@ -9,6 +9,7 @@
  */
 
 import { moderatePost } from "../moderation/filter";
+import { HANDLE_ADJECTIVES, HANDLE_NOUNS } from "./handleWords";
 import type { ChatClientEvent, ChatMessage, ChatRejectCode } from "../../types/chat";
 import {
   CHAT_MESSAGE_CAP,
@@ -98,13 +99,40 @@ export function parseChatClientEvent(raw: string): ChatClientEvent | null {
 /**
  * Derives the display handle from the daily-rotating IP hash.
  *
+ * An adjective and a noun rather than a hex tag: "느긋한 수달" is something a
+ * reader can hold in their head and address, which a chat room needs and
+ * "손님#a3f2" never gave them.
+ *
+ * Derived from the hash, not drawn at random, so the same person keeps the same
+ * name for as long as the hash stands — a name that changed per message would
+ * make a conversation impossible to follow. It rotates when the hash rotates.
+ *
  * Deliberately not the board's "익명#" prefix: board anonymity was retired by
- * owner decision (CLAUDE.md §28.2) and reusing the tag would make deleted
- * board posts and live chat lines look like the same identity system.
+ * owner decision (CLAUDE.md §28.2) and reusing the tag would make deleted board
+ * posts and live chat lines look like the same identity system.
+ *
+ * 1,600 combinations, so two people in one room can collide. That is the same
+ * property handles already had — everyone behind one NAT shares a hash — so the
+ * UI never claims a handle identifies a person.
  */
 export function chatHandleFromIpHash(ipHash: string): string {
-  const suffix = ipHash.slice(0, 4);
-  return `손님#${suffix.length === 4 ? suffix : "0000"}`;
+  const adjective =
+    HANDLE_ADJECTIVES[wordIndex(ipHash, 0, HANDLE_ADJECTIVES.length)];
+  const noun = HANDLE_NOUNS[wordIndex(ipHash, 4, HANDLE_NOUNS.length)];
+  return `${adjective} ${noun}`;
+}
+
+/**
+ * Reads four hex digits of the hash into a list index.
+ *
+ * Falls back to 0 on anything unparseable rather than throwing: a malformed hash
+ * should cost a dull name, not a failed join.
+ */
+function wordIndex(ipHash: string, offset: number, length: number): number {
+  const slice = ipHash.slice(offset, offset + 4);
+  const parsed = Number.parseInt(slice, 16);
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return parsed % length;
 }
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────

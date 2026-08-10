@@ -11,12 +11,9 @@ export default function App() {
   }
 
   if (route === "board") {
-    return (
-      <BoardPage
-        onNavigateDashboard={() => navigate("dashboard")}
-        onNavigateChat={() => navigate("chat")}
-      />
-    );
+    // No chat link here by owner decision: the chat room is reached from the
+    // dashboard, not from the board.
+    return <BoardPage onNavigateDashboard={() => navigate("dashboard")} />;
   }
 
   return (

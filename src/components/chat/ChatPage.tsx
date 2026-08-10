@@ -16,6 +16,7 @@ import { ChatMessageList } from "./ChatMessageList";
 import { ChatNotReady } from "./ChatNotReady";
 import { ParticipantCount } from "./ParticipantCount";
 import type { ChatConnectionStatus } from "../../types/chat";
+import { StockMiniCards } from "../common/StockMiniCards";
 
 interface ChatPageProps {
   onNavigateDashboard: () => void;
@@ -115,6 +116,8 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
             )}
           </div>
         </header>
+
+        <StockMiniCards onNavigateDashboard={onNavigateDashboard} />
 
         {/* ── Body ── */}
         {room.status === "unavailable" ? (

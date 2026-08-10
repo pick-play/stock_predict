@@ -9,7 +9,7 @@
  * them scroll down themselves.
  */
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { ChatMessage } from "../../types/chat";
 import { formatChatTime } from "../../lib/chat/formatChatTime";
 import { formatKoreanTimeDetailed } from "../../lib/format";
@@ -24,7 +24,7 @@ const FOLLOW_THRESHOLD_PX = 64;
  * strip's height — a number this component has no business knowing.
  */
 const TRANSCRIPT_CLASS =
-  "h-[56dvh] overflow-y-auto overflow-x-hidden px-4 py-3 md:h-[60dvh] md:px-6";
+  "flex h-[56dvh] flex-col overflow-y-auto overflow-x-hidden px-4 py-3 md:h-[60dvh] md:px-6";
 
 interface ChatMessageListProps {
   messages: ChatMessage[];
@@ -34,19 +34,30 @@ interface ChatMessageListProps {
 
 export function ChatMessageList({ messages, ownHandle }: ChatMessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const wasFollowingRef = useRef(true);
+  const isFollowingRef = useRef(true);
 
-  // Recorded before paint so the decision uses the pre-append scroll position.
-  useLayoutEffect(() => {
+  /**
+   * Follow state is recorded from the reader's own scrolling, not from a layout
+   * effect after the append.
+   *
+   * A layout effect measuring the same render that added the messages sees the
+   * grown scrollHeight against the unchanged scrollTop, so a whole backlog
+   * arriving at once measured as "scrolled far from the bottom" and suppressed
+   * the very scroll that should have followed it. Entering the room therefore
+   * landed on the oldest line with the newest ones below the fold. A single
+   * appended message stayed under the threshold by luck, which is why only the
+   * first paint looked wrong.
+   */
+  const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-    wasFollowingRef.current = distance <= FOLLOW_THRESHOLD_PX;
-  });
+    isFollowingRef.current = distance <= FOLLOW_THRESHOLD_PX;
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !wasFollowingRef.current) return;
+    if (!el || !isFollowingRef.current) return;
     // Direct assignment rather than a smooth scroll: the page sets
     // scroll-behavior globally, and an animated jump on every incoming message
     // is exactly what prefers-reduced-motion readers do not want.
@@ -56,6 +67,7 @@ export function ChatMessageList({ messages, ownHandle }: ChatMessageListProps) {
   return (
     <div
       ref={scrollRef}
+      onScroll={handleScroll}
       className={TRANSCRIPT_CLASS}
       role="log"
       aria-live="polite"
@@ -64,11 +76,21 @@ export function ChatMessageList({ messages, ownHandle }: ChatMessageListProps) {
       tabIndex={0}
     >
       {messages.length === 0 ? (
-        <p className="py-12 text-center text-sm text-[var(--text-tertiary)]">
+        <p className="m-auto py-12 text-center text-sm text-[var(--text-tertiary)]">
           아직 대화가 없습니다. 먼저 인사를 건네보세요.
         </p>
       ) : (
-        <ol className="space-y-2">
+        /*
+         * mt-auto is what makes a short conversation sit on the floor of the
+         * transcript and grow upward, the way every chat app behaves. Without it
+         * the list starts at the top of a 56dvh box and fills downward, which
+         * reads as a document rather than a conversation.
+         *
+         * Chosen over `justify-end` on the container: that collapses the top of
+         * the content once it overflows in several browsers, which would hide the
+         * oldest messages instead of letting them scroll.
+         */
+        <ol className="mt-auto space-y-2">
           {messages.map((message) => {
             const isOwnHandle =
               ownHandle !== null && message.handle === ownHandle;

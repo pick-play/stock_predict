@@ -14,9 +14,11 @@
  */
 
 import {
+  CHAT_HISTORY_PATH,
   CHAT_IP_HASH_HEADER,
   CHAT_PING_FRAME,
   CHAT_PONG_FRAME,
+  CHAT_PREVIEW_LIMIT,
 } from '../../src/lib/chat/config';
 import { ChatMessageStore } from '../../src/lib/chat/messageStore';
 import type {
@@ -84,6 +86,20 @@ export class ChatRoom implements DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
+    // Read-only transcript for the dashboard preview. Kept on the same object
+    // because it is the only holder of the window, but it opens no socket and
+    // takes no identity — nothing here can write.
+    if (new URL(request.url).pathname === CHAT_HISTORY_PATH) {
+      if (request.method !== 'GET') {
+        return new Response('method not allowed', { status: 405 });
+      }
+      const messages = await this.store.history(CHAT_PREVIEW_LIMIT);
+      return new Response(
+        JSON.stringify({ messages, participants: this.participantCount() }),
+        { headers: { 'Content-Type': 'application/json; charset=utf-8' } }
+      );
+    }
+
     if ((request.headers.get('Upgrade') ?? '').toLowerCase() !== 'websocket') {
       return new Response('expected websocket upgrade', { status: 426 });
     }
