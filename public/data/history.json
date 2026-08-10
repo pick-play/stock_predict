@@ -1,22 +1,5 @@
 [
   {
-    "timestamp": "2026-08-02T11:30:00.000Z",
-    "stocks": {
-      "samsung": {
-        "estimatedPrice": 0,
-        "changeRate": 0,
-        "currentBinancePrice": 0,
-        "confidenceScore": 0
-      },
-      "skHynix": {
-        "estimatedPrice": 0,
-        "changeRate": 0,
-        "currentBinancePrice": 0,
-        "confidenceScore": 0
-      }
-    }
-  },
-  {
     "timestamp": "2026-08-02T13:35:50.270Z",
     "stocks": {
       "samsung": {

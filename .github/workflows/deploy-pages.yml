@@ -4,11 +4,15 @@ on:
   push:
     branches:
       - main
-    # Data commits deploy too. The site reads baseline.json from its own origin
+    # Hand-pushed commits only. The site reads baseline.json from its own origin
     # rather than from raw.githubusercontent, which kept the account and
     # repository name out of the shipped bundle; the anchor therefore has to
-    # ship with the site. That costs two extra builds per weekday, since the
-    # only scheduled writer left is update-baseline.yml (09:20 and 15:40 KST).
+    # ship with the site.
+    #
+    # Data commits do NOT arrive here as push events — GitHub suppresses workflow
+    # triggers for pushes made with the default GITHUB_TOKEN. update-baseline.yml
+    # instead calls the workflow_dispatch below after it pushes, which costs two
+    # extra builds per weekday (09:20 and 15:40 KST).
   workflow_dispatch:
 
 permissions:

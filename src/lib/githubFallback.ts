@@ -19,6 +19,7 @@ import {
   LATEST_PATH,
   BASELINE_PATH,
   HISTORY_PATH,
+  FALLBACK_MAX_AGE_MS,
 } from "../config/market";
 
 type FetchResult<T> = T | null;
@@ -70,13 +71,39 @@ async function fetchSameOrigin<T>(
   return result;
 }
 
-/** Fetch latest.json. Returns null only if both URLs fail. */
+/**
+ * Fetch latest.json, the last-resort stand-in for a live quote.
+ *
+ * Rejected once older than FALLBACK_MAX_AGE_MS. The scheduled writer is
+ * disabled, so the committed snapshot ages indefinitely; handing a days-old
+ * price to the cards would render it in the same "healthy" styling as a live
+ * one. Returning null instead leaves the caller in its data-unavailable state,
+ * which says so plainly.
+ */
 export async function fetchGithubLatest(): Promise<FetchResult<LatestData>> {
-  return fetchSameOrigin<LatestData>(
+  const data = await fetchSameOrigin<LatestData>(
     LATEST_PATH,
     LatestDataSchema,
     "latest.json"
   );
+  if (data === null) return null;
+
+  // A timestamp far in the future is as untrustworthy as a stale one: it means
+  // a broken clock somewhere, and the age check would wave it through.
+  const ageMs = Date.now() - new Date(data.generatedAt).getTime();
+  if (
+    !Number.isFinite(ageMs) ||
+    ageMs > FALLBACK_MAX_AGE_MS ||
+    ageMs < -FALLBACK_MAX_AGE_MS
+  ) {
+    console.warn(
+      `[dataFetch] latest.json too old to stand in for a live price ` +
+        `(generatedAt=${data.generatedAt}, age=${Math.round(ageMs / 60_000)}분)`
+    );
+    return null;
+  }
+
+  return data;
 }
 
 /** Fetch baseline.json. Returns null only if both URLs fail. */
@@ -88,7 +115,13 @@ export async function fetchGithubBaseline(): Promise<FetchResult<Baseline>> {
   );
 }
 
-/** Fetch history.json for charts/sparklines. Returns null only if both URLs fail. */
+/**
+ * Fetch history.json for charts/sparklines. Returns null only if both URLs fail.
+ *
+ * Per-stock entries priced at zero are dropped. The collector wrote one such
+ * record before it was disabled, and a zero is not a low price — plotted as-is
+ * it drags the series down to the axis and reads as a crash that never happened.
+ */
 export async function fetchGithubHistory(): Promise<FetchResult<HistoryEntry[]>> {
   // ValidatedHistoryEntry has optional per-stock fields (Zod schema);
   // HistoryEntry uses Record<StockId, ...>. The shapes are runtime-compatible —
@@ -98,5 +131,18 @@ export async function fetchGithubHistory(): Promise<FetchResult<HistoryEntry[]>>
     HistoryArraySchema,
     "history.json"
   );
-  return data as HistoryEntry[] | null;
+  if (data === null) return null;
+
+  const cleaned = data
+    .map((entry) => {
+      const stocks = Object.fromEntries(
+        Object.entries(entry.stocks).filter(
+          ([, snapshot]) => (snapshot?.estimatedPrice ?? 0) > 0
+        )
+      );
+      return { ...entry, stocks };
+    })
+    .filter((entry) => Object.keys(entry.stocks).length > 0);
+
+  return cleaned as HistoryEntry[];
 }

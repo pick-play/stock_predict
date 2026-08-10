@@ -28,6 +28,15 @@ export const HISTORY_PATH = `${import.meta.env.BASE_URL}data/history.json`;
 // 5-minute GitHub Actions data commit interval.
 export const HISTORY_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
+// Oldest a stored snapshot may be and still stand in for a live price.
+//
+// latest.json is only reached when every live quote failed, and its writer
+// (update-market-data.yml) is disabled, so the committed copy can be days or
+// weeks old. Showing that as the current price would break the rule that stale
+// financial data is never presented as normal — past this age the cards show
+// the "데이터 확인 중" state instead of a number nobody should act on.
+export const FALLBACK_MAX_AGE_MS = 60 * 60 * 1000; // 1 hour
+
 export const BINANCE_REST_BASE = "https://api.binance.com";
 export const BINANCE_WS_BASE = "wss://stream.binance.com:9443";
 
