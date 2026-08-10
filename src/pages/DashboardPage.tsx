@@ -18,9 +18,13 @@ const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
 
 interface DashboardPageProps {
   onNavigateBoard?: () => void;
+  onNavigateChat?: () => void;
 }
 
-export function DashboardPage({ onNavigateBoard }: DashboardPageProps) {
+export function DashboardPage({
+  onNavigateBoard,
+  onNavigateChat,
+}: DashboardPageProps) {
   const { stocks, lastUpdated, error, isLoading, usingFallback, anchor, wsStatus } =
     useMarketData();
 
@@ -68,6 +72,7 @@ export function DashboardPage({ onNavigateBoard }: DashboardPageProps) {
         lastUpdated={lastUpdated}
         wsStatus={wsStatus}
         onNavigateBoard={onNavigateBoard}
+        onNavigateChat={onNavigateChat}
       />
 
       <main className="px-4 md:px-6 pb-24 md:pb-10 space-y-4">

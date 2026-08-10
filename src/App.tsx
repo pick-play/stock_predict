@@ -19,5 +19,10 @@ export default function App() {
     );
   }
 
-  return <DashboardPage onNavigateBoard={() => navigate("board")} />;
+  return (
+    <DashboardPage
+      onNavigateBoard={() => navigate("board")}
+      onNavigateChat={() => navigate("chat")}
+    />
+  );
 }
