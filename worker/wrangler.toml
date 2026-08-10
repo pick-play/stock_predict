@@ -8,6 +8,18 @@ binding = "DB"
 database_name = "stock-predict-board"
 database_id = "f77f5931-cbfa-457a-aecf-35428e521e06"
 
+# Chat room. One named instance holds the socket set (presence) and the rolling
+# 500-message window. `new_sqlite_classes` is required, not a preference: the
+# key-value storage backend is no longer provisioned for new namespaces and the
+# SQLite backend is the only one available on the Workers Free plan.
+[[durable_objects.bindings]]
+name = "CHAT_ROOM"
+class_name = "ChatRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatRoom"]
+
 [vars]
 ALLOWED_ORIGIN = "https://kospinow.com,https://www.kospinow.com"
 

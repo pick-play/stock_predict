@@ -11,6 +11,11 @@ interface AppHeaderProps {
   lastUpdated: string | null;
   wsStatus?: WsConnectionStatus;
   onNavigateBoard?: () => void;
+  /**
+   * Optional so the header renders unchanged where the chat route is not
+   * mounted. DashboardPage has to pass it for the button to appear.
+   */
+  onNavigateChat?: () => void;
 }
 
 export function AppHeader({
@@ -19,6 +24,7 @@ export function AppHeader({
   lastUpdated,
   wsStatus,
   onNavigateBoard,
+  onNavigateChat,
 }: AppHeaderProps) {
   const now = useNow();
   return (
@@ -79,6 +85,30 @@ export function AppHeader({
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
             <span className="hidden sm:inline">토론방</span>
+          </button>
+        )}
+        {onNavigateChat && (
+          <button
+            type="button"
+            onClick={onNavigateChat}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+            aria-label="실시간 채팅방 열기 (로그인 없이 참여)"
+          >
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M8 10h8M8 14h5" />
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            <span className="hidden sm:inline">채팅방</span>
           </button>
         )}
       </div>

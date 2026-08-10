@@ -12,6 +12,9 @@ dist/
 # Cloudflare Worker local secrets (never commit)
 worker/.dev.vars
 
+# Local state written by `wrangler dev` (D1 and Durable Object storage)
+worker/.wrangler/
+
 # Editor
 .vscode/
 .idea/

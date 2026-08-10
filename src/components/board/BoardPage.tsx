@@ -12,6 +12,8 @@ import { DashboardLayout } from "../layout/DashboardLayout";
 
 interface BoardPageProps {
   onNavigateDashboard: () => void;
+  /** Optional so the board still renders if the chat route is not mounted. */
+  onNavigateChat?: () => void;
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -45,7 +47,10 @@ function PostListSkeleton() {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
+export function BoardPage({
+  onNavigateDashboard,
+  onNavigateChat,
+}: BoardPageProps) {
   const { posts, isLoading, error, hasMore, loadMore, prependPost } =
     useBoardPosts();
   const auth = useAuth();
@@ -113,6 +118,31 @@ export function BoardPage({ onNavigateDashboard }: BoardPageProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Chat entry. The board requires login to write; the chat room does
+              not (CLAUDE.md §28.3), so the label says so up front. */}
+          {onNavigateChat && (
+            <button
+              type="button"
+              onClick={onNavigateChat}
+              aria-label="실시간 채팅방 열기 (로그인 없이 참여)"
+              className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-2.5 text-[10px] font-medium text-[var(--text-secondary)] transition-all duration-150 hover:border-[var(--border-strong)] hover:bg-[var(--surface-overlay)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              채팅방
+            </button>
+          )}
           {isLoading && posts.length > 0 && (
             <span
               className="w-1.5 h-1.5 rounded-full bg-[#f5b942] animate-pulse"

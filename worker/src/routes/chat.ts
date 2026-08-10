@@ -1,0 +1,163 @@
+import { errorResponse, jsonResponse } from '../lib/cors';
+import { hashIp } from '../lib/ipHash';
+import { verifyTurnstile } from '../lib/turnstile';
+import { issueChatTicket, verifyChatTicket } from '../lib/chatTicket';
+import { getChatRoomNamespace } from '../chatEnv';
+import {
+  CHAT_IP_HASH_HEADER,
+  CHAT_ROOM_NAME,
+  CHAT_TICKET_TTL_MS,
+} from '../../../src/lib/chat/config';
+import type { Env } from '../types';
+
+function getClientIp(request: Request): string {
+  return (
+    request.headers.get('CF-Connecting-IP') ??
+    request.headers.get('X-Forwarded-For')?.split(',')[0].trim() ??
+    '0.0.0.0'
+  );
+}
+
+/**
+ * Browsers do not apply CORS to WebSocket handshakes — no preflight, and the
+ * connection opens whatever the response headers say. The Origin allowlist that
+ * cors.ts enforces for the board therefore has to be re-checked by hand here,
+ * or any page on the internet could open a socket into the room.
+ */
+function isAllowedChatOrigin(request: Request, env: Env): boolean {
+  const origin = request.headers.get('Origin') ?? '';
+  const allowed = (env.ALLOWED_ORIGIN ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  return allowed.includes(origin) || origin === 'http://localhost:5173';
+}
+
+function unavailable(request: Request, env: Env): Response {
+  return errorResponse(
+    'chat-unavailable',
+    '채팅방을 준비 중입니다.',
+    503,
+    request,
+    env
+  );
+}
+
+// ─── POST /api/chat/ticket ─────────────────────────────────────────────────
+
+interface TicketBody {
+  turnstileToken?: unknown;
+}
+
+/**
+ * Trades a Turnstile token for a short-lived join ticket.
+ *
+ * Turnstile is required here rather than on every message because the room is
+ * login-free: without a challenge at the door, per-IP rate limiting is the only
+ * defence and a botnet defeats it by definition. One challenge per ticket
+ * lifetime is the smallest amount of friction that still forces a real browser.
+ */
+export async function handleChatTicket(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (!getChatRoomNamespace(env)) return unavailable(request, env);
+
+  let parsed: TicketBody;
+  try {
+    parsed = (await request.json()) as TicketBody;
+  } catch {
+    return errorResponse(
+      'invalid-body',
+      '요청 형식이 올바르지 않습니다.',
+      400,
+      request,
+      env
+    );
+  }
+
+  const token =
+    typeof parsed.turnstileToken === 'string' ? parsed.turnstileToken : '';
+  const ip = getClientIp(request);
+
+  const captchaOk = await verifyTurnstile(token, env.TURNSTILE_SECRET, ip);
+  if (!captchaOk) {
+    return errorResponse(
+      'captcha-failed',
+      'CAPTCHA 검증에 실패했습니다. 다시 시도해주세요.',
+      403,
+      request,
+      env
+    );
+  }
+
+  const ipHash = await hashIp(ip, env.IP_SALT);
+  const expiresAt = Date.now() + CHAT_TICKET_TTL_MS;
+  const ticket = await issueChatTicket(ipHash, env.IP_SALT, expiresAt);
+
+  return jsonResponse(
+    { ticket, expiresAt: new Date(expiresAt).toISOString() },
+    200,
+    request,
+    env
+  );
+}
+
+// ─── GET /api/chat/room (WebSocket) ────────────────────────────────────────
+
+/**
+ * Upgrades to a socket on the room's Durable Object.
+ *
+ * Every check runs here, in the Worker, before the object is touched: an
+ * unverified probe should cost a Worker request, not a Durable Object request.
+ */
+export async function handleChatRoom(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  const namespace = getChatRoomNamespace(env);
+  if (!namespace) return unavailable(request, env);
+
+  if ((request.headers.get('Upgrade') ?? '').toLowerCase() !== 'websocket') {
+    return errorResponse(
+      'expected-websocket',
+      '웹소켓 연결이 필요합니다.',
+      426,
+      request,
+      env
+    );
+  }
+
+  if (!isAllowedChatOrigin(request, env)) {
+    return errorResponse(
+      'forbidden-origin',
+      '허용되지 않은 접속 경로입니다.',
+      403,
+      request,
+      env
+    );
+  }
+
+  const ticket = new URL(request.url).searchParams.get('ticket') ?? '';
+  const ip = getClientIp(request);
+  const ipHash = await hashIp(ip, env.IP_SALT);
+
+  if (!(await verifyChatTicket(ticket, ipHash, env.IP_SALT, Date.now()))) {
+    return errorResponse(
+      'invalid-ticket',
+      '입장 확인이 만료되었습니다. 다시 입장해주세요.',
+      403,
+      request,
+      env
+    );
+  }
+
+  // The room derives the display handle from this header alone, so the client
+  // never gets to state who it is.
+  const headers = new Headers(request.headers);
+  headers.set(CHAT_IP_HASH_HEADER, ipHash);
+
+  const stub = namespace.get(namespace.idFromName(CHAT_ROOM_NAME));
+  return stub.fetch(request.url, { method: request.method, headers });
+}

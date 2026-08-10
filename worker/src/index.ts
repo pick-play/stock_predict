@@ -24,7 +24,13 @@ import {
 } from './routes/auth';
 import { handleGetMyPosts } from './routes/me';
 import { handleGetMarkets } from './routes/markets';
+import { handleChatTicket, handleChatRoom } from './routes/chat';
 import type { Env } from './types';
+
+// The Durable Object class has to be exported from the Worker entry module for
+// the runtime to bind it. See worker/src/chatRoom.ts for why the chat room is a
+// Durable Object and the board is not.
+export { ChatRoom } from './chatRoom';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -147,6 +153,16 @@ export default {
     const adminCommentDeleteMatch = path.match(/^\/api\/admin\/comments\/(\d+)$/);
     if (method === 'DELETE' && adminCommentDeleteMatch) {
       return handleAdminDeleteComment(request, env, adminCommentDeleteMatch[1]);
+    }
+
+    // POST /api/chat/ticket — Turnstile check traded for a short-lived join ticket
+    if (method === 'POST' && path === '/api/chat/ticket') {
+      return handleChatTicket(request, env);
+    }
+
+    // GET /api/chat/room — WebSocket upgrade proxied to the ChatRoom Durable Object
+    if (method === 'GET' && path === '/api/chat/room') {
+      return handleChatRoom(request, env);
     }
 
     return errorResponse('not-found', '엔드포인트를 찾을 수 없습니다.', 404, request, env);
