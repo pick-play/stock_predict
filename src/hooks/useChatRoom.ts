@@ -48,6 +48,14 @@ export interface ChatRoomController {
   clearNotice: () => void;
 }
 
+/**
+ * Shortest gap between connection attempts triggered by regaining focus.
+ *
+ * Long enough that a phone waking and re-locking cannot open a socket per event,
+ * short enough that returning to the tab still feels immediate.
+ */
+export const VISIBILITY_RETRY_MIN_GAP_MS = 1_500;
+
 function reconnectDelay(attempt: number): number {
   const index = Math.min(attempt, CHAT_RECONNECT_DELAYS_MS.length - 1);
   return CHAT_RECONNECT_DELAYS_MS[index];
@@ -69,6 +77,13 @@ export function useChatRoom(): ChatRoomController {
   const attemptRef = useRef(0);
   const reconnectTimerRef = useRef<number | null>(null);
   const pingTimerRef = useRef<number | null>(null);
+  /**
+   * When a connection was last attempted.
+   *
+   * A phone fires visibilitychange constantly — every screen lock, every app
+   * switch — and the focus recovery below would otherwise retry on each one.
+   */
+  const lastAttemptAtRef = useRef(0);
   /** Guards every async continuation against running after unmount. */
   const liveRef = useRef(true);
   /** Set while tearing down on purpose, so cleanup does not reconnect. */
@@ -148,6 +163,7 @@ export function useChatRoom(): ChatRoomController {
       }
 
       ticketRef.current = ticket;
+      lastAttemptAtRef.current = Date.now();
       setStatus(attemptRef.current === 0 ? "connecting" : "reconnecting");
 
       let socket: WebSocket;
@@ -330,8 +346,24 @@ export function useChatRoom(): ChatRoomController {
       }
       if (socket && socket.readyState === WebSocket.CONNECTING) return;
 
+      /*
+       * Two guards, both learned the hard way.
+       *
+       * The attempt counter is no longer reset here. Resetting it meant a phone
+       * flipping visibility never let the backoff grow, so a connection that
+       * kept being refused was retried at full speed indefinitely — the
+       * repeating "재연결 중…". The counter now only resets on a successful open,
+       * which is the only event that proves the retry worked.
+       *
+       * And a minimum gap since the last attempt, so a burst of visibility
+       * events cannot become a burst of sockets. The already-scheduled reconnect
+       * is left to fire on its own in that case.
+       */
+      if (Date.now() - lastAttemptAtRef.current < VISIBILITY_RETRY_MIN_GAP_MS) {
+        return;
+      }
+
       clearTimers();
-      attemptRef.current = 0;
       const held = ticketRef.current;
       if (held !== null && Date.parse(held.expiresAt) > Date.now()) {
         connect(held);

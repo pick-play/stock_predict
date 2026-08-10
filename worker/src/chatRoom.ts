@@ -52,6 +52,21 @@ function readIdentity(socket: WebSocket): SocketIdentity | null {
 }
 
 /**
+ * WebSocket.CLOSING and WebSocket.CLOSED as numbers.
+ *
+ * Compared numerically rather than through the constants so a socket the runtime
+ * hands back without them still classifies correctly — and erring toward
+ * "counts as live" would bring back the reconnect loop.
+ */
+const READY_STATE_CLOSING = 2;
+const READY_STATE_CLOSED = 3;
+
+function isClosingOrClosed(socket: WebSocket): boolean {
+  const state = socket.readyState;
+  return state === READY_STATE_CLOSING || state === READY_STATE_CLOSED;
+}
+
+/**
  * 1005 and 1006 are reserved codes a peer may never send back, and anything
  * outside the valid range is refused by the runtime, so both collapse to 1000.
  */
@@ -238,10 +253,21 @@ export class ChatRoom implements DurableObject {
     );
   }
 
-  /** How many live sockets this IP hash already holds. */
+  /**
+   * How many *live* sockets this IP hash already holds.
+   *
+   * The readyState filter is the whole point. A phone that switches network or
+   * locks its screen drops a connection without a close frame, and the runtime
+   * keeps the dead socket in the set until it notices. Counting those made the
+   * tally climb with every reconnect until it hit the cap, at which point the
+   * upgrade was refused — and a refused upgrade looks to the browser exactly
+   * like a failed connection, so it reconnected, was refused again, and sat in
+   * "재연결 중…" forever. Mobile hit it fastest because mobile drops most.
+   */
   private socketsForIpHash(ipHash: string): number {
     let count = 0;
     for (const socket of this.ctx.getWebSockets()) {
+      if (isClosingOrClosed(socket)) continue;
       if (readIdentity(socket)?.ipHash === ipHash) count++;
     }
     return count;
@@ -251,10 +277,15 @@ export class ChatRoom implements DurableObject {
    * Live participant count.
    *
    * getWebSockets() can still return a socket that is closing, so the one being
-   * torn down is excluded explicitly rather than trusted to have left the set.
+   * torn down is excluded explicitly rather than trusted to have left the set —
+   * and so is any other socket already closing or closed, which is how a phone
+   * that dropped without a close frame used to keep inflating the count.
    */
   private participantCount(exclude?: WebSocket): number {
-    return this.ctx.getWebSockets().filter((socket) => socket !== exclude).length;
+    return this.ctx
+      .getWebSockets()
+      .filter((socket) => socket !== exclude && !isClosingOrClosed(socket))
+      .length;
   }
 
   private send(socket: WebSocket, event: ChatServerEvent): void {

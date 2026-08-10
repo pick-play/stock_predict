@@ -13,6 +13,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { CHAT_RECONNECT_DELAYS_MS } from "../../lib/chat/config";
+import { VISIBILITY_RETRY_MIN_GAP_MS } from "../useChatRoom";
 
 const NOW = 1_786_000_000_000;
 
@@ -215,12 +216,77 @@ describe("useChatRoom reconnection", () => {
       // Mid-backoff: nothing has been rebuilt yet.
       expect(FakeSocket.instances).toHaveLength(1);
 
+      // Past the minimum gap, which exists to stop a burst of visibility events
+      // becoming a burst of sockets.
+      await act(async () => {
+        vi.advanceTimersByTime(VISIBILITY_RETRY_MIN_GAP_MS);
+      });
+
       show();
       await act(async () => {
         document.dispatchEvent(new Event("visibilitychange"));
       });
 
       expect(FakeSocket.instances).toHaveLength(2);
+    });
+
+    /*
+     * The reported bug. A phone fires visibilitychange on every screen lock and
+     * app switch; each one used to reset the backoff and retry immediately, so a
+     * connection that kept failing was retried at full speed and the room sat in
+     * "재연결 중…" indefinitely.
+     */
+    it("does not open a socket per visibility event", async () => {
+      api.cached = ticket(20 * 60_000);
+      renderHook(() => useChatRoom());
+      await act(async () => {});
+      await act(async () => FakeSocket.instances[0].open());
+      await act(async () => FakeSocket.instances[0].drop());
+
+      show();
+      for (let i = 0; i < 12; i++) {
+        await act(async () => {
+          document.dispatchEvent(new Event("visibilitychange"));
+        });
+      }
+
+      // Every one of them landed inside the minimum gap.
+      expect(FakeSocket.instances).toHaveLength(1);
+    });
+
+    it("lets the backoff grow when reconnects keep failing", async () => {
+      api.cached = ticket(20 * 60_000);
+      renderHook(() => useChatRoom());
+      await act(async () => {});
+      await act(async () => FakeSocket.instances[0].open());
+
+      // Three failures in a row, each recovered through a focus event.
+      for (let i = 0; i < 3; i++) {
+        await act(async () => {
+          FakeSocket.instances[FakeSocket.instances.length - 1].drop();
+        });
+        await act(async () => {
+          vi.advanceTimersByTime(VISIBILITY_RETRY_MIN_GAP_MS);
+        });
+        show();
+        await act(async () => {
+          document.dispatchEvent(new Event("visibilitychange"));
+        });
+      }
+
+      /*
+       * The socket that never opened must not have reset the counter, so the
+       * scheduled delay has climbed past the first rung. Checked by showing that
+       * the first delay alone no longer produces a reconnect.
+       */
+      const built = FakeSocket.instances.length;
+      await act(async () => {
+        FakeSocket.instances[built - 1].drop();
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(CHAT_RECONNECT_DELAYS_MS[0]);
+      });
+      expect(FakeSocket.instances).toHaveLength(built);
     });
 
     it("leaves a live socket alone but prods it", async () => {
