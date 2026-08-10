@@ -28,7 +28,11 @@ export interface TickerItem {
   decimals: number;
   unit: string;
   status: TickerMarketStatus;
-  /** True once the underlying datapoint is older than the tape's threshold. */
+  /**
+   * True once the datapoint is old enough that the upstream looks stopped rather
+   * than merely delayed. Ordinary delay is the assumed state for every non-live
+   * instrument, so this flag marks the failure, not the lag.
+   */
   isStale: boolean;
   /** True while the value is coming from the browser's own live socket. */
   isLive: boolean;

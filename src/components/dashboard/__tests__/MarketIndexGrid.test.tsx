@@ -75,7 +75,28 @@ describe("MarketIndexGrid", () => {
     };
     render(<MarketIndexGrid />);
     expect(screen.getByText("실시간")).toBeTruthy();
+    expect(screen.queryByText("지연")).toBeNull();
+  });
+
+  // 장중 would imply the number is current; the upstream is a quarter hour behind.
+  it("badges an open market 지연, never 장중", () => {
+    mockState.current = {
+      items: [item({ status: "open", isStale: false })],
+      isLoading: false,
+    };
+    render(<MarketIndexGrid />);
+    expect(screen.getByText("지연")).toBeTruthy();
     expect(screen.queryByText("장중")).toBeNull();
+  });
+
+  it("escalates a stopped feed above ordinary delay", () => {
+    mockState.current = {
+      items: [item({ status: "open", isStale: true })],
+      isLoading: false,
+    };
+    render(<MarketIndexGrid />);
+    expect(screen.getByText("갱신 중단")).toBeTruthy();
+    expect(screen.queryByText("지연")).toBeNull();
   });
 
   it("keeps the delay caveat visible so the badges do not over-promise", () => {
