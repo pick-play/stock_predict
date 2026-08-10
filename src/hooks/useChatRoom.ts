@@ -194,12 +194,25 @@ export function useChatRoom(): ChatRoomController {
           held !== null && Date.parse(held.expiresAt) > Date.now();
 
         if (!stillValid) {
-          // An expired ticket cannot be retried; the visitor has to clear the
-          // door check again.
+          /*
+           * The ticket outlived the session, so the socket cannot be retried
+           * with it — fetch a fresh one and carry on.
+           *
+           * This used to park at "gated" and wait for the visitor to press a
+           * join button. With the door removed there is no such button, so the
+           * room simply died after the ticket's thirty minutes and only a reload
+           * brought it back. Backed off on the same schedule as an ordinary
+           * reconnect, so a failing ticket endpoint cannot become a hot loop.
+           */
           clearCachedTicket();
           ticketRef.current = null;
-          attemptRef.current = 0;
-          setStatus("gated");
+          const rejoinDelay = reconnectDelay(attemptRef.current);
+          attemptRef.current += 1;
+          setStatus("reconnecting");
+          reconnectTimerRef.current = window.setTimeout(() => {
+            reconnectTimerRef.current = null;
+            if (liveRef.current) joinRef.current("");
+          }, rejoinDelay);
           return;
         }
 
@@ -287,9 +300,51 @@ export function useChatRoom(): ChatRoomController {
       joinRef.current("");
     }
 
+    /*
+     * Recover the moment the tab comes back.
+     *
+     * This is the ordinary reason a reader sees the room drop and return. A
+     * hidden tab has its timers throttled — mobile browsers stretch a 45s
+     * interval well past a minute or stop it altogether — so the keepalive stops
+     * firing and the connection is closed as idle. Waiting out the backoff after
+     * that means staring at "재연결 중…" for no reason, so a visible tab retries
+     * at once and from a clean attempt count.
+     *
+     * A live socket is left alone: an unnecessary reconnect would cost the
+     * backlog round trip for nothing.
+     */
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!liveRef.current) return;
+
+      const socket = socketRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        // Prod the socket so a connection the OS killed while we were away is
+        // discovered now rather than at the next keepalive.
+        try {
+          socket.send(CHAT_PING_FRAME);
+        } catch {
+          // A throw here means the socket is already gone; onclose will run.
+        }
+        return;
+      }
+      if (socket && socket.readyState === WebSocket.CONNECTING) return;
+
+      clearTimers();
+      attemptRef.current = 0;
+      const held = ticketRef.current;
+      if (held !== null && Date.parse(held.expiresAt) > Date.now()) {
+        connect(held);
+      } else {
+        joinRef.current("");
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       liveRef.current = false;
       closingRef.current = true;
+      document.removeEventListener("visibilitychange", onVisible);
       clearTimers();
       const socket = socketRef.current;
       socketRef.current = null;
