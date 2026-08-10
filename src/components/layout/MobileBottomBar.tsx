@@ -1,51 +1,27 @@
-import { formatRelativeTime } from "../../lib/format";
-import { useNow } from "../../hooks/useNow";
+import { MarketTicker } from "../common/MarketTicker";
 
-interface MobileBottomBarProps {
-  lastUpdated: string | null;
-  isLoading: boolean;
-}
-
-export function MobileBottomBar({
-  lastUpdated,
-  isLoading,
-}: MobileBottomBarProps) {
-  const now = useNow();
+/**
+ * Mobile-only bottom strip.
+ *
+ * It used to hold an "N초 전 갱신" clock. That reading now lives on each stock
+ * card, next to the price it describes, so the fixed bar carries the market tape
+ * instead — the one thing worth a permanently visible row on a small screen.
+ *
+ * Blurred rather than opaque so the content scrolling under it stays legible;
+ * the page reserves space with pb-24 so nothing ends up trapped behind it.
+ */
+export function MobileBottomBar() {
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 md:hidden border-t border-[var(--border-subtle)] px-4 py-2.5 flex items-center justify-between"
+      className="fixed bottom-0 left-0 right-0 z-20 md:hidden"
       style={{
         background: "color-mix(in srgb, var(--surface-1) 92%, transparent)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
-      aria-live="polite"
-      aria-label="갱신 상태"
     >
-      <div className="flex items-center gap-2">
-        {isLoading ? (
-          <>
-            <span
-              className="w-1.5 h-1.5 rounded-full bg-[#f5b942] animate-pulse"
-              aria-hidden="true"
-            />
-            <span className="text-xs text-[var(--text-tertiary)]">불러오는 중…</span>
-          </>
-        ) : lastUpdated ? (
-          <>
-            <span
-              className="w-1.5 h-1.5 rounded-full bg-[#31c48d]"
-              aria-hidden="true"
-            />
-            <span className="text-xs text-[var(--text-tertiary)] tabular-nums">
-              {formatRelativeTime(lastUpdated, now)} 갱신
-            </span>
-          </>
-        ) : (
-          <span className="text-xs text-[var(--text-muted)]">대기 중</span>
-        )}
-      </div>
-      <span className="text-[10px] text-[var(--text-muted)]">60초 자동 갱신</span>
+      <MarketTicker edge="bottom" />
     </div>
   );
 }

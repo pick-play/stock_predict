@@ -13,7 +13,7 @@
  * track to its end state and hide half the items.
  */
 
-import { useMarketTicker } from "../../hooks/useMarketTicker";
+import { useSharedMarketData } from "../../lib/markets/marketDataContext";
 import { formatDirectionSymbol, getDirection } from "../../lib/format";
 import {
   formatTickerPrice,
@@ -91,8 +91,25 @@ function TickerCell({ item }: { item: TickerItem }) {
   );
 }
 
-export function MarketTicker() {
-  const { items, isLoading } = useMarketTicker();
+interface MarketTickerProps {
+  /**
+   * Which edge the strip is attached to. Desktop hangs it under the header;
+   * mobile pins it to the bottom bar, where it replaced the update clock.
+   */
+  edge?: "top" | "bottom";
+  className?: string;
+}
+
+export function MarketTicker({
+  edge = "top",
+  className = "",
+}: MarketTickerProps) {
+  const { items, isLoading } = useSharedMarketData();
+
+  const edgeClass =
+    edge === "top"
+      ? "border-b border-[var(--border-subtle)]"
+      : "border-t border-[var(--border-subtle)]";
 
   // Nothing to say yet, or the proxy is not configured for this build: take up
   // no space rather than reserving an empty strip.
@@ -100,7 +117,7 @@ export function MarketTicker() {
     if (!isLoading) return null;
     return (
       <div
-        className="h-9 border-b border-[var(--border-subtle)] bg-[var(--surface-1)]"
+        className={`h-9 ${edgeClass} bg-[var(--surface-1)] ${className}`}
         aria-hidden="true"
       />
     );
@@ -118,7 +135,7 @@ export function MarketTicker() {
 
   return (
     <div
-      className="market-ticker border-b border-[var(--border-subtle)] bg-[var(--surface-1)]"
+      className={`market-ticker ${edgeClass} bg-[var(--surface-1)] ${className}`}
       role="region"
       aria-label="주요 지수 시세"
     >

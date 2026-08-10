@@ -19,6 +19,15 @@ interface PriceChartProps {
   range: ChartRange;
   onRangeChange: (range: ChartRange) => void;
   isLoading?: boolean;
+  /**
+   * Pins the chart to one stock and drops the stock selector.
+   *
+   * Set when the chart lives inside a stock's own card, where a selector that
+   * could switch to the other company would contradict the card around it.
+   */
+  stockId?: StockId;
+  /** Drops the card chrome, for when a card already provides it. */
+  embedded?: boolean;
 }
 
 type TimeRange = ChartRange;
@@ -48,8 +57,13 @@ export function PriceChart({
   range,
   onRangeChange,
   isLoading = false,
+  stockId,
+  embedded = false,
 }: PriceChartProps) {
-  const [activeStock, setActiveStock] = useState<StockId>("samsung");
+  const [selectedStock, setSelectedStock] = useState<StockId>("samsung");
+  // A pinned stock overrides the selector's state rather than syncing to it, so
+  // the embedded chart cannot drift from the card it belongs to.
+  const activeStock = stockId ?? selectedStock;
   const timeRange = range;
   const rawId = useId();
   const uid = rawId.replace(/:/g, "");
@@ -99,12 +113,19 @@ export function PriceChart({
     }).format(new Date(v));
 
   return (
-    <div className="rounded-2xl border border-[rgba(255,255,255,0.07)] bg-surface-1 p-5 md:p-6 animate-slide-fade-in delay-250">
+    <div
+      className={
+        embedded
+          ? ""
+          : "rounded-2xl border border-[rgba(255,255,255,0.07)] bg-surface-1 p-5 md:p-6 animate-slide-fade-in delay-250"
+      }
+    >
       <ChartHeader
         activeStock={activeStock}
         timeRange={timeRange}
-        onStockChange={setActiveStock}
+        onStockChange={setSelectedStock}
         onRangeChange={onRangeChange}
+        showStockSelector={stockId === undefined}
       />
 
       {chartData.length < 2 ? (
@@ -259,32 +280,40 @@ function ChartHeader({
   timeRange,
   onStockChange,
   onRangeChange,
+  showStockSelector,
 }: {
   activeStock: StockId;
   timeRange: TimeRange;
   onStockChange: (s: StockId) => void;
   onRangeChange: (r: TimeRange) => void;
+  showStockSelector: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      {/* Stock selector */}
-      <div className="flex gap-1" role="group" aria-label="종목 선택">
-        {(["samsung", "skHynix"] as StockId[]).map((id) => (
-          <button
-            key={id}
-            onClick={() => onStockChange(id)}
-            aria-label={`${STOCK_LABELS[id]} 차트 보기`}
-            aria-pressed={activeStock === id}
-            className={`min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
-              activeStock === id
-                ? "bg-[#8b7cff] text-white"
-                : "bg-surface-3 text-[#a6b0c0] hover:text-[#f4f7fb] hover:bg-[rgba(255,255,255,0.06)]"
-            }`}
-          >
-            {STOCK_LABELS[id]}
-          </button>
-        ))}
-      </div>
+    <div
+      className={`flex flex-wrap items-center gap-2 ${
+        showStockSelector ? "justify-between" : "justify-end"
+      }`}
+    >
+      {/* Stock selector — absent when the chart is pinned to one card's stock */}
+      {showStockSelector && (
+        <div className="flex gap-1" role="group" aria-label="종목 선택">
+          {(["samsung", "skHynix"] as StockId[]).map((id) => (
+            <button
+              key={id}
+              onClick={() => onStockChange(id)}
+              aria-label={`${STOCK_LABELS[id]} 차트 보기`}
+              aria-pressed={activeStock === id}
+              className={`min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
+                activeStock === id
+                  ? "bg-[#8b7cff] text-white"
+                  : "bg-surface-3 text-[#a6b0c0] hover:text-[#f4f7fb] hover:bg-[rgba(255,255,255,0.06)]"
+              }`}
+            >
+              {STOCK_LABELS[id]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Range selector */}
       <div className="flex gap-0.5" role="group" aria-label="기간 선택">

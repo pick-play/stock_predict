@@ -13,6 +13,10 @@ interface LazyPriceChartProps {
   range: ChartRange;
   onRangeChange: (range: ChartRange) => void;
   isLoading?: boolean;
+  /** Pins the chart to one stock and hides the stock selector. */
+  stockId?: StockId;
+  /** Drops the card chrome when a card already provides it. */
+  embedded?: boolean;
 }
 
 export function LazyPriceChart(props: LazyPriceChartProps) {

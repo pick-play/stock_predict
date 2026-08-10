@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useNow } from "../../hooks/useNow";
 import type { StockSnapshot } from "../../types/market";
 import {
@@ -10,22 +10,48 @@ import {
   formatRelativeTime,
   formatBinancePrice,
 } from "../../lib/format";
-import { CONFIDENCE_THRESHOLDS } from "../../config/theme";
 import { getLastKrxCloseMs, getSeoulDate } from "../../lib/koreaMarket";
+import { getDataFreshness } from "../../lib/staleData";
 import { Sparkline } from "./Sparkline";
 import { ShareCardButton } from "./ShareCardButton";
+import { LazyPriceChart } from "./LazyPriceChart";
+import type { HistoryEntry, StockId } from "../../types/market";
+import type { ChartRange } from "../../lib/binance/klineHistory";
+import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
 
 interface StockEstimateCardProps {
   snapshot: StockSnapshot;
+  stockId: StockId;
   sparklineData?: number[];
   animationDelay?: string;
+  /** Live-stream state, which decides whether this card may say 실시간. */
+  wsStatus?: WsConnectionStatus;
+  /** Chart inputs, forwarded to the collapsible chart inside the card. */
+  history: HistoryEntry[];
+  krxClose?: Partial<Record<StockId, number>>;
+  chartRange: ChartRange;
+  onChartRangeChange: (range: ChartRange) => void;
+  chartLoading?: boolean;
 }
 
 export function StockEstimateCard({
   snapshot,
+  stockId,
   sparklineData,
   animationDelay,
+  wsStatus,
+  history,
+  krxClose,
+  chartRange,
+  onChartRangeChange,
+  chartLoading,
 }: StockEstimateCardProps) {
+  // Recharts is a lazy chunk; keeping the chart unmounted until asked for means
+  // the initial view never pays for it (§22).
+  const [chartOpen, setChartOpen] = useState(false);
+  // Both cards render this control, so the aria-controls target has to be unique
+  // per instance or the two buttons point at the same panel.
+  const chartPanelId = `chart-panel-${useId().replace(/:/g, "")}`;
   const now = useNow();
   const direction = getDirection(snapshot.changeRate);
   const dirSymbol = formatDirectionSymbol(snapshot.changeRate);
@@ -69,22 +95,31 @@ export function StockEstimateCard({
       ? "#3f82ff"
       : "rgba(214,221,232,0.15)";
 
-  // Confidence tokens
-  const confScore = snapshot.confidenceScore;
-  const confColor =
-    confScore >= CONFIDENCE_THRESHOLDS.good
-      ? "#31c48d"
-      : confScore >= CONFIDENCE_THRESHOLDS.fair
-      ? "#f5b942"
-      : "#ff5d6c";
-  const confLabel =
-    confScore >= CONFIDENCE_THRESHOLDS.good
-      ? "데이터 양호"
-      : confScore >= CONFIDENCE_THRESHOLDS.fair
-      ? "참고 가능"
-      : confScore >= CONFIDENCE_THRESHOLDS.caution
-      ? "변동성 주의"
-      : "신뢰도 낮음";
+  /**
+   * What the footer now says instead of a confidence score.
+   *
+   * 실시간 is claimed only when the price socket is actually connected and the
+   * last tick is recent — this card really is repriced from a live order book
+   * once a second, so the word is earned. The moment either condition fails it
+   * degrades rather than keeping a green light on a frozen number.
+   */
+  const freshness = getDataFreshness(snapshot.eventTime);
+  const liveState: "live" | "delayed" | "stalled" | "reconnecting" =
+    wsStatus !== undefined && wsStatus !== "connected"
+      ? "reconnecting"
+      : freshness === "fresh"
+      ? "live"
+      : freshness === "warning"
+      ? "delayed"
+      : "stalled";
+
+  const LIVE_PRESENTATION = {
+    live: { label: "실시간", color: "#31c48d", pulse: true },
+    delayed: { label: "갱신 지연", color: "#f5b942", pulse: false },
+    stalled: { label: "업데이트 중단", color: "#ff5d6c", pulse: false },
+    reconnecting: { label: "연결 재시도 중", color: "#f5b942", pulse: true },
+  } as const;
+  const live = LIVE_PRESENTATION[liveState];
 
   const spreadLabel =
     snapshot.spreadPercent !== null
@@ -236,23 +271,21 @@ export function StockEstimateCard({
           <MetricRow label="호가 스프레드" value={spreadLabel} />
         </div>
 
-        {/* ── Footer: confidence + time ── */}
+        {/* ── Footer: live state + time ── */}
         <div className="border-t border-[var(--border-mid)] pt-3 mt-3">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
+          <div className="flex items-center justify-between">
+            <div
+              className="flex items-center gap-1.5"
+              aria-live="polite"
+              aria-label={`데이터 상태 ${live.label}`}
+            >
               <span
-                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: confColor }}
+                className={`w-1.5 h-1.5 rounded-full flex-shrink-0${live.pulse ? " animate-pulse" : ""}`}
+                style={{ backgroundColor: live.color }}
                 aria-hidden="true"
               />
-              <span
-                className="text-xs font-medium"
-                style={{ color: confColor }}
-              >
-                {confLabel}
-              </span>
-              <span className="text-[10px] text-[var(--text-muted)]">
-                · {confScore}/100
+              <span className="text-xs font-medium" style={{ color: live.color }}>
+                {live.label}
               </span>
             </div>
             <span
@@ -263,25 +296,36 @@ export function StockEstimateCard({
             </span>
           </div>
 
-          {/* Confidence progress bar */}
-          <div
-            className="h-[2px] rounded-full bg-[var(--border-mid)] overflow-hidden"
-            role="meter"
-            aria-valuenow={confScore}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={`데이터 신뢰도 ${confScore}/100`}
-          >
-            <div
-              className="h-full rounded-full transition-all duration-700 ease-out"
-              style={{ width: `${confScore}%`, backgroundColor: confColor }}
-            />
+          {/* ── Chart, collapsed by default ── */}
+          <div className="flex items-center justify-between gap-2 mt-3">
+            <button
+              type="button"
+              onClick={() => setChartOpen((open) => !open)}
+              aria-expanded={chartOpen}
+              aria-controls={chartPanelId}
+              className="min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.06)] transition-colors duration-150"
+            >
+              {chartOpen ? "차트 닫기" : "차트 보기"}
+            </button>
+
+            {/* Share / download button — hidden when no real estimate available */}
+            {snapshot.status === "healthy" && <ShareCardButton snapshot={snapshot} />}
           </div>
 
-          {/* Share / download button — hidden when no real estimate available */}
-          {snapshot.status === "healthy" && (
-            <div className="flex justify-end mt-3">
-              <ShareCardButton snapshot={snapshot} />
+          {chartOpen && (
+            <div
+              id={chartPanelId}
+              className="mt-3 pt-3 border-t border-[var(--border-subtle)] animate-fade-in"
+            >
+              <LazyPriceChart
+                history={history}
+                krxClose={krxClose}
+                range={chartRange}
+                onRangeChange={onChartRangeChange}
+                isLoading={chartLoading}
+                stockId={stockId}
+                embedded
+              />
             </div>
           )}
         </div>

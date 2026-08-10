@@ -6,8 +6,8 @@ const mockState = vi.hoisted(() => ({
   current: { items: [] as TickerItem[], isLoading: false },
 }));
 
-vi.mock("../../../hooks/useMarketTicker", () => ({
-  useMarketTicker: () => mockState.current,
+vi.mock("../../../lib/markets/marketDataContext", () => ({
+  useSharedMarketData: () => mockState.current,
 }));
 
 const { MarketTicker } = await import("../MarketTicker");

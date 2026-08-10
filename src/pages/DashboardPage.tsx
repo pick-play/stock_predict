@@ -4,7 +4,7 @@ import { useChartHistory } from "../hooks/useChartHistory";
 import { AppHeader } from "../components/common/AppHeader";
 import { StockEstimateCard } from "../components/dashboard/StockEstimateCard";
 import { HeroSummary } from "../components/dashboard/HeroSummary";
-import { LazyPriceChart } from "../components/dashboard/LazyPriceChart";
+import { MarketIndexGrid } from "../components/dashboard/MarketIndexGrid";
 import { Disclaimer } from "../components/common/Disclaimer";
 import { PopularTicker } from "../components/board/PopularTicker";
 import { ErrorState } from "../components/common/ErrorState";
@@ -94,7 +94,8 @@ export function DashboardPage({ onNavigateBoard }: DashboardPageProps) {
           </div>
         )}
 
-        {/* Stock estimate cards — staggered entry */}
+        {/* Stock estimate cards — staggered entry. Each owns its own chart,
+            collapsed until asked for, so Recharts stays out of the first paint. */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {STOCK_IDS.map((id, index) => {
             const snapshot = stocks[id];
@@ -106,26 +107,27 @@ export function DashboardPage({ onNavigateBoard }: DashboardPageProps) {
               <StockEstimateCard
                 key={id}
                 snapshot={snapshot}
+                stockId={id}
                 sparklineData={getSparklineData(id)}
                 animationDelay={`${index * 80}ms`}
+                wsStatus={wsStatus}
+                history={history}
+                krxClose={krxClose}
+                chartRange={chartRange}
+                onChartRangeChange={setChartRange}
+                chartLoading={chartLoading}
               />
             );
           })}
         </div>
 
-        {/* Price chart — lazy-loaded to split Recharts from initial bundle */}
-        <LazyPriceChart
-          history={history}
-          krxClose={krxClose}
-          range={chartRange}
-          onRangeChange={setChartRange}
-          isLoading={chartLoading}
-        />
+        {/* Major markets — same feed as the ticker tape, read rather than glanced */}
+        <MarketIndexGrid />
 
         <Disclaimer />
       </main>
 
-      <MobileBottomBar lastUpdated={lastUpdated} isLoading={isLoading} />
+      <MobileBottomBar />
     </DashboardLayout>
   );
 }
