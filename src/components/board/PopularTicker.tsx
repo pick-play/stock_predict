@@ -170,7 +170,7 @@ export function PopularTicker({ onNavigateBoard }: PopularTickerProps) {
       <div className="flex items-center gap-2.5 min-w-0">
         {/* Label */}
         <span
-          className="shrink-0 text-[10px] font-semibold tracking-wider text-[var(--text-tertiary)] uppercase select-none"
+          className="shrink-0 text-[12px] font-semibold tracking-wider text-[var(--text-tertiary)] uppercase select-none"
           aria-hidden="true"
         >
           토론
@@ -190,7 +190,7 @@ export function PopularTicker({ onNavigateBoard }: PopularTickerProps) {
           aria-live="polite"
           aria-atomic="true"
         >
-          <span className="shrink-0 text-[11px] font-medium text-[var(--text-tertiary)]">
+          <span className="shrink-0 text-[13px] font-medium text-[var(--text-tertiary)]">
             {post.authorTag}
           </span>
           {/* post.body must stay as plain text — no dangerouslySetInnerHTML */}
@@ -204,7 +204,7 @@ export function PopularTicker({ onNavigateBoard }: PopularTickerProps) {
           type="button"
           onClick={handleLike}
           disabled={ls.pending}
-          className="shrink-0 flex items-center gap-1 rounded px-1 py-0.5 text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] disabled:opacity-40"
+          className="shrink-0 flex items-center gap-1 rounded px-1 py-0.5 text-[13px] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] disabled:opacity-40"
           aria-label={`공감 ${ls.count}개${ls.liked ? ", 공감함" : ""}`}
           aria-pressed={ls.liked}
         >
@@ -234,7 +234,7 @@ export function PopularTicker({ onNavigateBoard }: PopularTickerProps) {
         {/* Pause indicator — shown when hovered/focused */}
         {paused && (
           <span
-            className="shrink-0 text-[9px] text-[var(--text-muted)] select-none"
+            className="shrink-0 text-[11px] text-[var(--text-muted)] select-none"
             aria-hidden="true"
           >
             ∥

@@ -78,7 +78,7 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
                 <h1 className="truncate text-sm font-semibold leading-none tracking-tight text-[var(--text-primary)]">
                   실시간 채팅
                 </h1>
-                <p className="mt-1 truncate text-[10px] text-[var(--text-muted)]">
+                <p className="mt-1 truncate text-[12px] text-[var(--text-muted)]">
                   KOSPI NOW · 로그인 없이 참여
                 </p>
               </div>
@@ -94,7 +94,7 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
 
           <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span
-              className="flex items-center gap-1.5 text-[10px]"
+              className="flex items-center gap-1.5 text-[12px]"
               role="status"
               aria-live="polite"
             >
@@ -109,7 +109,7 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
             </span>
 
             {room.handle && (
-              <span className="text-[10px] text-[var(--text-muted)]">
+              <span className="text-[12px] text-[var(--text-muted)]">
                 내 이름 <span className="text-[#8b7cff]">{room.handle}</span> ·
                 같은 이름의 메시지가 강조됩니다
               </span>
@@ -145,7 +145,7 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
               isConnected={isConnected}
             />
 
-            <p className="shrink-0 px-4 pb-4 pt-2 text-center text-[10px] leading-relaxed text-[var(--text-muted)] md:px-6">
+            <p className="shrink-0 px-4 pb-4 pt-2 text-center text-[12px] leading-relaxed text-[var(--text-muted)] md:px-6">
               최근 {CHAT_MESSAGE_CAP}개의 대화만 보관되며 오래된 대화는 자동으로
               사라집니다. 이 채팅은 익명이며 투자 권유가 아닙니다.
             </p>

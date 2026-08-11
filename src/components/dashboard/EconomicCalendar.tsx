@@ -41,7 +41,7 @@ function ReleaseRow({
     >
       <time
         dateTime={release.releaseAtUtc}
-        className={`shrink-0 tabular-nums text-[11px] ${
+        className={`shrink-0 tabular-nums text-[13px] ${
           today
             ? "font-semibold text-[#8b7cff]"
             : published
@@ -53,7 +53,7 @@ function ReleaseRow({
       </time>
 
       <span
-        className={`min-w-0 flex-1 truncate text-[11px] ${
+        className={`min-w-0 flex-1 truncate text-[13px] ${
           published
             ? "text-[var(--text-tertiary)]"
             : "text-[var(--text-primary)]"
@@ -62,12 +62,12 @@ function ReleaseRow({
         {release.label}
       </span>
 
-      <span className="shrink-0 text-[10px] text-[var(--text-muted)]">
+      <span className="shrink-0 text-[12px] text-[var(--text-muted)]">
         {release.source}
       </span>
 
       <span
-        className={`shrink-0 tabular-nums text-[10px] ${
+        className={`shrink-0 tabular-nums text-[12px] ${
           today ? "text-[#8b7cff]" : "text-[var(--text-muted)]"
         }`}
       >
@@ -106,7 +106,7 @@ export function EconomicCalendar() {
           type="button"
           onClick={() => setExpanded((open) => !open)}
           aria-expanded={expanded}
-          className="min-h-[36px] rounded-lg px-2 text-[11px] text-[var(--text-tertiary)] transition-colors duration-150 hover:bg-[var(--surface-overlay)] hover:text-[var(--text-primary)]"
+          className="min-h-[36px] rounded-lg px-2 text-[13px] text-[var(--text-tertiary)] transition-colors duration-150 hover:bg-[var(--surface-overlay)] hover:text-[var(--text-primary)]"
         >
           {expanded ? "접기" : "전체보기"}
         </button>
@@ -124,7 +124,7 @@ export function EconomicCalendar() {
 
       {expanded && past.length > 0 && (
         <>
-          <p className="mt-3 mb-1 text-[10px] font-semibold text-[var(--text-muted)]">
+          <p className="mt-3 mb-1 text-[12px] font-semibold text-[var(--text-muted)]">
             지난 발표
           </p>
           <ol className="divide-y divide-[var(--border-subtle)]">
@@ -140,7 +140,7 @@ export function EconomicCalendar() {
         </>
       )}
 
-      <p className="mt-2 text-[10px] leading-relaxed text-[var(--text-muted)]">
+      <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-muted)]">
         {expanded
           ? `향후 ${ECONOMIC_WINDOW_DAYS}일 일정 · 한국시간 · 출처 FRED`
           : "한국시간 기준 · 출처 FRED"}

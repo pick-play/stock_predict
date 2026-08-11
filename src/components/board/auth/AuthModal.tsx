@@ -42,7 +42,7 @@ type AuthTab = "login" | "signup" | "reset";
 const fieldClass =
   "w-full rounded-lg bg-[var(--surface-2)] border border-[var(--border-subtle)] text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] px-3 py-2.5 transition-colors duration-150 focus:border-[var(--border-strong)] focus:outline-none focus:ring-1 focus:ring-[rgba(139,124,255,0.3)] disabled:opacity-50";
 
-const labelClass = "block text-[10px] text-[var(--text-muted)] mb-1 tracking-widest uppercase";
+const labelClass = "block text-[12px] text-[var(--text-muted)] mb-1 tracking-widest uppercase";
 
 // ── LoginForm ─────────────────────────────────────────────────────────────────
 
@@ -130,7 +130,7 @@ function LoginForm({ auth, onSwitchTab, onClose }: LoginFormProps) {
         {auth.isLoading ? "로그인 중…" : "로그인"}
       </button>
 
-      <p className="text-[10px] text-[var(--text-muted)] text-center leading-relaxed pt-1">
+      <p className="text-[12px] text-[var(--text-muted)] text-center leading-relaxed pt-1">
         비밀번호를 잊으셨나요?{" "}
         <button
           type="button"
@@ -299,7 +299,7 @@ function SignupForm({ auth, onSuccess }: SignupFormProps) {
         {auth.isLoading ? "가입 중…" : "가입하기"}
       </button>
 
-      <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+      <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
         수집 정보: 닉네임과 비밀번호뿐입니다. 이메일·전화번호를 묻지 않습니다.
         비밀번호를 잊으면 가입 시 발급된 복구 코드로만 재설정할 수 있습니다.
       </p>
@@ -544,7 +544,7 @@ function AccountPanel({ auth, onClose }: AccountPanelProps) {
           {auth.nickname}
         </p>
         {userInfo && (
-          <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
+          <p className="text-[12px] text-[var(--text-tertiary)] mt-1">
             작성 글 {userInfo.postCount}개
           </p>
         )}
@@ -561,7 +561,7 @@ function AccountPanel({ auth, onClose }: AccountPanelProps) {
         </button>
       ) : (
         <div className="space-y-2">
-          <p className="text-[10px] text-[var(--text-muted)] tracking-widest uppercase">
+          <p className="text-[12px] text-[var(--text-muted)] tracking-widest uppercase">
             내 글
           </p>
           {loadingPosts && (
@@ -590,11 +590,11 @@ function AccountPanel({ auth, onClose }: AccountPanelProps) {
                     {post.body}
                   </p>
                   <div className="flex items-center justify-between mt-1.5">
-                    <time className="text-[10px] text-[var(--text-muted)] tabular-nums">
+                    <time className="text-[12px] text-[var(--text-muted)] tabular-nums">
                       {formatTime(post.createdAt)}
                     </time>
                     {post.hiddenAt && (
-                      <span className="text-[10px] text-[#f5b942]">숨김</span>
+                      <span className="text-[12px] text-[#f5b942]">숨김</span>
                     )}
                   </div>
                 </div>
@@ -740,7 +740,7 @@ export function AuthModal({ auth, onClose, onRecoveryCode }: AuthModalProps) {
                 />
               )}
 
-              <p className="text-[10px] text-[var(--text-muted)] text-center mt-4 leading-relaxed">
+              <p className="text-[12px] text-[var(--text-muted)] text-center mt-4 leading-relaxed">
                 로그인 없이도 익명으로 글을 쓸 수 있습니다.
               </p>
             </>

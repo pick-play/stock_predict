@@ -58,11 +58,11 @@ function CommentRow({ comment }: { comment: BoardComment }) {
     <div className="py-2.5 border-t border-[var(--border-subtle)]">
       {/* Header */}
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-semibold text-[#8b7cff]">
+        <span className="text-[12px] font-semibold text-[#8b7cff]">
           {comment.authorTag}
         </span>
         <time
-          className="text-[10px] text-[var(--text-muted)] tabular-nums"
+          className="text-[12px] text-[var(--text-muted)] tabular-nums"
           dateTime={comment.createdAt}
         >
           {formatBoardTime(comment.createdAt)}
@@ -80,7 +80,7 @@ function CommentRow({ comment }: { comment: BoardComment }) {
           <button
             type="button"
             onClick={() => setReportState("confirming")}
-            className="text-[9px] text-[var(--text-muted)] hover:text-[var(--text-tertiary)] transition-colors rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+            className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-tertiary)] transition-colors rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
             aria-label={`댓글 ${comment.id} 신고`}
           >
             신고
@@ -89,13 +89,13 @@ function CommentRow({ comment }: { comment: BoardComment }) {
 
         {reportState === "confirming" && (
           <div className="flex items-center gap-2">
-            <span className="text-[9px] text-[var(--text-tertiary)]">
+            <span className="text-[11px] text-[var(--text-tertiary)]">
               신고하시겠습니까?
             </span>
             <button
               type="button"
               onClick={handleReportConfirm}
-              className="text-[9px] text-[#ff5d6c] hover:opacity-80 transition-opacity rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff5d6c]"
+              className="text-[11px] text-[#ff5d6c] hover:opacity-80 transition-opacity rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff5d6c]"
               aria-label="신고 확인"
             >
               확인
@@ -103,7 +103,7 @@ function CommentRow({ comment }: { comment: BoardComment }) {
             <button
               type="button"
               onClick={() => setReportState("idle")}
-              className="text-[9px] text-[var(--text-muted)] hover:text-[var(--text-tertiary)] transition-colors rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+              className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-tertiary)] transition-colors rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
               aria-label="신고 취소"
             >
               취소
@@ -112,17 +112,17 @@ function CommentRow({ comment }: { comment: BoardComment }) {
         )}
 
         {reportState === "sending" && (
-          <span className="text-[9px] text-[var(--text-muted)]">신고 중…</span>
+          <span className="text-[11px] text-[var(--text-muted)]">신고 중…</span>
         )}
 
         {reportState === "done" && (
-          <span className="text-[9px] text-[#31c48d]">
+          <span className="text-[11px] text-[#31c48d]">
             신고가 접수되었습니다.
           </span>
         )}
 
         {reportState === "error" && (
-          <span className="text-[9px] text-[#ff5d6c]">
+          <span className="text-[11px] text-[#ff5d6c]">
             {reportError ?? "신고 처리 중 오류가 발생했습니다."}
           </span>
         )}
@@ -198,7 +198,7 @@ export function CommentSection({
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         aria-controls={`comments-${postId}`}
-        className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100 rounded -ml-1 px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+        className="flex items-center gap-1.5 text-[12px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100 rounded -ml-1 px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
       >
         <svg
           width="8"
@@ -212,7 +212,7 @@ export function CommentSection({
         <span>댓글</span>
         {displayCount > 0 && (
           <span
-            className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold tabular-nums"
+            className="px-1.5 py-0.5 rounded-full text-[11px] font-semibold tabular-nums"
             style={{
               background: "rgba(139,124,255,0.12)",
               color: "#8b7cff",
@@ -290,7 +290,7 @@ export function CommentSection({
 
           {/* Empty state */}
           {!isLoading && !error && comments.length === 0 && (
-            <p className="mt-3 text-[10px] text-[var(--text-muted)] text-center py-2">
+            <p className="mt-3 text-[12px] text-[var(--text-muted)] text-center py-2">
               아직 댓글이 없습니다. 첫 댓글을 달아보세요.
             </p>
           )}
@@ -301,7 +301,7 @@ export function CommentSection({
               <button
                 type="button"
                 onClick={loadMore}
-                className="px-4 py-1.5 rounded-lg text-[10px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#8b7cff]"
+                className="px-4 py-1.5 rounded-lg text-[12px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#8b7cff]"
                 aria-label="댓글 더 불러오기"
               >
                 댓글 더 보기

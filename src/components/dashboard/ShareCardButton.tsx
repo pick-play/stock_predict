@@ -133,7 +133,7 @@ export function ShareCardButton({ snapshot }: ShareCardButtonProps) {
       aria-label={`${snapshot.displayName} 예상가격 이미지 ${supportsFileShare ? "공유" : "저장"}`}
       className={[
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg",
-        "text-[11px] font-medium border",
+        "text-[13px] font-medium border",
         "transition-all duration-150 ease-out",
         "cursor-pointer select-none min-h-[28px] min-w-[44px]",
         "disabled:cursor-not-allowed disabled:opacity-50",

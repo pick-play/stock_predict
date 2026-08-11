@@ -55,7 +55,7 @@ export function AppHeader({
           <h1 className="text-sm font-semibold text-[var(--text-primary)] leading-none tracking-tight">
             KOSPI NOW
           </h1>
-          <p className="text-[10px] text-[var(--text-muted)] mt-0.5 tracking-wide">
+          <p className="text-[12px] text-[var(--text-muted)] mt-0.5 tracking-wide">
             코스피 나우
           </p>
         </div>
@@ -74,7 +74,7 @@ export function AppHeader({
           wsStatus={wsStatus}
         />
         {lastUpdated && !isLoading && (
-          <span className="hidden md:block text-[10px] text-[var(--text-muted)] tabular-nums">
+          <span className="hidden md:block text-[12px] text-[var(--text-muted)] tabular-nums">
             {formatRelativeTime(lastUpdated, now)}
           </span>
         )}
@@ -82,7 +82,7 @@ export function AppHeader({
           <button
             type="button"
             onClick={onNavigateBoard}
-            className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+            className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
             aria-label="익명 토론방 열기"
           >
             <svg
@@ -105,7 +105,7 @@ export function AppHeader({
           <button
             type="button"
             onClick={onNavigateChat}
-            className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+            className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
             aria-label="실시간 채팅 열기 (로그인 없이 참여)"
           >
             <svg

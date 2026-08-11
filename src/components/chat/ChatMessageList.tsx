@@ -120,7 +120,7 @@ export function ChatMessageList({ messages, ownHandle }: ChatMessageListProps) {
                   <time
                     dateTime={message.createdAt}
                     title={formatKoreanTimeDetailed(message.createdAt)}
-                    className="shrink-0 text-[10px] tabular-nums text-[var(--text-muted)]"
+                    className="shrink-0 text-[12px] tabular-nums text-[var(--text-muted)]"
                   >
                     {formatChatTime(message.createdAt)}
                   </time>

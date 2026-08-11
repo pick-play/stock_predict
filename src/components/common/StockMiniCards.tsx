@@ -65,11 +65,11 @@ export function StockMiniCards({ onNavigateDashboard }: StockMiniCardsProps) {
               className="rounded-xl border border-[var(--border-subtle)] bg-surface-1 px-3 py-2"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-[11px] text-[var(--text-secondary)]">
+                <span className="truncate text-[13px] text-[var(--text-secondary)]">
                   {snapshot!.displayName}
                 </span>
                 {isLive && (
-                  <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-success">
+                  <span className="inline-flex shrink-0 items-center gap-1 text-[12px] text-success">
                     <span
                       className="h-1 w-1 rounded-full bg-success animate-pulse"
                       aria-hidden="true"
@@ -79,13 +79,13 @@ export function StockMiniCards({ onNavigateDashboard }: StockMiniCardsProps) {
                 )}
               </div>
 
-              <p className="mt-1 text-[15px] font-semibold leading-none tabular-nums text-[var(--text-primary)]">
+              <p className="mt-1 text-[17px] font-semibold leading-none tabular-nums text-[var(--text-primary)]">
                 {formatKrw(snapshot!.estimatedPrice)}
               </p>
 
               {/* Arrow and sign carry the direction beside the colour (§11.2, §19). */}
               <p
-                className={`mt-1 text-[11px] tabular-nums ${DIRECTION_CLASS[direction]}`}
+                className={`mt-1 text-[13px] tabular-nums ${DIRECTION_CLASS[direction]}`}
               >
                 {formatDirectionSymbol(snapshot!.changeRate)}{" "}
                 {formatPercent(snapshot!.changeRate)}
@@ -98,7 +98,7 @@ export function StockMiniCards({ onNavigateDashboard }: StockMiniCardsProps) {
       {/* The cards show a reference estimate, not a traded price. The pages this
           strip appears on have no disclaimer of their own, so it says so here
           rather than relying on the dashboard's (§21). */}
-      <p className="mt-1.5 text-[10px] leading-relaxed text-[var(--text-muted)]">
+      <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--text-muted)]">
         해외 선물가격 기반 참고 예상가입니다.{" "}
         {onNavigateDashboard && (
           <button

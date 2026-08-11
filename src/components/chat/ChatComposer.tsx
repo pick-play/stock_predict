@@ -142,7 +142,7 @@ export function ChatComposer({
         <span
           id="chat-remaining"
           aria-live="polite"
-          className={`text-[10px] tabular-nums ${
+          className={`text-[12px] tabular-nums ${
             remaining < 0
               ? "text-[#ff5d6c]"
               : remaining < 40
@@ -156,7 +156,7 @@ export function ChatComposer({
               : `${remaining}자 남음`
             : `최대 ${CHAT_MESSAGE_MAX_LENGTH}자`}
         </span>
-        <span className="text-[10px] text-[var(--text-muted)]">
+        <span className="text-[12px] text-[var(--text-muted)]">
           Enter 전송 · Shift+Enter 줄바꿈
         </span>
       </div>

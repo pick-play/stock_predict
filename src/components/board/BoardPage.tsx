@@ -110,7 +110,7 @@ export function BoardPage({
             <h1 className="text-sm font-semibold text-[var(--text-primary)] leading-none tracking-tight">
               토론방
             </h1>
-            <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+            <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
               KOSPI NOW · 참고 의견 공유
             </p>
           </div>
@@ -134,7 +134,7 @@ export function BoardPage({
                   ? `내 계정: ${auth.nickname ?? ""}`
                   : "로그인 또는 가입"
               }
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
               style={{
                 borderColor:
                   auth.status === "authenticated"
@@ -163,7 +163,7 @@ export function BoardPage({
             </button>
           )}
           {!isBoardConfigured && (
-            <span className="text-[10px] text-[var(--text-muted)]">
+            <span className="text-[12px] text-[var(--text-muted)]">
               준비 중
             </span>
           )}
@@ -259,7 +259,7 @@ export function BoardPage({
             )}
 
             {/* Disclaimer */}
-            <p className="text-[10px] text-[var(--text-muted)] text-center pt-2 leading-relaxed">
+            <p className="text-[12px] text-[var(--text-muted)] text-center pt-2 leading-relaxed">
               이 게시판은 익명이며 투자 권유가 아닙니다. 부적절한 게시물은
               신고해 주세요.
             </p>

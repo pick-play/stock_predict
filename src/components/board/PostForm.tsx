@@ -185,7 +185,7 @@ export function PostForm({ onPostCreated, authToken, authorNickname }: PostFormP
             id="board-char-count"
             aria-live="polite"
             aria-label={`남은 글자 수 ${remaining}자`}
-            className={`text-[10px] tabular-nums transition-colors duration-100 ${
+            className={`text-[12px] tabular-nums transition-colors duration-100 ${
               remaining < 0
                 ? "text-[#ff5d6c]"
                 : remaining < 50
@@ -197,7 +197,7 @@ export function PostForm({ onPostCreated, authToken, authorNickname }: PostFormP
               ? `${remaining < 0 ? "+" + String(-remaining) + "자 초과" : remaining + "자 남음"}`
               : `최대 ${BODY_MAX_LENGTH}자`}
           </span>
-          <span className="text-[10px] text-[var(--text-muted)]">
+          <span className="text-[12px] text-[var(--text-muted)]">
             {authorNickname ? (
               <>
                 <span className="text-[#8b7cff]">{authorNickname}</span>

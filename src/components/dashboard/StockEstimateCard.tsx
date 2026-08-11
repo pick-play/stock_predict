@@ -168,7 +168,7 @@ export function StockEstimateCard({
               <h2 className="text-sm font-semibold text-[var(--text-primary)] tracking-tight leading-none">
                 {snapshot.displayName}
               </h2>
-              <span className="text-[10px] font-mono text-[var(--text-tertiary)] bg-surface-3 px-1.5 py-0.5 rounded">
+              <span className="text-[12px] font-mono text-[var(--text-tertiary)] bg-surface-3 px-1.5 py-0.5 rounded">
                 {snapshot.koreanTicker}
               </span>
             </div>
@@ -218,7 +218,7 @@ export function StockEstimateCard({
               >
                 {formatKrw(snapshot.estimatedPrice)}
               </p>
-              <p className="text-[10px] text-[var(--text-muted)] mt-1.5 leading-none">
+              <p className="text-[12px] text-[var(--text-muted)] mt-1.5 leading-none">
                 예상가
               </p>
             </div>
@@ -289,7 +289,7 @@ export function StockEstimateCard({
               </span>
             </div>
             <span
-              className="text-[10px] text-[var(--text-muted)] tabular-nums"
+              className="text-[12px] text-[var(--text-muted)] tabular-nums"
               aria-label={`${formatRelativeTime(snapshot.eventTime, now)} 업데이트`}
             >
               {formatRelativeTime(snapshot.eventTime, now)}
@@ -337,8 +337,8 @@ export function StockEstimateCard({
 function MetricRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-[5px] border-b border-[var(--border-subtle)] last:border-0">
-      <span className="text-[11px] text-[var(--text-tertiary)]">{label}</span>
-      <span className="text-[11px] text-[var(--text-secondary)] font-mono tabular-nums ml-4 text-right">
+      <span className="text-[13px] text-[var(--text-tertiary)]">{label}</span>
+      <span className="text-[13px] text-[var(--text-secondary)] font-mono tabular-nums ml-4 text-right">
         {value}
       </span>
     </div>

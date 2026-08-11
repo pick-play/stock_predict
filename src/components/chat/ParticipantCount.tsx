@@ -46,7 +46,7 @@ export function ParticipantCount({
       >
         {isLive ? `${participants}명` : "—"}
       </span>
-      <span className="text-[10px] text-[var(--text-muted)]">
+      <span className="text-[12px] text-[var(--text-muted)]">
         {isLive ? "실시간" : "대기"}
       </span>
     </div>

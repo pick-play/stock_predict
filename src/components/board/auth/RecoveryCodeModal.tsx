@@ -110,7 +110,7 @@ export function RecoveryCodeModal({
 
           {/* Recovery code display */}
           <div>
-            <p className="text-[10px] text-[var(--text-muted)] mb-1.5 tracking-widest uppercase">
+            <p className="text-[12px] text-[var(--text-muted)] mb-1.5 tracking-widest uppercase">
               복구 코드
             </p>
             <div

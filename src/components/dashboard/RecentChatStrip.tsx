@@ -103,7 +103,7 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
           <h2 className="text-xs font-semibold text-[var(--text-secondary)]">
             실시간 채팅
           </h2>
-          <span className="inline-flex items-center gap-1 text-[10px] text-success">
+          <span className="inline-flex items-center gap-1 text-[12px] text-success">
             <span
               className="h-1 w-1 rounded-full bg-success animate-pulse"
               aria-hidden="true"
@@ -113,7 +113,7 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
         </div>
         {onNavigateChat && (
           <span
-            className="shrink-0 text-[11px] text-[var(--text-tertiary)]"
+            className="shrink-0 text-[13px] text-[var(--text-tertiary)]"
             aria-hidden="true"
           >
             →
@@ -133,7 +133,7 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
             <time
               dateTime={message.createdAt}
               title={formatKoreanTimeDetailed(message.createdAt)}
-              className="shrink-0 text-[10px] tabular-nums text-[var(--text-muted)]"
+              className="shrink-0 text-[12px] tabular-nums text-[var(--text-muted)]"
             >
               {formatChatTime(message.createdAt)}
             </time>

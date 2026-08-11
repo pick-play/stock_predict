@@ -227,7 +227,7 @@
   /* max-content keeps both copies on one line; a shrunk track would make the
      -50% travel land somewhere other than the seam. */
   width: max-content;
-  min-height: 2.25rem;
+  min-height: 2.5rem;
   animation-name: ticker-scroll;
   animation-timing-function: linear;
   animation-iteration-count: infinite;

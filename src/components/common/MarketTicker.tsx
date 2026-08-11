@@ -30,28 +30,28 @@ const DIRECTION_CLASS: Record<string, string> = {
 function StatusBadge({ item }: { item: TickerItem }) {
   if (item.isLive) {
     return (
-      <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/15 text-success whitespace-nowrap">
+      <span className="text-[12px] px-1.5 py-0.5 rounded bg-success/15 text-success whitespace-nowrap">
         실시간
       </span>
     );
   }
   if (item.status === "closed") {
     return (
-      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface-3)] text-[var(--text-tertiary)] whitespace-nowrap">
+      <span className="text-[12px] px-1.5 py-0.5 rounded bg-[var(--surface-3)] text-[var(--text-tertiary)] whitespace-nowrap">
         장 마감
       </span>
     );
   }
   if (item.isStale) {
     return (
-      <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/15 text-warning whitespace-nowrap">
+      <span className="text-[12px] px-1.5 py-0.5 rounded bg-warning/15 text-warning whitespace-nowrap">
         지연
       </span>
     );
   }
   if (item.status === "open") {
     return (
-      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface-3)] text-[var(--text-secondary)] whitespace-nowrap">
+      <span className="text-[12px] px-1.5 py-0.5 rounded bg-[var(--surface-3)] text-[var(--text-secondary)] whitespace-nowrap">
         장중
       </span>
     );
@@ -64,14 +64,14 @@ function TickerCell({ item }: { item: TickerItem }) {
 
   return (
     <div className="flex items-center gap-2 px-4 shrink-0 tabular-nums">
-      <span className="text-[13px] text-[var(--text-secondary)] whitespace-nowrap">
+      <span className="text-[14px] text-[var(--text-secondary)] whitespace-nowrap">
         {item.label}
       </span>
 
-      <span className="text-[13px] font-semibold text-[var(--text-primary)] whitespace-nowrap">
+      <span className="text-[14px] font-semibold text-[var(--text-primary)] whitespace-nowrap">
         {formatTickerPrice(item.price, item.decimals)}
         {item.unit && (
-          <span className="ml-1 text-[10px] font-normal text-[var(--text-tertiary)]">
+          <span className="ml-1 text-[12px] font-normal text-[var(--text-tertiary)]">
             {item.unit}
           </span>
         )}
@@ -80,7 +80,7 @@ function TickerCell({ item }: { item: TickerItem }) {
       {/* Sign and arrow travel with the colour so the direction survives a
           colour-blind reader and a monochrome screenshot alike (§11.2, §19). */}
       <span
-        className={`text-[13px] whitespace-nowrap ${DIRECTION_CLASS[direction]}`}
+        className={`text-[14px] whitespace-nowrap ${DIRECTION_CLASS[direction]}`}
       >
         {formatDirectionSymbol(item.changePercent)}{" "}
         {formatTickerPercent(item.changePercent)}
@@ -117,7 +117,7 @@ export function MarketTicker({
     if (!isLoading) return null;
     return (
       <div
-        className={`h-9 ${edgeClass} bg-[var(--surface-1)] ${className}`}
+        className={`h-10 ${edgeClass} bg-[var(--surface-1)] ${className}`}
         aria-hidden="true"
       />
     );

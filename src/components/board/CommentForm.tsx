@@ -127,7 +127,7 @@ export function CommentForm({
         <span
           aria-live="polite"
           aria-label={`남은 글자 수 ${remaining}자`}
-          className={`text-[10px] tabular-nums transition-colors duration-100 ${
+          className={`text-[12px] tabular-nums transition-colors duration-100 ${
             remaining < 0
               ? "text-[#ff5d6c]"
               : remaining < 50
@@ -146,7 +146,7 @@ export function CommentForm({
           type="submit"
           disabled={!canSubmit}
           aria-label={isSubmitting ? "댓글 등록 중" : "댓글 등록"}
-          className="px-3 py-1 rounded-lg text-[10px] font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-3 py-1 rounded-lg text-[12px] font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff] disabled:opacity-40 disabled:cursor-not-allowed"
           style={{
             background: canSubmit
               ? "linear-gradient(135deg, #8b7cff 0%, #6b5ce7 100%)"

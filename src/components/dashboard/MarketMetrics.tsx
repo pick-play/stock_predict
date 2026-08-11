@@ -70,7 +70,7 @@ export function MarketMetrics({
                       aria-hidden="true"
                     />
                     <p
-                      className="text-[10px]"
+                      className="text-[12px]"
                       style={{ color: freshnessColor }}
                     >
                       {freshnessLabel}
@@ -83,7 +83,7 @@ export function MarketMetrics({
                   aria-label={`데이터 신뢰도 ${score}점`}
                 >
                   {score}
-                  <span className="text-[10px] font-normal text-[#4a5568]">
+                  <span className="text-[12px] font-normal text-[#4a5568]">
                     /100
                   </span>
                 </span>
@@ -108,14 +108,14 @@ export function MarketMetrics({
       {/* Last update footer */}
       {lastUpdated && (
         <div className="border-t border-[rgba(255,255,255,0.05)] pt-3 mt-4">
-          <p className="text-[10px] text-[#4a5568]">
+          <p className="text-[12px] text-[#4a5568]">
             마지막 갱신:{" "}
             <span className="tabular-nums">
               {formatRelativeTime(lastUpdated, now)}
             </span>
           </p>
           {usingFallback && (
-            <p className="text-[10px] text-[#f5b942] mt-1">
+            <p className="text-[12px] text-[#f5b942] mt-1">
               최신 시세 연결이 원활하지 않습니다. 저장 데이터를 표시합니다.
             </p>
           )}

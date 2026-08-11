@@ -119,7 +119,7 @@ export function PostCard({
           {post.authorTag}
         </span>
         <time
-          className="text-[10px] text-[var(--text-muted)] tabular-nums"
+          className="text-[12px] text-[var(--text-muted)] tabular-nums"
           dateTime={post.createdAt}
         >
           {formatBoardTime(post.createdAt)}
@@ -160,7 +160,7 @@ export function PostCard({
           <button
             type="button"
             onClick={handleReportClick}
-            className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-tertiary)] transition-colors duration-100 rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+            className="text-[12px] text-[var(--text-muted)] hover:text-[var(--text-tertiary)] transition-colors duration-100 rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
             aria-label={`글 id ${post.id} 신고`}
           >
             신고
@@ -169,13 +169,13 @@ export function PostCard({
 
         {reportState === "confirming" && (
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-[var(--text-tertiary)]">
+            <span className="text-[12px] text-[var(--text-tertiary)]">
               신고하시겠습니까?
             </span>
             <button
               type="button"
               onClick={handleReportConfirm}
-              className="text-[10px] text-[#ff5d6c] hover:opacity-80 transition-opacity rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff5d6c]"
+              className="text-[12px] text-[#ff5d6c] hover:opacity-80 transition-opacity rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff5d6c]"
               aria-label="신고 확인"
             >
               확인
@@ -183,7 +183,7 @@ export function PostCard({
             <button
               type="button"
               onClick={handleReportCancel}
-              className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-tertiary)] transition-colors rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+              className="text-[12px] text-[var(--text-muted)] hover:text-[var(--text-tertiary)] transition-colors rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
               aria-label="신고 취소"
             >
               취소
@@ -192,17 +192,17 @@ export function PostCard({
         )}
 
         {reportState === "sending" && (
-          <span className="text-[10px] text-[var(--text-muted)]">신고 중…</span>
+          <span className="text-[12px] text-[var(--text-muted)]">신고 중…</span>
         )}
 
         {reportState === "done" && (
-          <span className="text-[10px] text-[#31c48d]">
+          <span className="text-[12px] text-[#31c48d]">
             신고가 접수되었습니다.
           </span>
         )}
 
           {reportState === "error" && (
-            <span className="text-[10px] text-[#ff5d6c]">
+            <span className="text-[12px] text-[#ff5d6c]">
               {reportError ?? "신고 처리 중 오류가 발생했습니다."}
             </span>
           )}

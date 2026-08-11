@@ -33,7 +33,7 @@ export function PriceBreakdown({ stocks }: PriceBreakdownProps) {
 
           return (
             <div key={id}>
-              <p className="text-[10px] font-semibold text-[#6f7a8c] uppercase tracking-widest mb-2">
+              <p className="text-[12px] font-semibold text-[#6f7a8c] uppercase tracking-widest mb-2">
                 {snapshot.displayName}
               </p>
 
@@ -67,7 +67,7 @@ export function PriceBreakdown({ stocks }: PriceBreakdownProps) {
 
                 {/* Result row */}
                 <div className="flex items-center justify-between pt-2 mt-0.5 border-t border-[rgba(255,255,255,0.05)]">
-                  <span className="text-[11px] text-[#a6b0c0] font-medium">
+                  <span className="text-[13px] text-[#a6b0c0] font-medium">
                     야간 변동률
                   </span>
                   <span
@@ -102,8 +102,8 @@ function FormulaRow({
         indent ? "pl-2" : ""
       }`}
     >
-      <span className="text-[11px] text-[#6f7a8c]">{label}</span>
-      <span className="text-[11px] text-[#a6b0c0] font-mono tabular-nums ml-4">
+      <span className="text-[13px] text-[#6f7a8c]">{label}</span>
+      <span className="text-[13px] text-[#a6b0c0] font-mono tabular-nums ml-4">
         {value}
       </span>
     </div>
