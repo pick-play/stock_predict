@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "timezone": "Asia/Seoul",
-  "updatedAt": "2026-08-11T02:31:17.612Z",
+  "updatedAt": "2026-08-11T07:51:12.956Z",
   "referencePriceMode": "mark",
   "open": {
     "marketDate": "2026-08-11",
@@ -16,14 +16,14 @@
     }
   },
   "close": {
-    "marketDate": "2026-08-10",
-    "anchorTimeUtc": "2026-08-10T06:30:00.000Z",
+    "marketDate": "2026-08-11",
+    "anchorTimeUtc": "2026-08-11T06:30:00.000Z",
     "stocks": {
       "samsung": {
-        "krxPrice": 230000
+        "krxPrice": 239500
       },
       "skHynix": {
-        "krxPrice": 1420000
+        "krxPrice": 1425000
       }
     }
   }
