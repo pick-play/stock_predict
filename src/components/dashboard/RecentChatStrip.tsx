@@ -1,5 +1,8 @@
 /**
- * Recent chat lines on the dashboard, alongside the popular-posts strip.
+ * The live chat room's latest lines, at the top of the dashboard.
+ *
+ * It leads the page by owner decision; the board strip that used to sit beside
+ * it was removed from the dashboard, and the board is reached from the header.
  *
  * Polled rather than socketed on purpose. Opening a WebSocket per dashboard
  * visitor would wake the chat room for people who never enter it, and the room
@@ -92,13 +95,13 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
       role={onNavigateChat ? "button" : undefined}
       tabIndex={onNavigateChat ? 0 : undefined}
       aria-label={
-        onNavigateChat ? "최근 채팅 — 눌러서 실시간 채팅 열기" : "최근 채팅"
+        onNavigateChat ? "실시간 채팅 — 눌러서 열기" : "실시간 채팅"
       }
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h2 className="text-xs font-semibold text-[var(--text-secondary)]">
-            최근 채팅
+            실시간 채팅
           </h2>
           <span className="inline-flex items-center gap-1 text-[10px] text-success">
             <span

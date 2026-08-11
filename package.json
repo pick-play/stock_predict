@@ -14,7 +14,8 @@
     "data:update": "node scripts/fetch-market-data.mjs",
     "data:baseline": "node scripts/update-baseline.mjs",
     "data:history": "node scripts/update-history.mjs",
-    "data:validate": "node scripts/validate-data.mjs"
+    "data:validate": "node scripts/validate-data.mjs",
+    "data:economic": "node scripts/update-economic.mjs"
   },
   "dependencies": {
     "date-fns": "^3.6.0",

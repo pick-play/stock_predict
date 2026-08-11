@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-08-11T10:14:11.182Z",
+  "windowStart": "2026-08-04",
+  "windowEnd": "2026-09-11",
+  "releases": [
+    {
+      "id": "employment",
+      "label": "고용보고서",
+      "source": "BLS",
+      "date": "2026-08-07",
+      "releaseAtUtc": "2026-08-07T12:30:00.000Z"
+    },
+    {
+      "id": "cpi",
+      "label": "소비자물가 (CPI)",
+      "source": "BLS",
+      "date": "2026-08-12",
+      "releaseAtUtc": "2026-08-12T12:30:00.000Z"
+    },
+    {
+      "id": "ppi",
+      "label": "생산자물가 (PPI)",
+      "source": "BLS",
+      "date": "2026-08-13",
+      "releaseAtUtc": "2026-08-13T12:30:00.000Z"
+    },
+    {
+      "id": "retail",
+      "label": "소매판매",
+      "source": "Census",
+      "date": "2026-08-14",
+      "releaseAtUtc": "2026-08-14T12:30:00.000Z"
+    },
+    {
+      "id": "pce",
+      "label": "개인소비지출 (PCE)",
+      "source": "BEA",
+      "date": "2026-08-26",
+      "releaseAtUtc": "2026-08-26T12:30:00.000Z"
+    },
+    {
+      "id": "gdp",
+      "label": "GDP",
+      "source": "BEA",
+      "date": "2026-08-26",
+      "releaseAtUtc": "2026-08-26T12:30:00.000Z"
+    },
+    {
+      "id": "employment",
+      "label": "고용보고서",
+      "source": "BLS",
+      "date": "2026-09-04",
+      "releaseAtUtc": "2026-09-04T12:30:00.000Z"
+    },
+    {
+      "id": "ppi",
+      "label": "생산자물가 (PPI)",
+      "source": "BLS",
+      "date": "2026-09-10",
+      "releaseAtUtc": "2026-09-10T12:30:00.000Z"
+    },
+    {
+      "id": "cpi",
+      "label": "소비자물가 (CPI)",
+      "source": "BLS",
+      "date": "2026-09-11",
+      "releaseAtUtc": "2026-09-11T12:30:00.000Z"
+    }
+  ]
+}

@@ -5,8 +5,8 @@ import { AppHeader } from "../components/common/AppHeader";
 import { StockEstimateCard } from "../components/dashboard/StockEstimateCard";
 import { HeroSummary } from "../components/dashboard/HeroSummary";
 import { MarketIndexGrid } from "../components/dashboard/MarketIndexGrid";
+import { EconomicCalendar } from "../components/dashboard/EconomicCalendar";
 import { Disclaimer } from "../components/common/Disclaimer";
-import { PopularTicker } from "../components/board/PopularTicker";
 import { RecentChatStrip } from "../components/dashboard/RecentChatStrip";
 import { ErrorState } from "../components/common/ErrorState";
 import { StockCardSkeleton } from "../components/common/LoadingSkeleton";
@@ -79,6 +79,11 @@ export function DashboardPage({
       <main className="px-4 md:px-6 pb-24 md:pb-10 space-y-4">
         <HeroSummary />
 
+        {/* Chat leads the page by owner decision. The board strip that used to
+            sit beside it is gone from the dashboard; the board is still reached
+            from the header. */}
+        <RecentChatStrip onNavigateChat={onNavigateChat} />
+
         {/* Error banners */}
         {error && !hasAnyData && (
           <div className="animate-slide-fade-in">
@@ -124,14 +129,9 @@ export function DashboardPage({
           })}
         </div>
 
-        {/* Community strips, side by side under the prices they are about. Each
-            hides itself when its backend is unconfigured or has nothing to show,
-            so a single surviving strip simply takes the full width. Stacked on
-            phones — two columns there would squeeze both into illegibility. */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <PopularTicker onNavigateBoard={onNavigateBoard} />
-          <RecentChatStrip onNavigateChat={onNavigateChat} />
-        </div>
+        {/* US release schedule — sits with the prices it moves, above the chat
+            and board strips, which are conversation rather than data. */}
+        <EconomicCalendar />
 
         {/* Major markets — same feed as the ticker tape, read rather than glanced */}
         <MarketIndexGrid />

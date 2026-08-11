@@ -13,7 +13,16 @@ export function HeroSummary() {
   // Brand line stays constant; the session-specific notice below carries the
   // "market is open, trust the real ticks" warning instead of the headline.
   const titleLine1 = "코스피 나우";
-  const titleLine2Accent = "해외 선물가격 기반 코스피 현재가";
+  /*
+   * Owner decision of 2026-08-11, replacing "코스피 현재가".
+   *
+   * Worth knowing what it claims: the site prices 삼성전자 and SK하이닉스 from
+   * overseas futures. It does not quote the KOSPI 200 night future, which is what
+   * a reader arriving on the words 야간 선물 is most likely looking for. The
+   * disclaimer in §21 and the per-card 예상가 caption are what keep that honest,
+   * so neither may be removed while this headline stands.
+   */
+  const titleLine2Accent = "해외 선물가격 기반 코스피 야간 선물";
 
   const subtitle = trading
     ? "본 예상가격보다 국내 실제 체결가격을 우선 확인하세요."

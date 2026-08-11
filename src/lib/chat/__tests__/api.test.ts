@@ -1,9 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
-  CHAT_API_BASE,
-  chatSocketUrl,
   clearCachedTicket,
-  isChatConfigured,
   loadCachedTicket,
   requestChatTicket,
   storeTicket,
@@ -13,15 +10,38 @@ import { formatChatTime } from "../formatChatTime";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
+/* Same reasoning as the board's config tests: stub the variable rather than
+ * depend on the developer not having a .env. */
+async function loadChatApi(base: string) {
+  vi.resetModules();
+  vi.stubEnv("VITE_BOARD_API_BASE", base);
+  return import("../api");
+}
+
 describe("chat api config", () => {
-  it("is unconfigured when VITE_BOARD_API_BASE is absent", () => {
-    // Same env var as the board: one Worker serves both.
-    expect(isChatConfigured).toBe(false);
-    expect(CHAT_API_BASE).toBe("");
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
   });
 
-  it("returns no socket URL while unconfigured", () => {
-    expect(chatSocketUrl("t")).toBeNull();
+  it("is unconfigured when VITE_BOARD_API_BASE is empty", async () => {
+    // Same env var as the board: one Worker serves both.
+    const api = await loadChatApi("");
+    expect(api.isChatConfigured).toBe(false);
+    expect(api.CHAT_API_BASE).toBe("");
+  });
+
+  it("returns no socket URL while unconfigured", async () => {
+    const api = await loadChatApi("");
+    expect(api.chatSocketUrl("t")).toBeNull();
+  });
+
+  // The socket shares the Worker's host, so the scheme has to be swapped.
+  it("builds a wss URL from an https base", async () => {
+    const api = await loadChatApi("https://worker.example.com");
+    expect(api.chatSocketUrl("abc")).toBe(
+      "wss://worker.example.com/api/chat/room?ticket=abc"
+    );
   });
 });
 

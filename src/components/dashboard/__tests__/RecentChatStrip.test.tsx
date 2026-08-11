@@ -57,7 +57,7 @@ describe("RecentChatStrip", () => {
     render(<RecentChatStrip onNavigateChat={onNavigateChat} />);
 
     const card = await screen.findByRole("button", {
-      name: /눌러서 실시간 채팅 열기/,
+      name: /실시간 채팅 — 눌러서 열기/,
     });
     await user.click(card);
 
@@ -71,7 +71,7 @@ describe("RecentChatStrip", () => {
     render(<RecentChatStrip onNavigateChat={onNavigateChat} />);
 
     const card = await screen.findByRole("button", {
-      name: /눌러서 실시간 채팅 열기/,
+      name: /실시간 채팅 — 눌러서 열기/,
     });
     card.focus();
     await user.keyboard("{Enter}");

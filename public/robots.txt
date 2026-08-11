@@ -1,3 +1,10 @@
+# Yeti is Naver's crawler. It obeys the wildcard below, but Naver's own
+# documentation asks sites that want to be indexed there to name it, and an
+# explicit rule also protects against a future wildcard restriction quietly
+# locking Naver out.
+User-agent: Yeti
+Allow: /
+
 User-agent: *
 Allow: /
 

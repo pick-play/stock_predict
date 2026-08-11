@@ -1,14 +1,51 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { BOARD_API_BASE, isBoardConfigured, fetchPosts, submitPost, reportPost, fetchPopularPosts, likePost } from "../api";
+import {
+  fetchPosts,
+  submitPost,
+  reportPost,
+  fetchPopularPosts,
+  likePost,
+} from "../api";
 import { BoardApiError } from "../../../types/board";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
+/*
+ * The env var is stubbed and the module re-imported rather than read as it
+ * happens to be. These constants are computed once at import time, so a test
+ * that simply asserted the current value passed only while the developer had no
+ * .env — and local verification against a deployed Worker needs exactly that
+ * file. Stubbing makes both branches testable and the suite independent of the
+ * machine it runs on.
+ */
+async function loadBoardApi(base: string | undefined) {
+  vi.resetModules();
+  if (base === undefined) vi.stubEnv("VITE_BOARD_API_BASE", "");
+  else vi.stubEnv("VITE_BOARD_API_BASE", base);
+  return import("../api");
+}
+
 describe("board api config", () => {
-  it("isBoardConfigured is false when VITE_BOARD_API_BASE is not set", () => {
-    // In the test environment the env var is absent → base is ""
-    expect(isBoardConfigured).toBe(false);
-    expect(BOARD_API_BASE).toBe("");
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("is unconfigured when VITE_BOARD_API_BASE is empty", async () => {
+    const api = await loadBoardApi(undefined);
+    expect(api.isBoardConfigured).toBe(false);
+    expect(api.BOARD_API_BASE).toBe("");
+  });
+
+  it("is configured when the variable holds a base URL", async () => {
+    const api = await loadBoardApi("https://worker.example.com");
+    expect(api.isBoardConfigured).toBe(true);
+    expect(api.BOARD_API_BASE).toBe("https://worker.example.com");
+  });
+
+  it("strips a trailing slash so paths do not double up", async () => {
+    const api = await loadBoardApi("https://worker.example.com/");
+    expect(api.BOARD_API_BASE).toBe("https://worker.example.com");
   });
 });
 
