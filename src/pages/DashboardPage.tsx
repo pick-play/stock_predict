@@ -4,10 +4,12 @@ import { useChartHistory } from "../hooks/useChartHistory";
 import { AppHeader } from "../components/common/AppHeader";
 import { StockEstimateCard } from "../components/dashboard/StockEstimateCard";
 import { HeroSummary } from "../components/dashboard/HeroSummary";
+import { LazyPriceChart } from "../components/dashboard/LazyPriceChart";
 import { MarketIndexGrid } from "../components/dashboard/MarketIndexGrid";
 import { EconomicCalendar } from "../components/dashboard/EconomicCalendar";
 import { Disclaimer } from "../components/common/Disclaimer";
 import { RecentChatStrip } from "../components/dashboard/RecentChatStrip";
+import { CommunityHotList } from "../components/dashboard/CommunityHotList";
 import { ErrorState } from "../components/common/ErrorState";
 import { StockCardSkeleton } from "../components/common/LoadingSkeleton";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
@@ -16,6 +18,12 @@ import type { StockId } from "../types/market";
 import type { ChartRange, StockAnchor } from "../lib/binance/klineHistory";
 
 const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
+
+/**
+ * Both cards' buttons point at the same panel, because there is only one.
+ * A constant rather than useId: the id has to be stable across the two cards.
+ */
+const CHART_PANEL_ID = "stock-chart-panel";
 
 interface DashboardPageProps {
   onNavigateBoard?: () => void;
@@ -30,6 +38,15 @@ export function DashboardPage({
     useMarketData();
 
   const [chartRange, setChartRange] = useState<ChartRange>("24h");
+  /**
+   * Which card's chart is open, or null.
+   *
+   * One chart for both cards, rendered below the grid at full width. Inside a
+   * card it made the grid row as tall as the chart, which stretched the other
+   * card into a large empty box beside it — and a chart is easier to read wide
+   * than half-wide anyway.
+   */
+  const [chartStock, setChartStock] = useState<StockId | null>(null);
 
   // The candles are converted with the same anchor the cards are priced from,
   // so the chart and the headline number always agree.
@@ -79,9 +96,7 @@ export function DashboardPage({
       <main className="px-4 md:px-6 pb-24 md:pb-10 space-y-4">
         <HeroSummary />
 
-        {/* Chat leads the page by owner decision. The board strip that used to
-            sit beside it is gone from the dashboard; the board is still reached
-            from the header. */}
+        {/* Chat leads the page by owner decision, on its own at full width. */}
         <RecentChatStrip onNavigateChat={onNavigateChat} />
 
         {/* Error banners */}
@@ -115,23 +130,43 @@ export function DashboardPage({
               <StockEstimateCard
                 key={id}
                 snapshot={snapshot}
-                stockId={id}
                 sparklineData={getSparklineData(id)}
                 animationDelay={`${index * 80}ms`}
                 wsStatus={wsStatus}
-                history={history}
-                krxClose={krxClose}
-                chartRange={chartRange}
-                onChartRangeChange={setChartRange}
-                chartLoading={chartLoading}
+                chartOpen={chartStock === id}
+                onToggleChart={() =>
+                  setChartStock((open) => (open === id ? null : id))
+                }
+                chartPanelId={CHART_PANEL_ID}
               />
             );
           })}
         </div>
 
-        {/* US release schedule — sits with the prices it moves, above the chat
-            and board strips, which are conversation rather than data. */}
+        {/* The one chart, at full width, for whichever card asked for it. Kept
+            unmounted until then so the Recharts chunk stays out of the first
+            paint (§22). */}
+        {chartStock && (
+          <div id={CHART_PANEL_ID} className="animate-fade-in">
+            <LazyPriceChart
+              history={history}
+              krxClose={krxClose}
+              range={chartRange}
+              onRangeChange={setChartRange}
+              isLoading={chartLoading}
+              stockId={chartStock}
+            />
+          </div>
+        )}
+
+        {/* Release schedule, then the week's hot community posts under it. Both
+            below the chart, because the chart belongs to the cards whose button
+            opens it and nothing should sit between a control and what it
+            controls. Stacked rather than side by side: the calendar grows when
+            전체보기 is pressed, and a neighbour in the same grid row would stretch
+            with it into an empty box. */}
         <EconomicCalendar />
+        <CommunityHotList onNavigateBoard={onNavigateBoard} />
 
         {/* Major markets — same feed as the ticker tape, read rather than glanced */}
         <MarketIndexGrid />

@@ -83,7 +83,7 @@ export function AppHeader({
             type="button"
             onClick={onNavigateBoard}
             className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
-            aria-label="익명 토론방 열기"
+            aria-label="커뮤니티 열기"
           >
             <svg
               width="11"
@@ -98,7 +98,7 @@ export function AppHeader({
             >
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
-            <span>토론방</span>
+            <span>커뮤니티</span>
           </button>
         )}
         {onNavigateChat && (

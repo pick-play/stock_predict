@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { RecentChat } from "../../../lib/chat/recentApi";
+import { CHAT_PREVIEW_ROWS } from "../../../lib/chat/config";
 
 const mockFetch = vi.hoisted(() => ({
   result: null as RecentChat | null,
@@ -100,5 +101,25 @@ describe("RecentChatStrip", () => {
 
     const items = await screen.findAllByRole("listitem");
     expect(items[0].textContent).toContain("나중");
+  });
+
+  it("shows at most the configured number of rows", async () => {
+    mockFetch.result = payload(8);
+    render(<RecentChatStrip />);
+    await screen.findByRole("list");
+    expect(screen.getAllByRole("listitem")).toHaveLength(CHAT_PREVIEW_ROWS);
+  });
+
+  // Every row shows on every screen: the strip is full width, so four fit on a
+  // phone. An earlier version hid two below md while it shared a row with the
+  // community list.
+  it("shows every row on every screen size", async () => {
+    mockFetch.result = payload(8);
+    render(<RecentChatStrip />);
+    await screen.findByRole("list");
+    screen.getAllByRole("listitem").forEach((row) => {
+      expect(row.className).toContain("flex");
+      expect(row.className).not.toContain("hidden");
+    });
   });
 });

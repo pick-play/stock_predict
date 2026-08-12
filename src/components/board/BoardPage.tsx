@@ -108,7 +108,7 @@ export function BoardPage({
 
           <div>
             <h1 className="text-sm font-semibold text-[var(--text-primary)] leading-none tracking-tight">
-              토론방
+              커뮤니티
             </h1>
             <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
               KOSPI NOW · 참고 의견 공유
@@ -227,7 +227,7 @@ export function BoardPage({
               </div>
             ) : (
               <section
-                aria-label="토론 글 목록"
+                aria-label="커뮤니티 글 목록"
                 aria-busy={isLoading}
               >
                 <div className="space-y-3">

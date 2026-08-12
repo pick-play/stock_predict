@@ -3,14 +3,6 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { StockSnapshot } from "../../../types/market";
 
-// Recharts is heavy and irrelevant here; the assertions are about the card's own
-// affordances, not the chart's internals.
-vi.mock("../LazyPriceChart", () => ({
-  LazyPriceChart: ({ stockId }: { stockId?: string }) => (
-    <div data-testid="chart">{`chart:${stockId ?? "all"}`}</div>
-  ),
-}));
-
 vi.mock("../ShareCardButton", () => ({
   ShareCardButton: () => <button type="button">이미지 저장</button>,
 }));
@@ -46,11 +38,10 @@ function renderCard(props: Partial<Parameters<typeof StockEstimateCard>[0]> = {}
   return render(
     <StockEstimateCard
       snapshot={snapshot()}
-      stockId="samsung"
-      history={[]}
-      chartRange="24h"
-      onChartRangeChange={() => {}}
       wsStatus="connected"
+      chartOpen={false}
+      onToggleChart={() => {}}
+      chartPanelId="stock-chart-panel"
       {...props}
     />
   );
@@ -116,46 +107,42 @@ describe("StockEstimateCard chart toggle", () => {
     vi.useRealTimers();
   });
 
-  it("keeps the chart unmounted until asked for", () => {
-    renderCard();
-    expect(screen.queryByTestId("chart")).toBeNull();
-    expect(screen.getByRole("button", { name: "차트 보기" })).toBeTruthy();
-  });
-
-  it("reveals the chart pinned to this card's stock", async () => {
+  /*
+   * The chart itself lives on the page, at full width below both cards. Inside a
+   * card it made the grid row as tall as the chart and stretched the other card
+   * into a large empty box beside it. So the card's job is now only to report the
+   * request and reflect the state.
+   */
+  it("asks the page to open the chart", async () => {
     const user = userEvent.setup();
-    renderCard({ stockId: "skHynix" });
+    const onToggleChart = vi.fn();
+    renderCard({ onToggleChart });
 
     await user.click(screen.getByRole("button", { name: "차트 보기" }));
 
-    // Pinned, so it cannot show the other company's series.
-    expect(screen.getByTestId("chart").textContent).toBe("chart:skHynix");
+    expect(onToggleChart).toHaveBeenCalledOnce();
+  });
+
+  it("renders no chart of its own", () => {
+    renderCard({ chartOpen: true });
+    expect(screen.queryByRole("img", { name: /가격 추이/ })).toBeNull();
+  });
+
+  it("labels the control by the open state it was given", () => {
+    renderCard({ chartOpen: true });
     expect(screen.getByRole("button", { name: "차트 닫기" })).toBeTruthy();
   });
 
-  it("collapses again on a second press", async () => {
-    const user = userEvent.setup();
-    renderCard();
-
-    await user.click(screen.getByRole("button", { name: "차트 보기" }));
-    await user.click(screen.getByRole("button", { name: "차트 닫기" }));
-
-    expect(screen.queryByTestId("chart")).toBeNull();
+  it("points aria-controls at the page's panel", () => {
+    renderCard({ chartOpen: true, chartPanelId: "stock-chart-panel" });
+    const button = screen.getByRole("button", { name: "차트 닫기" });
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    expect(button.getAttribute("aria-controls")).toBe("stock-chart-panel");
   });
 
-  it("wires aria-expanded and aria-controls to the panel", async () => {
-    const user = userEvent.setup();
-    renderCard();
-
+  it("reports closed when it is not the open card", () => {
+    renderCard({ chartOpen: false });
     const button = screen.getByRole("button", { name: "차트 보기" });
     expect(button.getAttribute("aria-expanded")).toBe("false");
-
-    await user.click(button);
-
-    const toggled = screen.getByRole("button", { name: "차트 닫기" });
-    expect(toggled.getAttribute("aria-expanded")).toBe("true");
-    const panelId = toggled.getAttribute("aria-controls");
-    expect(panelId).toBeTruthy();
-    expect(document.getElementById(panelId!)).toBeTruthy();
   });
 });

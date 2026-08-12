@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNow } from "../../hooks/useNow";
 import type { StockSnapshot } from "../../types/market";
 import {
@@ -14,44 +14,30 @@ import { getLastKrxCloseMs, getSeoulDate } from "../../lib/koreaMarket";
 import { getDataFreshness } from "../../lib/staleData";
 import { Sparkline } from "./Sparkline";
 import { ShareCardButton } from "./ShareCardButton";
-import { LazyPriceChart } from "./LazyPriceChart";
-import type { HistoryEntry, StockId } from "../../types/market";
-import type { ChartRange } from "../../lib/binance/klineHistory";
 import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
 
 interface StockEstimateCardProps {
   snapshot: StockSnapshot;
-  stockId: StockId;
   sparklineData?: number[];
   animationDelay?: string;
   /** Live-stream state, which decides whether this card may say 실시간. */
   wsStatus?: WsConnectionStatus;
-  /** Chart inputs, forwarded to the collapsible chart inside the card. */
-  history: HistoryEntry[];
-  krxClose?: Partial<Record<StockId, number>>;
-  chartRange: ChartRange;
-  onChartRangeChange: (range: ChartRange) => void;
-  chartLoading?: boolean;
+  /** Whether this card's chart is the one currently open below the grid. */
+  chartOpen: boolean;
+  onToggleChart: () => void;
+  /** Ties the button to the panel the page renders. */
+  chartPanelId: string;
 }
 
 export function StockEstimateCard({
   snapshot,
-  stockId,
   sparklineData,
   animationDelay,
   wsStatus,
-  history,
-  krxClose,
-  chartRange,
-  onChartRangeChange,
-  chartLoading,
+  chartOpen,
+  onToggleChart,
+  chartPanelId,
 }: StockEstimateCardProps) {
-  // Recharts is a lazy chunk; keeping the chart unmounted until asked for means
-  // the initial view never pays for it (§22).
-  const [chartOpen, setChartOpen] = useState(false);
-  // Both cards render this control, so the aria-controls target has to be unique
-  // per instance or the two buttons point at the same panel.
-  const chartPanelId = `chart-panel-${useId().replace(/:/g, "")}`;
   const now = useNow();
   const direction = getDirection(snapshot.changeRate);
   const dirSymbol = formatDirectionSymbol(snapshot.changeRate);
@@ -240,7 +226,12 @@ export function StockEstimateCard({
           </div>
         )}
 
-        {/* ── Metrics table ── */}
+        {/* ── Metrics table ──
+            On a phone only the two rows the headline price is derived from stay:
+            the domestic anchor and the current overseas futures price. The
+            futures anchor, the bid/ask and the spread are desktop-only — detail
+            for someone inspecting the calculation, not for someone glancing at a
+            price. */}
         <div className="border-t border-[var(--border-mid)] pt-3 mt-1">
           <MetricRow
             label={krxAnchorLabel}
@@ -255,6 +246,7 @@ export function StockEstimateCard({
             }
           />
           <MetricRow
+            desktopOnly
             label={anchorLabel}
             value={
               snapshot.baselineBinancePrice > 0
@@ -264,11 +256,12 @@ export function StockEstimateCard({
           />
           {snapshot.bidPrice !== null && snapshot.askPrice !== null && (
             <MetricRow
+              desktopOnly
               label="매수 / 매도 호가"
               value={`${formatBinancePrice(snapshot.bidPrice)} / ${formatBinancePrice(snapshot.askPrice)}`}
             />
           )}
-          <MetricRow label="호가 스프레드" value={spreadLabel} />
+          <MetricRow desktopOnly label="호가 스프레드" value={spreadLabel} />
         </div>
 
         {/* ── Footer: live state + time ── */}
@@ -300,7 +293,7 @@ export function StockEstimateCard({
           <div className="flex items-center justify-between gap-2 mt-3">
             <button
               type="button"
-              onClick={() => setChartOpen((open) => !open)}
+              onClick={onToggleChart}
               aria-expanded={chartOpen}
               aria-controls={chartPanelId}
               className="min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.06)] transition-colors duration-150"
@@ -311,32 +304,31 @@ export function StockEstimateCard({
             {/* Share / download button — hidden when no real estimate available */}
             {snapshot.status === "healthy" && <ShareCardButton snapshot={snapshot} />}
           </div>
-
-          {chartOpen && (
-            <div
-              id={chartPanelId}
-              className="mt-3 pt-3 border-t border-[var(--border-subtle)] animate-fade-in"
-            >
-              <LazyPriceChart
-                history={history}
-                krxClose={krxClose}
-                range={chartRange}
-                onRangeChange={onChartRangeChange}
-                isLoading={chartLoading}
-                stockId={stockId}
-                embedded
-              />
-            </div>
-          )}
         </div>
       </div>
     </article>
   );
 }
 
-function MetricRow({ label, value }: { label: string; value: string }) {
+function MetricRow({
+  label,
+  value,
+  desktopOnly,
+}: {
+  label: string;
+  value: string;
+  /**
+   * Hidden below the md breakpoint. Done in CSS rather than by branching on a
+   * measured width, so the row count cannot change after the first paint.
+   */
+  desktopOnly?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-between py-[5px] border-b border-[var(--border-subtle)] last:border-0">
+    <div
+      className={`${
+        desktopOnly ? "hidden md:flex" : "flex"
+      } items-center justify-between py-[5px] border-b border-[var(--border-subtle)] last:border-0`}
+    >
       <span className="text-[13px] text-[var(--text-tertiary)]">{label}</span>
       <span className="text-[13px] text-[var(--text-secondary)] font-mono tabular-nums ml-4 text-right">
         {value}

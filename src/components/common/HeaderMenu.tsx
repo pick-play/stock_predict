@@ -166,7 +166,7 @@ export function HeaderMenu({
               }}
             >
               <BoardIcon />
-              토론방
+              커뮤니티
             </button>
           )}
 

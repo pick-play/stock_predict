@@ -31,7 +31,7 @@ describe("HeaderMenu", () => {
 
     await user.click(screen.getByRole("button", { name: "메뉴" }));
 
-    expect(screen.getByRole("menuitem", { name: /토론방/ })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: /커뮤니티/ })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: /실시간 채팅/ })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: /라이트 모드/ })).toBeTruthy();
   });

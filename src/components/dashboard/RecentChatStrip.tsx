@@ -18,7 +18,10 @@ import { useEffect, useState } from "react";
 import { fetchRecentChat } from "../../lib/chat/recentApi";
 import type { RecentChat } from "../../lib/chat/recentApi";
 import { isChatConfigured } from "../../lib/chat/api";
-import { CHAT_PREVIEW_REFRESH_MS } from "../../lib/chat/config";
+import {
+  CHAT_PREVIEW_REFRESH_MS,
+  CHAT_PREVIEW_ROWS,
+} from "../../lib/chat/config";
 import { formatChatTime } from "../../lib/chat/formatChatTime";
 import { formatKoreanTimeDetailed } from "../../lib/format";
 
@@ -67,7 +70,7 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
   if (!data || data.messages.length === 0) return null;
 
   // Newest first here, unlike the room itself — a preview is read top-down.
-  const lines = [...data.messages].reverse().slice(0, 4);
+  const lines = [...data.messages].reverse().slice(0, CHAT_PREVIEW_ROWS);
 
   return (
     /*

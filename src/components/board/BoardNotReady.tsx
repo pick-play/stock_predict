@@ -28,10 +28,10 @@ export function BoardNotReady() {
       </div>
 
       <h2 className="text-base font-semibold text-[var(--text-primary)] mb-2 tracking-tight">
-        토론방 준비 중
+        커뮤니티 준비 중
       </h2>
       <p className="text-sm text-[var(--text-tertiary)] max-w-xs leading-relaxed">
-        익명 토론방이 곧 열립니다.
+        커뮤니티가 곧 열립니다.
         <br />
         지금은 시세 화면을 이용해주세요.
       </p>

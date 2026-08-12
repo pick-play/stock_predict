@@ -165,7 +165,7 @@ export function PopularTicker({ onNavigateBoard }: PopularTickerProps) {
       }
       role={onNavigateBoard ? "button" : "region"}
       tabIndex={onNavigateBoard ? 0 : undefined}
-      aria-label={onNavigateBoard ? "토론방 인기글 — 눌러서 토론방 열기" : "토론방 인기글"}
+      aria-label={onNavigateBoard ? "커뮤니티 인기글 — 눌러서 커뮤니티 열기" : "커뮤니티 인기글"}
     >
       <div className="flex items-center gap-2.5 min-w-0">
         {/* Label */}
@@ -173,7 +173,7 @@ export function PopularTicker({ onNavigateBoard }: PopularTickerProps) {
           className="shrink-0 text-[12px] font-semibold tracking-wider text-[var(--text-tertiary)] uppercase select-none"
           aria-hidden="true"
         >
-          토론
+          커뮤니티
         </span>
 
         {/* Vertical divider */}

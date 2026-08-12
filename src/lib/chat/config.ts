@@ -93,5 +93,11 @@ export const CHAT_PREVIEW_LIMIT = 8;
  */
 export const CHAT_PREVIEW_TTL_MS = 10_000;
 
+/**
+ * Lines the dashboard strip renders, on every screen size. The strip runs the
+ * full width, so four fit on a phone.
+ */
+export const CHAT_PREVIEW_ROWS = 4;
+
 /** How often the dashboard strip re-reads the preview. */
 export const CHAT_PREVIEW_REFRESH_MS = 20_000;

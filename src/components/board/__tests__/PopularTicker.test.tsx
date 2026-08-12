@@ -58,7 +58,7 @@ describe("PopularTicker", () => {
     render(<PopularTicker onNavigateBoard={onNavigateBoard} />);
 
     await user.click(
-      screen.getByRole("button", { name: /눌러서 토론방 열기/ })
+      screen.getByRole("button", { name: /눌러서 커뮤니티 열기/ })
     );
 
     expect(onNavigateBoard).toHaveBeenCalledOnce();
@@ -88,7 +88,7 @@ describe("PopularTicker", () => {
     const onNavigateBoard = vi.fn();
     render(<PopularTicker onNavigateBoard={onNavigateBoard} />);
 
-    screen.getByRole("button", { name: /눌러서 토론방 열기/ }).focus();
+    screen.getByRole("button", { name: /눌러서 커뮤니티 열기/ }).focus();
     await user.keyboard("{Enter}");
 
     expect(onNavigateBoard).toHaveBeenCalledOnce();
@@ -110,8 +110,8 @@ describe("PopularTicker", () => {
   it("stays a plain region when given no destination", () => {
     render(<PopularTicker />);
     expect(
-      screen.queryByRole("button", { name: /눌러서 토론방 열기/ })
+      screen.queryByRole("button", { name: /눌러서 커뮤니티 열기/ })
     ).toBeNull();
-    expect(screen.getByRole("region", { name: "토론방 인기글" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "커뮤니티 인기글" })).toBeTruthy();
   });
 });

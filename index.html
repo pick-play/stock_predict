@@ -21,22 +21,38 @@
     ></script>
 
     <!--
-      Applies a saved theme before first paint. Without this a reader who chose
-      the light palette gets a dark flash on every load, because React only
-      mounts after the stylesheet has already painted the default.
+      Settles the theme before first paint. A saved choice has to be stamped on
+      <html> or a reader who picked light gets a dark flash on every load, since
+      React mounts only after the stylesheet has painted. With no saved choice
+      nothing is stamped — the device setting wins through the media query — but
+      the theme-color meta is still corrected, because its markup value is a
+      fixed dark and would otherwise tint a light phone's browser chrome.
     -->
     <script>
-      try {
-        var t = localStorage.getItem("kospinow:theme");
-        if (t === "light" || t === "dark") {
-          document.documentElement.dataset.theme = t;
-          document
-            .querySelector('meta[name="theme-color"]')
-            .setAttribute("content", t === "light" ? "#f6f8fb" : "#080b10");
+      (function () {
+        var t = null;
+        try {
+          t = localStorage.getItem("kospinow:theme");
+        } catch (e) {
+          /* private mode — the device setting still applies below */
         }
-      } catch (e) {
-        /* private mode — fall back to the media query */
-      }
+        if (t !== "light" && t !== "dark") {
+          // No override: leave data-theme unset so the stylesheet's
+          // prefers-color-scheme block decides, and only correct the chrome
+          // colour, which is a static dark value in the markup and would
+          // otherwise stay dark on a light device until React mounts.
+          t = window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light"
+            : "dark";
+        } else {
+          document.documentElement.dataset.theme = t;
+        }
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+          meta.setAttribute("content", t === "light" ? "#f6f8fb" : "#080b10");
+        }
+      })();
     </script>
 
     <meta

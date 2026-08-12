@@ -20,14 +20,13 @@ interface PriceChartProps {
   onRangeChange: (range: ChartRange) => void;
   isLoading?: boolean;
   /**
-   * Pins the chart to one stock and drops the stock selector.
+   * Pins the chart to one stock and replaces the selector with that stock's name.
    *
-   * Set when the chart lives inside a stock's own card, where a selector that
-   * could switch to the other company would contradict the card around it.
+   * Set by the dashboard, where the chart is opened from one card's 차트 보기 and
+   * so already has a subject; a selector offering the other company would
+   * contradict the button that opened it.
    */
   stockId?: StockId;
-  /** Drops the card chrome, for when a card already provides it. */
-  embedded?: boolean;
 }
 
 type TimeRange = ChartRange;
@@ -58,11 +57,10 @@ export function PriceChart({
   onRangeChange,
   isLoading = false,
   stockId,
-  embedded = false,
 }: PriceChartProps) {
   const [selectedStock, setSelectedStock] = useState<StockId>("samsung");
   // A pinned stock overrides the selector's state rather than syncing to it, so
-  // the embedded chart cannot drift from the card it belongs to.
+  // the chart cannot drift from the card whose button opened it.
   const activeStock = stockId ?? selectedStock;
   const timeRange = range;
   const rawId = useId();
@@ -113,13 +111,7 @@ export function PriceChart({
     }).format(new Date(v));
 
   return (
-    <div
-      className={
-        embedded
-          ? ""
-          : "rounded-2xl border border-[rgba(255,255,255,0.07)] bg-surface-1 p-5 md:p-6 animate-slide-fade-in delay-250"
-      }
-    >
+    <div className="rounded-2xl border border-[rgba(255,255,255,0.07)] bg-surface-1 p-5 md:p-6 animate-slide-fade-in">
       <ChartHeader
         activeStock={activeStock}
         timeRange={timeRange}
@@ -289,11 +281,17 @@ function ChartHeader({
   showStockSelector: boolean;
 }) {
   return (
-    <div
-      className={`flex flex-wrap items-center gap-2 ${
-        showStockSelector ? "justify-between" : "justify-end"
-      }`}
-    >
+    /* Pinned charts put a title where the selector would be, so both states
+       space out the same way. */
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* Pinned to one stock: name it, because the selector that would otherwise
+          say which one is gone. */}
+      {!showStockSelector && (
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+          {STOCK_LABELS[activeStock]} 가격 추이
+        </h3>
+      )}
+
       {/* Stock selector — absent when the chart is pinned to one card's stock */}
       {showStockSelector && (
         <div className="flex gap-1" role="group" aria-label="종목 선택">

@@ -43,28 +43,52 @@ export interface ThemeState {
 }
 
 export function useTheme(): ThemeState {
-  const [theme, setTheme] = useState<Theme>(
-    () => storedTheme() ?? systemTheme()
-  );
+  /**
+   * The device setting, and an override only when the reader has asked for
+   * something else.
+   *
+   * Held apart so the OS stays authoritative. Collapsing them into one value
+   * meant the first toggle wrote a preference that outlived any reason for it:
+   * the site then ignored the phone switching to light for good, with no way
+   * back short of clearing site data.
+   */
+  const [override, setOverride] = useState<Theme | null>(() => storedTheme());
+  const [system, setSystem] = useState<Theme>(systemTheme);
+  const theme = override ?? system;
 
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
 
-  // Follow the OS while the reader has not chosen for themselves.
+  // Subscribed unconditionally: the reader may drop their override later, and an
+  // effect that skipped subscribing while one existed would not notice.
   useEffect(() => {
-    if (storedTheme() !== null) return;
     const query = window.matchMedia?.("(prefers-color-scheme: light)");
     if (!query) return;
 
-    const onChange = () => setTheme(systemTheme());
+    const onChange = () => setSystem(systemTheme());
     query.addEventListener("change", onChange);
     return () => query.removeEventListener("change", onChange);
   }, []);
 
   const toggle = useCallback(() => {
-    setTheme((current) => {
-      const next: Theme = current === "dark" ? "light" : "dark";
+    setOverride(() => {
+      const next: Theme = theme === "dark" ? "light" : "dark";
+
+      /*
+       * Choosing whatever the device already asks for clears the override rather
+       * than pinning it. Two taps therefore return the site to following the OS,
+       * which is the only way back that does not need a settings screen.
+       */
+      if (next === systemTheme()) {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch {
+          // Private mode — nothing was stored to remove.
+        }
+        return null;
+      }
+
       try {
         localStorage.setItem(STORAGE_KEY, next);
       } catch {
@@ -72,7 +96,7 @@ export function useTheme(): ThemeState {
       }
       return next;
     });
-  }, []);
+  }, [theme]);
 
   return { theme, toggle };
 }
