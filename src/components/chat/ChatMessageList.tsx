@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef } from "react";
 import type { ChatMessage } from "../../types/chat";
 import { formatChatTime } from "../../lib/chat/formatChatTime";
 import { formatKoreanTimeDetailed } from "../../lib/format";
+import { useNow } from "../../hooks/useNow";
 
 /** How far from the bottom still counts as "following the conversation". */
 const FOLLOW_THRESHOLD_PX = 64;
@@ -33,6 +34,9 @@ interface ChatMessageListProps {
 }
 
 export function ChatMessageList({ messages, ownHandle }: ChatMessageListProps) {
+  // The labels are relative for the first hour, so they have to be recomputed as
+  // time passes — a line that says 방금 must not still say it ten minutes later.
+  const now = useNow();
   const scrollRef = useRef<HTMLDivElement>(null);
   const isFollowingRef = useRef(true);
 
@@ -122,7 +126,7 @@ export function ChatMessageList({ messages, ownHandle }: ChatMessageListProps) {
                     title={formatKoreanTimeDetailed(message.createdAt)}
                     className="shrink-0 text-[12px] tabular-nums text-[var(--text-muted)]"
                   >
-                    {formatChatTime(message.createdAt)}
+                    {formatChatTime(message.createdAt, now)}
                   </time>
                 </div>
                 <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--text-primary)]">

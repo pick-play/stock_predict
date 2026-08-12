@@ -23,6 +23,7 @@ import {
   CHAT_PREVIEW_ROWS,
 } from "../../lib/chat/config";
 import { formatChatTime } from "../../lib/chat/formatChatTime";
+import { useNow } from "../../hooks/useNow";
 import { formatKoreanTimeDetailed } from "../../lib/format";
 
 interface RecentChatStripProps {
@@ -31,6 +32,8 @@ interface RecentChatStripProps {
 
 export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
   const [data, setData] = useState<RecentChat | null>(null);
+  // Relative labels for the first hour, so they need a clock that moves.
+  const now = useNow();
 
   useEffect(() => {
     if (!isChatConfigured) return;
@@ -138,7 +141,7 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
               title={formatKoreanTimeDetailed(message.createdAt)}
               className="shrink-0 text-[12px] tabular-nums text-[var(--text-muted)]"
             >
-              {formatChatTime(message.createdAt)}
+              {formatChatTime(message.createdAt, now)}
             </time>
           </li>
         ))}

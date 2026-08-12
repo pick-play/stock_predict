@@ -163,16 +163,41 @@ describe("ticket cache", () => {
 // ─── formatChatTime ───────────────────────────────────────────────────────────
 
 describe("formatChatTime", () => {
-  it("renders HH:mm in Asia/Seoul", () => {
-    // 2026-08-10T02:05:00Z is 11:05 KST.
-    expect(formatChatTime("2026-08-10T02:05:00.000Z")).toBe("11:05");
+  /** 2026-08-10T02:05:00Z is 11:05 KST. */
+  const SENT = "2026-08-10T02:05:00.000Z";
+  const at = (offsetMs: number) => new Date(Date.parse(SENT) + offsetMs);
+
+  it("renders HH:mm in Asia/Seoul once the line is over an hour old", () => {
+    expect(formatChatTime(SENT, at(60 * 60_000))).toBe("11:05");
   });
 
   it("does not render seconds", () => {
-    expect(formatChatTime("2026-08-10T02:05:42.000Z")).toBe("11:05");
+    expect(formatChatTime("2026-08-10T02:05:42.000Z", at(3 * 60 * 60_000))).toBe(
+      "11:05"
+    );
   });
 
   it("falls back to a placeholder for an invalid timestamp", () => {
     expect(formatChatTime("not-a-date")).toBe("--:--");
+  });
+
+  // The first minute reads as 방금: a reader wants to know whether the line just
+  // landed, and "0분 전" answers that awkwardly.
+  it("says 방금 inside the first minute", () => {
+    expect(formatChatTime(SENT, at(0))).toBe("방금");
+    expect(formatChatTime(SENT, at(59_000))).toBe("방금");
+  });
+
+  it("counts minutes for the rest of the hour", () => {
+    expect(formatChatTime(SENT, at(60_000))).toBe("1분 전");
+    expect(formatChatTime(SENT, at(90_000))).toBe("1분 전");
+    expect(formatChatTime(SENT, at(30 * 60_000))).toBe("30분 전");
+    expect(formatChatTime(SENT, at(59 * 60_000 + 59_000))).toBe("59분 전");
+  });
+
+  // A reader whose clock runs behind the server's would otherwise be told the
+  // message arrives in the future.
+  it("treats a timestamp ahead of the reader's clock as 방금", () => {
+    expect(formatChatTime(SENT, at(-5 * 60_000))).toBe("방금");
   });
 });
