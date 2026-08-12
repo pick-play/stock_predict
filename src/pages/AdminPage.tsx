@@ -38,6 +38,7 @@ import {
   writeAdminToken,
 } from "../lib/admin/session";
 import { formatKoreanTime } from "../lib/format";
+import { BRAND_NAME } from "../config/brand";
 import type { ChatMessage } from "../types/chat";
 
 /** How many chat lines the console pulls. The room keeps 500. */
@@ -65,9 +66,21 @@ export function AdminPage({ onNavigateDashboard }: AdminPageProps) {
         >
           ← 대시보드
         </button>
+        {/*
+          While locked the page names nothing. A visitor who guesses the hash
+          finds an unlabelled password box rather than a signposted admin
+          console. The password is still the boundary — this only removes the
+          invitation.
+        */}
         <h1 className="text-sm font-semibold flex items-center gap-1.5">
-          <ShieldCheck className="w-4 h-4" aria-hidden="true" />
-          관리
+          {token ? (
+            <>
+              <ShieldCheck className="w-4 h-4" aria-hidden="true" />
+              관리
+            </>
+          ) : (
+            BRAND_NAME
+          )}
         </h1>
         {token ? (
           <button
@@ -132,7 +145,7 @@ function PasswordGate({ onUnlocked }: { onUnlocked: (token: string) => void }) {
   if (!isAdminConfigured) {
     return (
       <p className="text-sm text-[var(--text-secondary)]">
-        API 주소가 설정되지 않아 관리 기능을 사용할 수 없습니다.
+        지금은 사용할 수 없습니다.
       </p>
     );
   }
@@ -143,7 +156,7 @@ function PasswordGate({ onUnlocked }: { onUnlocked: (token: string) => void }) {
         htmlFor="admin-password"
         className="block text-sm text-[var(--text-secondary)]"
       >
-        관리자 비밀번호
+        비밀번호
       </label>
       <input
         id="admin-password"

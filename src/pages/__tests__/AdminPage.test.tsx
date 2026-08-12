@@ -59,14 +59,14 @@ describe("AdminPage", () => {
 
   it("asks for a password and fetches nothing yet", () => {
     renderPage();
-    expect(screen.getByLabelText("관리자 비밀번호")).toBeTruthy();
+    expect(screen.getByLabelText("비밀번호")).toBeTruthy();
     expect(api.fetchChatLines).not.toHaveBeenCalled();
     expect(api.fetchAdminPosts).not.toHaveBeenCalled();
   });
 
   it("keeps the field masked", () => {
     renderPage();
-    expect(screen.getByLabelText("관리자 비밀번호").getAttribute("type")).toBe(
+    expect(screen.getByLabelText("비밀번호").getAttribute("type")).toBe(
       "password"
     );
   });
@@ -75,7 +75,7 @@ describe("AdminPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.type(screen.getByLabelText("관리자 비밀번호"), "correct-horse");
+    await user.type(screen.getByLabelText("비밀번호"), "correct-horse");
     await user.click(screen.getByRole("button", { name: "확인" }));
 
     await waitFor(() => screen.getByRole("tab", { name: "실시간 채팅" }));
@@ -93,7 +93,7 @@ describe("AdminPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.type(screen.getByLabelText("관리자 비밀번호"), "000000");
+    await user.type(screen.getByLabelText("비밀번호"), "000000");
     await user.click(screen.getByRole("button", { name: "확인" }));
 
     await waitFor(() => screen.getByRole("alert"));
@@ -143,7 +143,7 @@ describe("AdminPage", () => {
     );
     renderPage();
 
-    await waitFor(() => screen.getByLabelText("관리자 비밀번호"));
+    await waitFor(() => screen.getByLabelText("비밀번호"));
     expect(sessionStorage.getItem("kospinow:admin-token")).toBeNull();
   });
 
@@ -157,5 +157,30 @@ describe("AdminPage", () => {
     await waitFor(() =>
       expect(api.fetchAdminPosts).toHaveBeenCalledWith(TOKEN, "reported")
     );
+  });
+});
+
+/**
+ * The locked page should not advertise what it guards. The password remains the
+ * boundary; this is only about not handing a curious visitor a signpost.
+ */
+describe("AdminPage while locked", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    Object.values(api).forEach((fn) => fn.mockReset());
+    api.adminLogin.mockResolvedValue(TOKEN);
+  });
+
+  it("names nothing and shows no console", () => {
+    renderPage();
+    expect(screen.queryByText("관리")).toBeNull();
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.queryByText(/삭제/)).toBeNull();
+  });
+
+  it("labels the field neutrally", () => {
+    renderPage();
+    expect(screen.getByLabelText("비밀번호")).toBeTruthy();
+    expect(screen.queryByLabelText(/관리자/)).toBeNull();
   });
 });

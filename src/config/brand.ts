@@ -10,3 +10,13 @@
  */
 export const BRAND_NAME = "코스피 NOW";
 export const BRAND_NAME_LATIN = "KOSPI NOW";
+
+/**
+ * The all-Hangul spelling, with no space.
+ *
+ * Readers type the name three ways — 코스피나우, 코스피 NOW, KOSPI NOW — and a
+ * search engine only matches text it can find. This form appears in the footer
+ * and in the page metadata so the site answers to all three, without three
+ * spellings competing in the header.
+ */
+export const BRAND_NAME_HANGUL = "코스피나우";

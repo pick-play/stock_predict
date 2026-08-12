@@ -1,4 +1,4 @@
-import { BRAND_NAME } from "../../config/brand";
+import { BRAND_NAME, BRAND_NAME_HANGUL } from "../../config/brand";
 
 interface DisclaimerProps {
   short?: boolean;
@@ -34,7 +34,7 @@ export function Disclaimer({ short = false }: DisclaimerProps) {
             본 정보는 투자 권유 또는 매매 추천이 아닙니다.
           </p>
           <p className="text-[12px] text-[var(--text-muted)]">
-            {BRAND_NAME} · 해외 선물가격 기반 참고 서비스
+            {BRAND_NAME}({BRAND_NAME_HANGUL}) · 해외 선물가격 기반 참고 서비스
           </p>
         </div>
       </div>
