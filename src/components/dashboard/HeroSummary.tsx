@@ -1,4 +1,5 @@
 import { isWeekend, isKrxTradingHours } from "../../lib/koreaMarket";
+import { BRAND_NAME } from "../../config/brand";
 
 /**
  * The anchor basis and its date used to sit under the subtitle. Removed by owner
@@ -12,7 +13,7 @@ export function HeroSummary() {
 
   // Brand line stays constant; the session-specific notice below carries the
   // "market is open, trust the real ticks" warning instead of the headline.
-  const titleLine1 = "코스피 나우";
+  const titleLine1 = BRAND_NAME;
   /*
    * Owner decision of 2026-08-11, replacing "코스피 현재가".
    *

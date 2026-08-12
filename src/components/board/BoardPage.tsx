@@ -10,6 +10,7 @@ import { RecoveryCodeModal } from "./auth/RecoveryCodeModal";
 import type { BoardPost, SignupResult } from "../../types/board";
 import { DashboardLayout } from "../layout/DashboardLayout";
 import { StockMiniCards } from "../common/StockMiniCards";
+import { BRAND_NAME } from "../../config/brand";
 
 interface BoardPageProps {
   onNavigateDashboard: () => void;
@@ -88,7 +89,7 @@ export function BoardPage({
             type="button"
             onClick={onNavigateDashboard}
             className="flex items-center justify-center w-8 h-8 rounded-lg border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
-            aria-label="KOSPI NOW 대시보드로 돌아가기"
+            aria-label={`${BRAND_NAME} 대시보드로 돌아가기`}
           >
             <svg
               width="14"
@@ -111,7 +112,7 @@ export function BoardPage({
               커뮤니티
             </h1>
             <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
-              KOSPI NOW · 참고 의견 공유
+              {BRAND_NAME} · 참고 의견 공유
             </p>
           </div>
         </div>

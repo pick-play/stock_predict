@@ -5,6 +5,7 @@ import { MarketStatusBadge } from "./MarketStatusBadge";
 import { formatRelativeTime } from "../../lib/format";
 import { useNow } from "../../hooks/useNow";
 import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
+import { BRAND_NAME, BRAND_NAME_LATIN } from "../../config/brand";
 
 interface AppHeaderProps {
   isLoading: boolean;
@@ -53,10 +54,10 @@ export function AppHeader({
         />
         <div>
           <h1 className="text-sm font-semibold text-[var(--text-primary)] leading-none tracking-tight">
-            KOSPI NOW
+            {BRAND_NAME}
           </h1>
           <p className="text-[12px] text-[var(--text-muted)] mt-0.5 tracking-wide">
-            코스피 나우
+            {BRAND_NAME_LATIN}
           </p>
         </div>
       </div>

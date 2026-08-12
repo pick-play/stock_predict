@@ -17,6 +17,7 @@ import { ChatNotReady } from "./ChatNotReady";
 import { ParticipantCount } from "./ParticipantCount";
 import type { ChatConnectionStatus } from "../../types/chat";
 import { StockMiniCards } from "../common/StockMiniCards";
+import { BRAND_NAME } from "../../config/brand";
 
 interface ChatPageProps {
   onNavigateDashboard: () => void;
@@ -56,7 +57,7 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
                 type="button"
                 onClick={onNavigateDashboard}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--border-subtle)] transition-all duration-150 hover:border-[var(--border-strong)] hover:bg-[var(--surface-overlay)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
-                aria-label="KOSPI NOW 대시보드로 돌아가기"
+                aria-label={`${BRAND_NAME} 대시보드로 돌아가기`}
               >
                 <svg
                   width="14"
@@ -79,7 +80,7 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
                   실시간 채팅
                 </h1>
                 <p className="mt-1 truncate text-[12px] text-[var(--text-muted)]">
-                  KOSPI NOW · 로그인 없이 참여
+                  {BRAND_NAME} · 로그인 없이 참여
                 </p>
               </div>
             </div>
