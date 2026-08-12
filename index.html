@@ -5,8 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Vite rewrites these root-relative paths with the configured base. -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <!--
+      favicon.ico first, and it exists as a real file.
+      Crawlers and older clients request /favicon.ico by convention whatever the
+      link tags say, and on this SPA that request was answering 404 with the
+      fallback HTML page — an icon that resolves to a web page is no icon.
+
+      The PNG declarations lead with 48px because Google asks for a multiple of
+      48 and will pass over a 32px icon; 192 is there for the size a phone's
+      home screen and a search result actually render.
+    -->
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#080b10" />
