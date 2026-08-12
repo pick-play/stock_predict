@@ -82,12 +82,33 @@ jobs:
           git push
 
           echo "pushed=true" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      # The site reads baseline.json from its own origin, so a committed anchor
-      # only reaches users once Pages rebuilds. The push above cannot start that
-      # build itself: GitHub suppresses workflow triggers for events created with
-      # the default GITHUB_TOKEN, which is why every anchor committed before this
-      # step existed stayed invisible until the next hand-pushed commit.
+      # workflow_dispatch resolves `main` server-side and can still resolve to the
+      # commit *before* the push above. That raced on 2026-08-12: the close anchor
+      # was committed, the deploy built the previous tree, and the day's closing
+      # prices sat in git unpublished. Wait until the API agrees main is the commit
+      # we just pushed.
+      - name: Wait for the push to be visible
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WANT: ${{ steps.commit.outputs.sha }}
+        run: |
+          for i in $(seq 1 30); do
+            seen=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+            if [ "$seen" = "$WANT" ]; then
+              echo "main is $seen"
+              exit 0
+            fi
+            echo "main is $seen, waiting for $WANT ($i/30)"
+            sleep 4
+          done
+          # Deploying the wrong tree silently is the failure this step exists to
+          # prevent, so give up loudly instead.
+          echo "::error::main never advanced to $WANT; not dispatching a deploy"
+          exit 1
+
       - name: Deploy the new anchor
         if: steps.commit.outputs.pushed == 'true'
         env:

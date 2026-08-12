@@ -63,6 +63,31 @@ jobs:
           git push
 
           echo "pushed=true" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # workflow_dispatch resolves `main` server-side, and it can still resolve to
+      # the commit *before* the push above — that raced on 2026-08-12 and built a
+      # tree without the close anchor, so the data sat in git undeployed for the
+      # rest of the day. Wait until the API agrees main is the commit we pushed.
+      - name: Wait for the push to be visible
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WANT: ${{ steps.commit.outputs.sha }}
+        run: |
+          for i in $(seq 1 30); do
+            seen=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+            if [ "$seen" = "$WANT" ]; then
+              echo "main is $seen"
+              exit 0
+            fi
+            echo "main is $seen, waiting for $WANT ($i/30)"
+            sleep 4
+          done
+          # Deploying the wrong tree silently is the failure this step exists to
+          # prevent, so give up loudly instead.
+          echo "::error::main never advanced to $WANT; not dispatching a deploy"
+          exit 1
 
       - name: Deploy the new calendar
         if: steps.commit.outputs.pushed == 'true'
