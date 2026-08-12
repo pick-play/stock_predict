@@ -3,6 +3,14 @@ export interface Env {
   TURNSTILE_SECRET: string;
   IP_SALT: string;
   ADMIN_TOKEN: string;
+  /**
+   * Short, memorable password for the moderator console.
+   *
+   * Checked only by POST /api/admin/login, which is attempt-limited per IP and
+   * hands back ADMIN_TOKEN on success. It is never accepted as a bearer token:
+   * a six-digit secret guarding an unthrottled delete API would be guessable.
+   */
+  ADMIN_PASSWORD?: string;
   ALLOWED_ORIGIN: string;
   PASSWORD_PEPPER: string;
 }

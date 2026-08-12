@@ -42,26 +42,47 @@ const REASON_MESSAGES: Record<RejectReason, string> = {
   "contact-info": "연락처나 오픈채팅 안내는 등록할 수 없습니다.",
 };
 
-/**
- * Hangul syllables decompose to their initial consonant so that ㅅㅂ-style
- * abbreviations and fully spelled words collapse to the same signature.
- */
-const CHO = [
-  "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ",
-  "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ",
-];
+/** Compatibility-jamo block: ㄱ(3131) … ㅣ(3163), consonants and vowels. */
+const JAMO_FIRST = 0x3131;
+const JAMO_LAST = 0x3163;
 
-function toInitials(text: string): string {
-  let out = "";
+function isJamo(ch: string): boolean {
+  const code = ch.codePointAt(0)!;
+  return code >= JAMO_FIRST && code <= JAMO_LAST;
+}
+
+/**
+ * Runs of jamo that the writer actually typed as jamo, e.g. "ㅅㅂ" out of
+ * "아 ㅅㅂ 진짜". Spaces and punctuation inside a run are absorbed, since that
+ * is exactly how the padding evasion looks ("ㅅ.ㅂ"); a syllable, letter or
+ * digit ends the run.
+ *
+ * Syllables are deliberately NOT projected onto their initial consonants.
+ * Doing that turned the whole message into one consonant string and then
+ * substring-matched it, so any two adjacent syllables that happened to start
+ * with ㅅ+ㅂ or ㅂ+ㅅ were read as an abbreviated swear: 부산, 밥상, 배송,
+ * 복수, 방심, 소방, 상방, 사볼까, 사봤음 were all rejected as 욕설. Ordinary
+ * chat lines were unpostable, which is a far worse failure than missing an
+ * abbreviation — reports and deletion cover what slips through.
+ */
+function jamoRuns(text: string): string[] {
+  const runs: string[] = [];
+  let run = "";
+  let open = false; // a run is only extended across padding once it has begun
+
   for (const ch of text) {
-    const code = ch.codePointAt(0)!;
-    if (code >= 0xac00 && code <= 0xd7a3) {
-      out += CHO[Math.floor((code - 0xac00) / 588)];
-    } else if (ch >= "ㄱ" && ch <= "ㅎ") {
-      out += ch;
+    if (isJamo(ch)) {
+      run += ch;
+      open = true;
+      continue;
     }
+    if (open && /[\s.,_\-*~^'"`|/\\]/.test(ch)) continue; // padding
+    if (run) runs.push(run);
+    run = "";
+    open = false;
   }
-  return out;
+  if (run) runs.push(run);
+  return runs;
 }
 
 /**
@@ -86,11 +107,32 @@ const PROFANITY = [
   "병신", "븅신", "빙신", "지랄", "니미", "애미", "애비", "새끼", "쌔끼",
   "개새", "썅", "쌍놈", "미친놈", "미친년", "년놈", "닥쳐", "꺼져라",
   "보지", "자지", "따먹", "강간", "창녀", "매춘",
+  // Half-jamo spellings. Precise enough to list as stems: no ordinary word
+  // reads this way, and the jamo-run rule below cannot see them because they
+  // sit against a syllable rather than in a jamo run of their own.
+  "시ㅂ", "씨ㅂ", "ㅅ발", "ㅆ발", "병ㅅ", "ㅂ신", "지ㄹ", "ㅈ랄",
   "fuck", "shit", "bitch", "asshole", "bastard",
-];
+]
+  /*
+   * Normalised with the same function the body goes through. NFKC rewrites a
+   * compatibility jamo (ㅂ, U+3142) into a conjoining one (U+1107), so a stem
+   * written with the letter from a keyboard would never have matched a body
+   * that had already been normalised.
+   */
+  .map(normalize);
 
-/** Initial-consonant forms, matched only against the initials projection. */
-const PROFANITY_INITIALS = ["ㅅㅂ", "ㅄ", "ㅂㅅ", "ㅈㄹ", "ㅆㅂ", "ㄲㅈ", "ㅗ"];
+/**
+ * Abbreviations, matched only inside a run of typed jamo (see jamoRuns).
+ * "ㅂㅅ" here means someone typed those two letters — not that a sentence
+ * happened to contain 부산.
+ */
+const PROFANITY_JAMO = ["ㅅㅂ", "ㅄ", "ㅂㅅ", "ㅈㄹ", "ㅆㅂ", "ㄲㅈ"];
+
+/**
+ * The ㅗ gesture, blocked only when a run is nothing but ㅗ. Substring matching
+ * would take "ㅗㅜㅑ" with it, which is an expression of surprise.
+ */
+const GESTURE_RUN_RE = /^ㅗ+$/;
 
 /**
  * Advertising signals. Each alone is weak — "수익" appears in ordinary talk on
@@ -146,12 +188,13 @@ export function moderatePost(rawBody: string): ModerationResult {
   if (hasLongRepetition(body)) return reject("repetition");
 
   const flat = normalize(body);
-  const initials = toInitials(body);
+  const runs = jamoRuns(body);
 
   if (PROFANITY.some((word) => flat.includes(word))) return reject("profanity");
-  if (PROFANITY_INITIALS.some((word) => initials.includes(word))) {
+  if (runs.some((run) => PROFANITY_JAMO.some((word) => run.includes(word)))) {
     return reject("profanity");
   }
+  if (runs.some((run) => GESTURE_RUN_RE.test(run))) return reject("profanity");
 
   if (PHONE_RE.test(body) || KAKAO_LINK_RE.test(body)) {
     return reject("contact-info");

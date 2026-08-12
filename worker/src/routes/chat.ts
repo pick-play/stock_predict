@@ -2,7 +2,9 @@ import { errorResponse, jsonResponse } from '../lib/cors';
 import { hashIp } from '../lib/ipHash';
 import { issueChatTicket, verifyChatTicket } from '../lib/chatTicket';
 import { getChatRoomNamespace } from '../chatEnv';
+import { isAdmin } from '../lib/adminAuth';
 import {
+  CHAT_ADMIN_DELETE_PATH,
   CHAT_HISTORY_PATH,
   CHAT_IP_HASH_HEADER,
   CHAT_PREVIEW_TTL_MS,
@@ -166,6 +168,16 @@ export async function handleChatRecent(
   const namespace = getChatRoomNamespace(env);
   if (!namespace) return unavailable(request, env);
 
+  /*
+   * Moderators read a longer, uncached window: they are acting on what is in the
+   * room right now, and a ten-second-old copy is how you delete the wrong line.
+   * Everyone else gets the cached strip, which is what keeps the room asleep.
+   */
+  const askedLimit = new URL(request.url).searchParams.get('limit');
+  if (askedLimit !== null && isAdmin(request, env)) {
+    return chatHistory(request, env, namespace, askedLimit);
+  }
+
   const cachedAge = previewCache ? Date.now() - previewCache.storedAtMs : -1;
   if (previewCache && cachedAge >= 0 && cachedAge < CHAT_PREVIEW_TTL_MS) {
     return jsonResponse(previewCache.payload, 200, request, env);
@@ -193,6 +205,100 @@ export async function handleChatRecent(
     return errorResponse(
       'room-unavailable',
       '채팅 미리보기를 불러올 수 없습니다.',
+      503,
+      request,
+      env
+    );
+  }
+}
+
+/**
+ * Deletes chat lines. Moderator only.
+ *
+ * Body is either `{ ids: string[] }` for single lines or `{ handle: string }`
+ * to clear everything one sender still has in the window. The room broadcasts
+ * the removal, so open screens drop the line without a reload.
+ *
+ * The preview cache is cleared on success. Otherwise the dashboard strip would
+ * keep serving a deleted line for the rest of its TTL — the one place a removed
+ * message could outlive the room.
+ */
+export async function handleChatAdminDelete(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (!isAdmin(request, env)) {
+    return errorResponse('unauthorized', '인증이 필요합니다.', 401, request, env);
+  }
+
+  const namespace = getChatRoomNamespace(env);
+  if (!namespace) return unavailable(request, env);
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse('invalid', '요청 형식이 올바르지 않습니다.', 400, request, env);
+  }
+
+  const stub = namespace.get(namespace.idFromName(CHAT_ROOM_NAME));
+
+  try {
+    const upstream = await stub.fetch(
+      `https://chat-room.internal${CHAT_ADMIN_DELETE_PATH}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!upstream.ok) {
+      return errorResponse(
+        'invalid',
+        '삭제할 대상을 찾을 수 없습니다.',
+        upstream.status === 400 ? 400 : 502,
+        request,
+        env
+      );
+    }
+
+    const payload = (await upstream.json()) as { deleted?: unknown };
+    previewCache = null;
+
+    const deleted = Array.isArray(payload.deleted) ? payload.deleted : [];
+    return jsonResponse({ deleted }, 200, request, env);
+  } catch (error) {
+    console.warn('[chat] admin delete failed', error);
+    return errorResponse(
+      'room-unavailable',
+      '채팅방에 연결할 수 없습니다.',
+      503,
+      request,
+      env
+    );
+  }
+}
+
+/** Uncached transcript read, used only by the moderator console. */
+async function chatHistory(
+  request: Request,
+  env: Env,
+  namespace: DurableObjectNamespace,
+  limit: string
+): Promise<Response> {
+  const stub = namespace.get(namespace.idFromName(CHAT_ROOM_NAME));
+  try {
+    const upstream = await stub.fetch(
+      `https://chat-room.internal${CHAT_HISTORY_PATH}?limit=${encodeURIComponent(limit)}`
+    );
+    if (!upstream.ok) throw new Error(`room responded ${upstream.status}`);
+    return jsonResponse(await upstream.json(), 200, request, env);
+  } catch (error) {
+    console.warn('[chat] admin history read failed', error);
+    return errorResponse(
+      'room-unavailable',
+      '채팅 내역을 불러올 수 없습니다.',
       503,
       request,
       env

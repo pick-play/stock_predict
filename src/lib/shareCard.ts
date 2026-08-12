@@ -70,6 +70,18 @@ const PANEL_GAP = 22; // badge bottom → metrics panel top
 const PANEL_PAD = 14;
 const ROW_H = 25;
 const PANEL_H = PANEL_PAD * 2 + 12 + ROW_H * 2 + 4;
+/**
+ * Recent-history chart, in the same place the card puts it: top right, beside
+ * the company name. Drawn only when there are at least two points.
+ *
+ * Slightly larger than the card's 72×28 because the image is read on its own
+ * with nothing around it, but it stays inside the header row so it costs no
+ * height — which is why the card's total height no longer depends on it.
+ */
+const SPARK_W = 112;
+const SPARK_H = 40;
+const SPARK_MIN_POINTS = 2;
+
 const FOOT_GAP = 20; // panel bottom → divider
 const DISC_TOP = 18; // divider → first disclaimer baseline
 const DISC_LINE_H = 15;
@@ -253,6 +265,92 @@ function krwParts(value: number): { number: string; unit: string } {
   };
 }
 
+/**
+ * Area chart of the recent series, in the direction's colour.
+ *
+ * A flat series (every value equal) would divide by a zero range, so the line is
+ * centred instead — which is also the honest picture of a price that has not
+ * moved. No axis labels: the numbers are already stated above and below, and the
+ * shape is the only thing this adds.
+ */
+function drawSparkline(
+  ctx: CanvasRenderingContext2D,
+  series: number[],
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: string,
+): void {
+  const min = Math.min(...series);
+  const max = Math.max(...series);
+  const range = max - min;
+  const padY = 8;
+
+  const toX = (i: number) => x + (i / (series.length - 1)) * w;
+  const toY = (v: number) =>
+    range === 0
+      ? y + h / 2
+      : y + h - padY - ((v - min) / range) * (h - padY * 2);
+
+  const points = series.map((v, i) => ({ x: toX(i), y: toY(v) }));
+
+  // Filled area first, so the line sits on top of its own shading.
+  const fill = ctx.createLinearGradient(0, y, 0, y + h);
+  fill.addColorStop(0, withAlpha(color, 0.18));
+  fill.addColorStop(1, withAlpha(color, 0.02));
+
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, y + h);
+  for (const p of points) ctx.lineTo(p.x, p.y);
+  ctx.lineTo(points[points.length - 1].x, y + h);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (const p of points.slice(1)) ctx.lineTo(p.x, p.y);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.stroke();
+
+  // The latest point, marked so the reader knows which end is now.
+  const last = points[points.length - 1];
+  ctx.beginPath();
+  ctx.arc(last.x, last.y, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(last.x, last.y, 3.5, 0, Math.PI * 2);
+  ctx.strokeStyle = LIGHT.surface;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+/**
+ * Alpha variant of a palette colour.
+ *
+ * The palette mixes #rrggbb and rgba() forms; parsing both here keeps the chart
+ * from having to carry its own duplicate set of tints.
+ */
+function withAlpha(color: string, alpha: number): string {
+  if (color.startsWith("#") && color.length === 7) {
+    const r = parseInt(color.slice(1, 3), 16);
+    const g = parseInt(color.slice(3, 5), 16);
+    const b = parseInt(color.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  const match = color.match(/rgba?\(([^)]+)\)/);
+  if (match) {
+    const [r, g, b] = match[1].split(",").map((n) => n.trim());
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  return color;
+}
+
 /** Measure the disclaimer up front: it is the only element that reflows. */
 function measureDisclaimerLines(contentWidth: number): number {
   try {
@@ -267,9 +365,22 @@ function measureDisclaimerLines(contentWidth: number): number {
 
 // ── Main export ────────────────────────────────────────────────────────────
 
+export interface ShareImageOptions {
+  /**
+   * Recent estimated prices, oldest first — the same series the card's
+   * sparkline uses. Fewer than two points draws nothing and shortens the card,
+   * rather than inventing a shape out of one value (§12).
+   */
+  sparkline?: number[];
+}
+
 export async function generateShareImage(
   snapshot: StockSnapshot,
+  options: ShareImageOptions = {},
 ): Promise<Blob> {
+  const series = (options.sparkline ?? []).filter((v) => Number.isFinite(v) && v > 0);
+  const hasChart = series.length >= SPARK_MIN_POINTS;
+
   const contentW = CARD_W - MARGIN * 2 - PAD * 2;
   const discLineCount = measureDisclaimerLines(contentW);
   const cardH = CARD_BASE_H + (discLineCount - 1) * DISC_LINE_H;
@@ -424,6 +535,12 @@ export async function generateShareImage(
   );
   ctx.fillStyle = LIGHT.textTertiary;
   ctx.fillText(snapshot.koreanTicker, iX + nameW + 18, y - 0.5);
+
+  // Recent trend, right-aligned against the name — the card's arrangement, so a
+  // reader who saw the screen recognises the picture.
+  if (hasChart) {
+    drawSparkline(ctx, series, iR - SPARK_W, y - 26, SPARK_W, SPARK_H, dirColor);
+  }
 
   // ── Caption — states what the number is before the number is read ─────
   y += EYEBROW_GAP;

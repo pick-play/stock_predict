@@ -39,6 +39,11 @@ export type ChatServerEvent =
     }
   | { type: "message"; message: ChatMessage }
   | { type: "presence"; participants: number }
+  /**
+   * Lines a moderator removed. Sent to everyone, including the sender, so a
+   * deleted message cannot survive on a screen that already received it.
+   */
+  | { type: "deleted"; ids: string[] }
   | { type: "rejected"; code: ChatRejectCode; message: string };
 
 /**

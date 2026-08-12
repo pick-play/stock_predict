@@ -12,7 +12,11 @@ import userEvent from "@testing-library/user-event";
 import type { StockSnapshot } from "../../../types/market";
 
 const mockImage = vi.hoisted(() => ({
-  generate: vi.fn(async () => new Blob(["png"], { type: "image/png" })),
+  // Typed with both parameters so the options argument can be asserted on:
+  // an argless mock infers an empty tuple and calls[0][1] fails to compile.
+  generate: vi.fn<(snapshot: unknown, options?: unknown) => Promise<Blob>>(async () =>
+    new Blob(["png"], { type: "image/png" })
+  ),
 }));
 
 vi.mock("../../../lib/shareCard", () => ({
@@ -188,5 +192,39 @@ describe("ShareCardButton", () => {
     await waitFor(() => screen.getByText("오류"));
     expect(screen.queryByRole("dialog")).toBeNull();
     consoleError.mockRestore();
+  });
+});
+
+/**
+ * The card's own sparkline lives on the page, not in the snapshot, so the image
+ * only gets a chart if the series is handed down. It was missing from the saved
+ * picture for exactly that reason.
+ */
+describe("ShareCardButton chart data", () => {
+  beforeEach(() => {
+    mockImage.generate.mockClear();
+    setShareSupport(true);
+  });
+
+  it("hands the recent series to the image generator", async () => {
+    const user = userEvent.setup();
+    render(
+      <ShareCardButton snapshot={snapshot()} sparklineData={[100, 110, 105]} />
+    );
+    await user.click(screen.getByRole("button", { name: /이미지 만들기/ }));
+
+    await waitFor(() => expect(mockImage.generate).toHaveBeenCalled());
+    expect(mockImage.generate.mock.calls[0][1]).toEqual({
+      sparkline: [100, 110, 105],
+    });
+  });
+
+  it("asks for no chart when the page has no history yet", async () => {
+    const user = userEvent.setup();
+    render(<ShareCardButton snapshot={snapshot()} />);
+    await user.click(screen.getByRole("button", { name: /이미지 만들기/ }));
+
+    await waitFor(() => expect(mockImage.generate).toHaveBeenCalled());
+    expect(mockImage.generate.mock.calls[0][1]).toEqual({ sparkline: undefined });
   });
 });

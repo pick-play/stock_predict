@@ -81,6 +81,15 @@ export const CHAT_MAX_SOCKETS_PER_IP = 25;
  */
 export const CHAT_HISTORY_PATH = "/history";
 
+/**
+ * Path the Worker calls on the room stub to delete lines.
+ *
+ * The room does no authorisation of its own here: the Durable Object namespace
+ * is only reachable through the Worker binding, and the Worker checks the admin
+ * token before it forwards. Same trust boundary as CHAT_IP_HASH_HEADER.
+ */
+export const CHAT_ADMIN_DELETE_PATH = "/admin/delete";
+
 /** How many lines the dashboard preview asks for. */
 export const CHAT_PREVIEW_LIMIT = 8;
 

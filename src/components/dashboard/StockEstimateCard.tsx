@@ -227,11 +227,14 @@ export function StockEstimateCard({
         )}
 
         {/* ── Metrics table ──
-            On a phone only the two rows the headline price is derived from stay:
-            the domestic anchor and the current overseas futures price. The
-            futures anchor, the bid/ask and the spread are desktop-only — detail
-            for someone inspecting the calculation, not for someone glancing at a
-            price. */}
+            A phone shows the three rows the headline price is actually derived
+            from: the domestic anchor, the current overseas futures price, and the
+            futures anchor it is measured against. Without that third row the
+            percentage has no visible denominator.
+
+            The bid/ask and the spread stay desktop-only — they describe the
+            quality of the quote, not the calculation, and they are detail for
+            someone inspecting it rather than someone glancing at a price. */}
         <div className="border-t border-[var(--border-mid)] pt-3 mt-1">
           <MetricRow
             label={krxAnchorLabel}
@@ -246,7 +249,6 @@ export function StockEstimateCard({
             }
           />
           <MetricRow
-            desktopOnly
             label={anchorLabel}
             value={
               snapshot.baselineBinancePrice > 0
@@ -302,7 +304,12 @@ export function StockEstimateCard({
             </button>
 
             {/* Share / download button — hidden when no real estimate available */}
-            {snapshot.status === "healthy" && <ShareCardButton snapshot={snapshot} />}
+            {snapshot.status === "healthy" && (
+              <ShareCardButton
+                snapshot={snapshot}
+                sparklineData={sparklineData}
+              />
+            )}
           </div>
         </div>
       </div>

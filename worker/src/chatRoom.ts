@@ -14,10 +14,12 @@
  */
 
 import {
+  CHAT_ADMIN_DELETE_PATH,
   CHAT_HISTORY_PATH,
   CHAT_IP_HASH_HEADER,
   CHAT_PING_FRAME,
   CHAT_PONG_FRAME,
+  CHAT_MESSAGE_CAP,
   CHAT_PREVIEW_LIMIT,
 } from '../../src/lib/chat/config';
 import { ChatMessageStore } from '../../src/lib/chat/messageStore';
@@ -109,11 +111,29 @@ export class ChatRoom implements DurableObject {
       if (request.method !== 'GET') {
         return new Response('method not allowed', { status: 405 });
       }
-      const messages = await this.store.history(CHAT_PREVIEW_LIMIT);
+      // A moderator needs more than the strip's few lines to find what to
+      // delete. The Worker decides who may ask for more; the room only clamps.
+      const asked = Number(
+        new URL(request.url).searchParams.get('limit') ?? CHAT_PREVIEW_LIMIT
+      );
+      const limit = Number.isFinite(asked)
+        ? Math.max(1, Math.min(Math.trunc(asked), CHAT_MESSAGE_CAP))
+        : CHAT_PREVIEW_LIMIT;
+      const messages = await this.store.history(limit);
       return new Response(
         JSON.stringify({ messages, participants: this.participantCount() }),
         { headers: { 'Content-Type': 'application/json; charset=utf-8' } }
       );
+    }
+
+    // Moderator deletion. Authorised by the Worker before it gets here — the
+    // namespace has no route from the public internet — so the room's job is to
+    // remove the rows and make sure no screen keeps showing them.
+    if (new URL(request.url).pathname === CHAT_ADMIN_DELETE_PATH) {
+      if (request.method !== 'POST') {
+        return new Response('method not allowed', { status: 405 });
+      }
+      return this.handleAdminDelete(request);
     }
 
     if ((request.headers.get('Upgrade') ?? '').toLowerCase() !== 'websocket') {
@@ -286,6 +306,47 @@ export class ChatRoom implements DurableObject {
       .getWebSockets()
       .filter((socket) => socket !== exclude && !isClosingOrClosed(socket))
       .length;
+  }
+
+  /**
+   * Removes lines by id, or every retained line from one handle.
+   *
+   * The broadcast goes to every socket with no exclusion: a moderator watching
+   * from the room has to see the line disappear too, and there is no sender to
+   * spare here.
+   */
+  private async handleAdminDelete(request: Request): Promise<Response> {
+    let ids: string[] = [];
+    let handle = '';
+
+    try {
+      const body = (await request.json()) as {
+        ids?: unknown;
+        handle?: unknown;
+      };
+      if (Array.isArray(body.ids)) {
+        ids = body.ids.filter((id): id is string => typeof id === 'string');
+      }
+      if (typeof body.handle === 'string') handle = body.handle;
+    } catch {
+      return new Response('invalid body', { status: 400 });
+    }
+
+    if (ids.length === 0 && handle === '') {
+      return new Response('nothing to delete', { status: 400 });
+    }
+
+    const deleted = handle
+      ? await this.store.removeByHandle(handle)
+      : await this.store.remove(ids);
+
+    if (deleted.length > 0) {
+      this.broadcast({ type: 'deleted', ids: deleted });
+    }
+
+    return new Response(JSON.stringify({ deleted }), {
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    });
   }
 
   private send(socket: WebSocket, event: ChatServerEvent): void {

@@ -146,3 +146,45 @@ describe("StockEstimateCard chart toggle", () => {
     expect(button.getAttribute("aria-expanded")).toBe("false");
   });
 });
+
+/**
+ * Which metric rows a phone shows has now been changed twice by owner decision.
+ * Pinned here so the next edit to this table has to be deliberate.
+ */
+describe("StockEstimateCard metric rows on mobile", () => {
+  /** The row element that carries the responsive class, given its label. */
+  function row(label: RegExp) {
+    const labelNode = screen.getByText(label);
+    const element = labelNode.parentElement;
+    if (!element) throw new Error(`no row for ${label}`);
+    return element;
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // The percentage has no visible denominator without this row.
+  it("shows 기준가 on every screen size", () => {
+    renderCard();
+    expect(row(/^기준가/).className).not.toContain("hidden");
+  });
+
+  it("shows the domestic anchor and the current futures price on mobile", () => {
+    renderCard();
+    expect(row(/최근 국내 종가|국내 시가/).className).not.toContain("hidden");
+    expect(row(/현재 해외 선물가/).className).not.toContain("hidden");
+  });
+
+  // Quote quality, not the calculation — detail for a desktop inspection.
+  it("keeps the bid/ask and the spread off the phone", () => {
+    renderCard();
+    expect(row(/매수 \/ 매도 호가/).className).toContain("hidden md:flex");
+    expect(row(/호가 스프레드/).className).toContain("hidden md:flex");
+  });
+});

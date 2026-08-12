@@ -3,6 +3,7 @@ import { handleGetPosts, handleCreatePost, handleGetPopularPosts } from './route
 import { handleLike } from './routes/like';
 import { handleReport } from './routes/report';
 import {
+  handleAdminLogin,
   handleAdminGetPosts,
   handleAdminHidePost,
   handleAdminUnhidePost,
@@ -28,6 +29,7 @@ import {
   handleChatTicket,
   handleChatRoom,
   handleChatRecent,
+  handleChatAdminDelete,
 } from './routes/chat';
 import type { Env } from './types';
 
@@ -76,6 +78,11 @@ export default {
     const likeMatch = path.match(/^\/api\/posts\/(\d+)\/like$/);
     if (method === 'POST' && likeMatch) {
       return handleLike(request, env, likeMatch[1]);
+    }
+
+    // POST /api/admin/login — short password traded for the bearer token
+    if (method === 'POST' && path === '/api/admin/login') {
+      return handleAdminLogin(request, env);
     }
 
     // GET /api/admin/posts?filter=reported|hidden|all
@@ -167,6 +174,11 @@ export default {
     // GET /api/chat/room — WebSocket upgrade proxied to the ChatRoom Durable Object
     if (method === 'GET' && path === '/api/chat/room') {
       return handleChatRoom(request, env);
+    }
+
+    // POST /api/chat/admin/delete — moderator removes chat lines
+    if (method === 'POST' && path === '/api/chat/admin/delete') {
+      return handleChatAdminDelete(request, env);
     }
 
     // GET /api/chat/recent — read-only transcript preview for the dashboard

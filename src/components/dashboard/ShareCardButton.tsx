@@ -6,6 +6,13 @@ import { SharePreviewModal } from "./SharePreviewModal";
 
 interface ShareCardButtonProps {
   snapshot: StockSnapshot;
+  /**
+   * Recent estimated prices for the image's chart, oldest first — the same
+   * series the card's sparkline draws. It lives on the page rather than in the
+   * snapshot, so it has to be handed down; without it the image simply omits
+   * the chart, which is what it did before.
+   */
+  sparklineData?: number[];
 }
 
 type ButtonState = "idle" | "generating" | "error";
@@ -38,7 +45,10 @@ function kstDateTag(): string {
  *   3. From the preview: share sheet where files are supported, download
  *      otherwise. Both remain available.
  */
-export function ShareCardButton({ snapshot }: ShareCardButtonProps) {
+export function ShareCardButton({
+  snapshot,
+  sparklineData,
+}: ShareCardButtonProps) {
   const [btnState, setBtnState] = useState<ButtonState>("idle");
   const [preview, setPreview] = useState<Preview | null>(null);
 
@@ -75,7 +85,9 @@ export function ShareCardButton({ snapshot }: ShareCardButtonProps) {
     setBtnState("generating");
 
     try {
-      const blob = await generateShareImage(snapshot);
+      const blob = await generateShareImage(snapshot, {
+        sparkline: sparklineData,
+      });
       const fileName = `${snapshot.displayName}-예상가-${kstDateTag()}.png`;
 
       revokeUrl();
@@ -87,7 +99,7 @@ export function ShareCardButton({ snapshot }: ShareCardButtonProps) {
       console.error("[ShareCard] image generation error:", err);
       setBtnState("error");
     }
-  }, [btnState, snapshot, revokeUrl]);
+  }, [btnState, snapshot, sparklineData, revokeUrl]);
 
   const label =
     btnState === "generating"

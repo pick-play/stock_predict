@@ -185,6 +185,48 @@ export class ChatMessageStore {
     return newestFirst.reverse();
   }
 
+  /**
+   * Deletes the given ids and reports which ones actually existed.
+   *
+   * The cursor is left alone on purpose. It tracks the *span* of sequence
+   * numbers, not the count, so a hole punched in the middle means the window
+   * holds slightly fewer than the cap until the span rolls past it. Rewriting
+   * oldestSeq here would be wrong in the other direction — deleting the oldest
+   * line would then let the window grow past the cap.
+   */
+  async remove(ids: string[]): Promise<string[]> {
+    const wanted = new Set<string>();
+    for (const id of ids) {
+      const seq = Number(id);
+      if (Number.isInteger(seq) && seq >= 0) wanted.add(messageKey(seq));
+    }
+    if (wanted.size === 0) return [];
+
+    const rows = await this.storage.list({ prefix: MESSAGE_KEY_PREFIX });
+    const doomed = [...rows.keys()].filter((key) => wanted.has(key));
+    if (doomed.length > 0) await this.storage.delete(doomed);
+
+    return doomed.map(seqFromKey);
+  }
+
+  /**
+   * Deletes every retained line from one handle — the whole-run case, for when a
+   * single sender fills the room rather than posting once.
+   */
+  async removeByHandle(handle: string): Promise<string[]> {
+    if (handle === "") return [];
+
+    const rows = await this.storage.list({ prefix: MESSAGE_KEY_PREFIX });
+    const doomed: string[] = [];
+    for (const [key, value] of rows) {
+      const stored = toStoredMessage(value);
+      if (stored?.handle === handle) doomed.push(key);
+    }
+    if (doomed.length > 0) await this.storage.delete(doomed);
+
+    return doomed.map(seqFromKey);
+  }
+
   /** Number of retained messages. Never exceeds the cap after an append. */
   async count(): Promise<number> {
     const rows = await this.storage.list({ prefix: MESSAGE_KEY_PREFIX });
