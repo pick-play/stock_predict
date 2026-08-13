@@ -3,8 +3,8 @@
   "short_name": "코스피 NOW",
   "description": "해외 선물가격의 야간 변동을 바탕으로 한 삼성전자·SK하이닉스 참고 예상가격",
   "lang": "ko",
-  "start_url": ".",
-  "scope": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#080b10",
   "theme_color": "#080b10",
@@ -25,5 +25,6 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "id": "/"
 }

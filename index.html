@@ -66,6 +66,19 @@
       })();
     </script>
 
+    <!--
+      Chrome fires this once, early, and there is no way to ask for it again.
+      React has not mounted yet at that point, so the event is stashed here for
+      the install button to pick up when it does.
+    -->
+    <script>
+      window.__installPromptEvent = null;
+      window.addEventListener("beforeinstallprompt", function (event) {
+        event.preventDefault();
+        window.__installPromptEvent = event;
+      });
+    </script>
+
     <meta
       name="description"
       content="코스피 NOW(코스피나우) — 야간선물(야선) 해외 선물가격의 변동으로 삼성전자·SK하이닉스의 야간·주말 참고 예상가격을 보여줍니다. 실제 체결가가 아닌 참고정보입니다."

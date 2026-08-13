@@ -3,6 +3,7 @@ import { useMarketData } from "../hooks/useMarketData";
 import { useChartHistory } from "../hooks/useChartHistory";
 import { AppHeader } from "../components/common/AppHeader";
 import { StockEstimateCard } from "../components/dashboard/StockEstimateCard";
+import { InstallButton } from "../components/common/InstallButton";
 import { HeroSummary } from "../components/dashboard/HeroSummary";
 import { LazyPriceChart } from "../components/dashboard/LazyPriceChart";
 import { MarketIndexGrid } from "../components/dashboard/MarketIndexGrid";
@@ -173,6 +174,9 @@ export function DashboardPage({
 
         <Disclaimer />
       </main>
+
+      {/* Phones only, and only where nothing else owns the bottom-right. */}
+      <InstallButton />
 
       <MobileBottomBar />
     </DashboardLayout>
