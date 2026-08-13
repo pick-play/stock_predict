@@ -188,3 +188,43 @@ describe("StockEstimateCard metric rows on mobile", () => {
     expect(row(/호가 스프레드/).className).toContain("hidden md:flex");
   });
 });
+
+/**
+ * A phone showed two lines under 기준가: the row's own bottom border plus the
+ * footer's top border. `last:border-0` looks at DOM children, and the
+ * desktop-only rows are still children on a phone — just invisible — so the last
+ * row a phone can see never qualified as last.
+ */
+describe("StockEstimateCard metric dividers", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function rows() {
+    return Array.from(
+      document.querySelectorAll("[class*='justify-between'][class*='py-[5px]']")
+    );
+  }
+
+  it("draws dividers on the top edge, never the bottom", () => {
+    renderCard();
+    const all = rows();
+    expect(all.length).toBeGreaterThan(2);
+    all.forEach((row) => {
+      expect(row.className).toContain("border-t");
+      expect(row.className).not.toContain("border-b");
+    });
+  });
+
+  // Anchoring to first: is what makes a hidden trailing row harmless.
+  it("skips the divider above the first row only", () => {
+    renderCard();
+    expect(rows()[0].className).toContain("first:border-0");
+    expect(rows()[0].className).not.toContain("last:border-0");
+  });
+});

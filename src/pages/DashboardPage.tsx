@@ -26,6 +26,17 @@ const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
  */
 const CHART_PANEL_ID = "stock-chart-panel";
 
+/**
+ * Phone stacking order for the cards and the chart between them.
+ *
+ * Tailwind needs the class names spelled out — it scans source text, so a
+ * computed `order-${n}` would never be generated. Odd numbers for the cards,
+ * even for the chart slot that follows each one; both are reset to source order
+ * at md, where the chart belongs at the bottom across both columns.
+ */
+const CARD_ORDER = ["order-1 md:order-none", "order-3 md:order-none"];
+const CHART_ORDER = ["order-2", "order-4"];
+
 interface DashboardPageProps {
   onNavigateBoard?: () => void;
   onNavigateChat?: () => void;
@@ -118,8 +129,19 @@ export function DashboardPage({
           </div>
         )}
 
-        {/* Stock estimate cards — staggered entry. Each owns its own chart,
-            collapsed until asked for, so Recharts stays out of the first paint. */}
+        {/* Stock estimate cards, and the one chart they share.
+            Staggered entry; the chart stays unmounted until a card asks for it,
+            so the Recharts chunk misses the first paint (§22).
+
+            The chart is a grid child rather than a sibling below the grid, which
+            is what lets CSS order place it. On a phone the cards stack, so a
+            chart parked after both of them opened under SK하이닉스 when the
+            삼성전자 button was the one pressed — the panel was nowhere near the
+            control that opened it. Ordering puts it directly under its own card.
+
+            Desktop keeps it last and full width (md:order-none): inside the
+            two-column row it would stretch the neighbouring card to the chart's
+            height and leave a tall empty box beside it. */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {STOCK_IDS.map((id, index) => {
             const snapshot = stocks[id];
@@ -139,26 +161,29 @@ export function DashboardPage({
                   setChartStock((open) => (open === id ? null : id))
                 }
                 chartPanelId={CHART_PANEL_ID}
+                className={CARD_ORDER[index]}
               />
             );
           })}
-        </div>
 
-        {/* The one chart, at full width, for whichever card asked for it. Kept
-            unmounted until then so the Recharts chunk stays out of the first
-            paint (§22). */}
-        {chartStock && (
-          <div id={CHART_PANEL_ID} className="animate-fade-in">
-            <LazyPriceChart
-              history={history}
-              krxClose={krxClose}
-              range={chartRange}
-              onRangeChange={setChartRange}
-              isLoading={chartLoading}
-              stockId={chartStock}
-            />
-          </div>
-        )}
+          {chartStock && (
+            <div
+              id={CHART_PANEL_ID}
+              className={`animate-fade-in md:col-span-2 md:order-none ${
+                CHART_ORDER[STOCK_IDS.indexOf(chartStock)] ?? "order-last"
+              }`}
+            >
+              <LazyPriceChart
+                history={history}
+                krxClose={krxClose}
+                range={chartRange}
+                onRangeChange={setChartRange}
+                isLoading={chartLoading}
+                stockId={chartStock}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Release schedule, then the week's hot community posts under it. Both
             below the chart, because the chart belongs to the cards whose button

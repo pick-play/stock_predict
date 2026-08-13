@@ -27,6 +27,8 @@ interface StockEstimateCardProps {
   onToggleChart: () => void;
   /** Ties the button to the panel the page renders. */
   chartPanelId: string;
+  /** Grid placement from the page — the phone stacking order. */
+  className?: string;
 }
 
 export function StockEstimateCard({
@@ -37,6 +39,7 @@ export function StockEstimateCard({
   chartOpen,
   onToggleChart,
   chartPanelId,
+  className = "",
 }: StockEstimateCardProps) {
   const now = useNow();
   const direction = getDirection(snapshot.changeRate);
@@ -135,7 +138,7 @@ export function StockEstimateCard({
 
   return (
     <article
-      className="animate-slide-fade-in relative rounded-2xl border border-[var(--border-subtle)] bg-surface-1 overflow-hidden hover:-translate-y-1 hover:border-[var(--border-strong)] hover:shadow-xl hover:shadow-black/20 transition-all duration-200 ease-out"
+      className={`animate-slide-fade-in relative rounded-2xl border border-[var(--border-subtle)] bg-surface-1 overflow-hidden hover:-translate-y-1 hover:border-[var(--border-strong)] hover:shadow-xl hover:shadow-black/20 transition-all duration-200 ease-out ${className}`}
       style={{ animationDelay, willChange: "transform" }}
       aria-label={`${snapshot.displayName} 예상가격 카드`}
     >
@@ -332,9 +335,19 @@ function MetricRow({
 }) {
   return (
     <div
+      /*
+       * The divider sits on the TOP of each row but the first, not the bottom of
+       * each but the last.
+       *
+       * `last:border-0` counts DOM children, and the desktop-only rows are still
+       * children on a phone — merely invisible. So the last row a phone can see
+       * kept its bottom border, and the footer's own top border landed just
+       * below it: two lines under 기준가. Anchoring to `first:` is safe because
+       * the first row is visible on every screen.
+       */
       className={`${
         desktopOnly ? "hidden md:flex" : "flex"
-      } items-center justify-between py-[5px] border-b border-[var(--border-subtle)] last:border-0`}
+      } items-center justify-between py-[5px] border-t border-[var(--border-subtle)] first:border-0`}
     >
       <span className="text-[13px] text-[var(--text-tertiary)]">{label}</span>
       <span className="text-[13px] text-[var(--text-secondary)] font-mono tabular-nums ml-4 text-right">
