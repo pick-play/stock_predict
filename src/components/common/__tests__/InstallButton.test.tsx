@@ -46,7 +46,7 @@ function fakePromptEvent(outcome: "accepted" | "dismissed" = "accepted") {
   } as unknown as Event;
 }
 
-const BUTTON = { name: "홈 화면에 추가" };
+const BUTTON = { name: "앱 설치" };
 
 describe("InstallButton", () => {
   beforeEach(() => {
@@ -83,6 +83,7 @@ describe("InstallButton", () => {
     render(<InstallButton />);
 
     await user.click(screen.getByRole("button", BUTTON));
+    // The card must quote Safari's own menu wording, not the button's label.
     expect(screen.getByRole("dialog").textContent).toContain("공유");
     expect(screen.getByRole("dialog").textContent).toContain("홈 화면에 추가");
   });

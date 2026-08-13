@@ -1,5 +1,5 @@
 /**
- * Floating "홈 화면에 추가" button, bottom right, phones only.
+ * Floating "앱 설치" button, bottom right, phones only.
  *
  * Two platforms, two mechanisms:
  *
@@ -10,6 +10,11 @@
  *   iOS — Safari has no such API and never will expose one. The only route is
  *   the reader doing it: 공유 → 홈 화면에 추가. The button therefore opens a
  *   short instruction card instead of pretending it can act.
+ *
+ * The button says 앱 설치 (owner decision, 2026-08-13), but the iOS card still
+ * quotes "홈 화면에 추가" exactly: that is the label of the menu item the reader
+ * has to find. Renaming it in the instructions would send someone hunting for
+ * something Safari does not offer.
  *
  * It hides itself when the site is already running from the home screen, after
  * an install, and for a month after a dismissal.
@@ -122,7 +127,7 @@ export function InstallButton() {
       {showIosHelp && (
         <div
           role="dialog"
-          aria-label="홈 화면에 추가하는 방법"
+          aria-label="앱 설치 방법"
           className="w-[15rem] rounded-xl border border-[var(--border-strong)] p-3 text-[13px] leading-relaxed text-[var(--text-secondary)]"
           style={{
             backgroundColor: "var(--surface-menu)",
@@ -130,7 +135,7 @@ export function InstallButton() {
           }}
         >
           <p className="mb-1.5 font-semibold text-[var(--text-primary)]">
-            홈 화면에 추가
+            앱으로 설치하기
           </p>
           <p className="flex items-center gap-1.5">
             <span>1. 아래 공유</span>
@@ -145,7 +150,7 @@ export function InstallButton() {
         <button
           type="button"
           onClick={dismiss}
-          aria-label="홈 화면에 추가 안내 닫기"
+          aria-label="앱 설치 안내 닫기"
           className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-subtle)] text-[var(--text-tertiary)]"
           style={{
             backgroundColor: "color-mix(in srgb, var(--surface-2) 92%, transparent)",
@@ -167,7 +172,7 @@ export function InstallButton() {
           }}
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
-          홈 화면에 추가
+          앱 설치
         </button>
       </div>
     </div>
