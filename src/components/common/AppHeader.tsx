@@ -2,8 +2,7 @@ import { ConnectionBadge } from "./ConnectionBadge";
 import { HeaderMenu } from "./HeaderMenu";
 import { ThemeToggle } from "./ThemeToggle";
 import { MarketStatusBadge } from "./MarketStatusBadge";
-import { formatRelativeTime } from "../../lib/format";
-import { useNow } from "../../hooks/useNow";
+import { RelativeTime } from "./RelativeTime";
 import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
 import { BRAND_NAME, BRAND_NAME_LATIN } from "../../config/brand";
 
@@ -28,7 +27,6 @@ export function AppHeader({
   onNavigateBoard,
   onNavigateChat,
 }: AppHeaderProps) {
-  const now = useNow();
   return (
     /*
      * relative z-40 is load-bearing, not decoration.
@@ -75,9 +73,10 @@ export function AppHeader({
           wsStatus={wsStatus}
         />
         {lastUpdated && !isLoading && (
-          <span className="hidden md:block text-[12px] text-[var(--text-muted)] tabular-nums">
-            {formatRelativeTime(lastUpdated, now)}
-          </span>
+          <RelativeTime
+            iso={lastUpdated}
+            className="hidden md:block text-[12px] text-[var(--text-muted)] tabular-nums"
+          />
         )}
         {onNavigateBoard && (
           <button

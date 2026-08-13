@@ -36,7 +36,7 @@ interface ChatMessageListProps {
 export function ChatMessageList({ messages, ownHandle }: ChatMessageListProps) {
   // The labels are relative for the first hour, so they have to be recomputed as
   // time passes — a line that says 방금 must not still say it ten minutes later.
-  const now = useNow();
+  const now = useNow(15_000);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isFollowingRef = useRef(true);
 

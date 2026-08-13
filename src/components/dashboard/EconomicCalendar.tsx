@@ -80,7 +80,7 @@ function ReleaseRow({
 export function EconomicCalendar() {
   const { calendar } = useEconomicCalendar();
   const [expanded, setExpanded] = useState(false);
-  const now = useNow();
+  const now = useNow(60_000);
   const nowMs = now.getTime();
 
   // Hidden entirely when the file is missing, malformed, or unmaintained — see

@@ -232,6 +232,12 @@
   animation-timing-function: linear;
   animation-iteration-count: infinite;
   /* Duration is set inline from the item count so a longer tape keeps its pace. */
+
+  /* Promote the tape to its own compositor layer. Without it the browser is
+     free to repaint the strip — and on mobile the strip is a fixed bar the rest
+     of the page scrolls under — on every frame of an animation that never ends.
+     The transform above is then handled by the compositor alone. */
+  will-change: transform;
 }
 
 /* Give a reader a way to stop the motion long enough to read a row. */

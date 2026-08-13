@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNow } from "../../hooks/useNow";
+import { RelativeTime } from "../common/RelativeTime";
 import type { StockSnapshot } from "../../types/market";
 import {
   formatKrw,
@@ -7,7 +8,6 @@ import {
   formatChangeAmount,
   formatDirectionSymbol,
   getDirection,
-  formatRelativeTime,
   formatBinancePrice,
 } from "../../lib/format";
 import { getLastKrxCloseMs, getSeoulDate } from "../../lib/koreaMarket";
@@ -15,6 +15,14 @@ import { getDataFreshness } from "../../lib/staleData";
 import { Sparkline } from "./Sparkline";
 import { ShareCardButton } from "./ShareCardButton";
 import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
+
+/**
+ * How often the card re-evaluates whether its price is still fresh.
+ *
+ * The thresholds it feeds are minutes apart (see staleData), so a finer clock
+ * would only buy re-renders.
+ */
+const FRESHNESS_TICK_MS = 30_000;
 
 interface StockEstimateCardProps {
   snapshot: StockSnapshot;
@@ -41,7 +49,14 @@ export function StockEstimateCard({
   chartPanelId,
   className = "",
 }: StockEstimateCardProps) {
-  const now = useNow();
+  /*
+   * Minutes, not seconds. The only thing the card body derives from the clock is
+   * the freshness state, whose thresholds are 5 and 15 minutes; subscribing at
+   * one second re-rendered the whole card — price, sparkline, metric table —
+   * sixty times a minute. The seconds readout in the footer keeps its own
+   * one-second clock inside a leaf, where a tick repaints one text node.
+   */
+  useNow(FRESHNESS_TICK_MS);
   const direction = getDirection(snapshot.changeRate);
   const dirSymbol = formatDirectionSymbol(snapshot.changeRate);
   const isNoBaseline = snapshot.status === "no-baseline";
@@ -286,12 +301,10 @@ export function StockEstimateCard({
                 {live.label}
               </span>
             </div>
-            <span
+            <RelativeTime
+              iso={snapshot.eventTime}
               className="text-[12px] text-[var(--text-muted)] tabular-nums"
-              aria-label={`${formatRelativeTime(snapshot.eventTime, now)} 업데이트`}
-            >
-              {formatRelativeTime(snapshot.eventTime, now)}
-            </span>
+            />
           </div>
 
           {/* ── Chart, collapsed by default ── */}

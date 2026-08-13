@@ -33,7 +33,7 @@ interface RecentChatStripProps {
 export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
   const [data, setData] = useState<RecentChat | null>(null);
   // Relative labels for the first hour, so they need a clock that moves.
-  const now = useNow();
+  const now = useNow(15_000);
 
   useEffect(() => {
     if (!isChatConfigured) return;

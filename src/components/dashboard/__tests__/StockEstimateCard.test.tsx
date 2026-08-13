@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { StockSnapshot } from "../../../types/market";
 
@@ -226,5 +226,49 @@ describe("StockEstimateCard metric dividers", () => {
     renderCard();
     expect(rows()[0].className).toContain("first:border-0");
     expect(rows()[0].className).not.toContain("last:border-0");
+  });
+});
+
+/**
+ * The card must not re-render on the seconds clock.
+ *
+ * Its footer counts seconds, but only that readout needs to; when the card body
+ * shared the same subscription, every second re-rendered the price block, the
+ * sparkline and the metric table — sixty times a minute, per card, for as long
+ * as the page stayed open. On a phone that is paid for in battery and heat.
+ */
+describe("StockEstimateCard render cost", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("leaves the card body alone while the seconds tick", async () => {
+    // getDataFreshness runs once per body render, so its call count is a proxy
+    // for how often the card re-rendered.
+    const staleData = await import("../../../lib/staleData");
+    const freshness = vi.spyOn(staleData, "getDataFreshness");
+
+    renderCard();
+    const initial = freshness.mock.calls.length;
+    expect(initial).toBeGreaterThan(0);
+
+    for (let i = 0; i < 10; i++) {
+      act(() => {
+        vi.advanceTimersByTime(1_000);
+      });
+    }
+
+    // Ten seconds of the footer counting, and the body was never re-rendered:
+    // its own clock is coarse enough that no boundary was crossed.
+    expect(freshness.mock.calls.length).toBe(initial);
+
+    // The readout itself did keep up — 10s old at render, 20s after the wait.
+    expect(screen.getByText("20초 전")).toBeTruthy();
   });
 });

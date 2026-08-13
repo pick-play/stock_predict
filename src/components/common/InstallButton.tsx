@@ -153,9 +153,7 @@ export function InstallButton() {
           aria-label="앱 설치 안내 닫기"
           className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-subtle)] text-[var(--text-tertiary)]"
           style={{
-            backgroundColor: "color-mix(in srgb, var(--surface-2) 92%, transparent)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
+            backgroundColor: "var(--surface-2)",
           }}
         >
           <X className="h-4 w-4" aria-hidden="true" />
