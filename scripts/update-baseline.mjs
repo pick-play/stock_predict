@@ -104,6 +104,32 @@ function anchorTimeUtc(kstDateStr, session) {
  * Yahoo Finance daily candles. Returns the most recent bar with its trading
  * date, opening price and closing price.
  */
+/**
+ * Retries a network call a few times before giving up.
+ *
+ * One hiccup at Yahoo used to cost the whole session: the script exits non-zero,
+ * the old file is kept, and nothing tries again until the next scheduled run —
+ * which for the close anchor means the day's closing prices are simply missing.
+ * Three attempts with a widening gap turns a blip into a delay.
+ */
+async function withRetries(label, run, attempts = 3) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await run();
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts) break;
+      const waitMs = attempt * 3000;
+      console.warn(
+        `[baseline] ${label} 시도 ${attempt}/${attempts} 실패: ${error.message} — ${waitMs}ms 후 재시도`
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+  throw lastError;
+}
+
 async function fetchYahooDaily(yahooSymbol) {
   const url =
     `https://query1.finance.yahoo.com/v8/finance/chart/` +
@@ -240,7 +266,11 @@ async function main() {
 
   console.log("[update-baseline] Yahoo Finance에서 KRX 시가·종가 조회 중...");
   const results = await Promise.allSettled(
-    STOCK_IDS.map((id) => fetchYahooDaily(SYMBOLS[id].yahooSymbol))
+    STOCK_IDS.map((id) =>
+      withRetries(`${SYMBOLS[id].displayName} 조회`, () =>
+        fetchYahooDaily(SYMBOLS[id].yahooSymbol)
+      )
+    )
   );
 
   const collected = {};

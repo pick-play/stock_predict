@@ -79,7 +79,30 @@ jobs:
 
           git add public/data/baseline.json
           git commit -m "chore(data): refresh KRX ${{ steps.session.outputs.value }} anchor $(date -u '+%Y-%m-%d')"
-          git push
+
+          # A push can fail for two reasons that both clear on a retry: GitHub
+          # answering 500 — which is exactly what killed the 2026-08-14 close
+          # anchor after the prices had already been fetched and committed — and
+          # another bot commit landing in between. Rebase covers the second,
+          # repetition the first. Without this the run died holding good data.
+          pushed=false
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              pushed=true
+              break
+            fi
+            echo "push attempt $attempt failed; refetching and retrying"
+            sleep $((attempt * 5))
+            git pull --rebase --autostash origin main || true
+          done
+
+          if [ "$pushed" != "true" ]; then
+            echo "::error::could not push the refreshed baseline after 5 attempts"
+            exit 1
+          fi
+
+          # After the loop: a rebase rewrites the commit, so the SHA the deploy
+          # waits for has to be read here rather than before the push.
 
           echo "pushed=true" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
