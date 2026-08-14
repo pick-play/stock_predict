@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- An error page has no business in a search index. -->
+    <meta name="robots" content="noindex, follow" />
+    <title>페이지를 찾을 수 없습니다 | 코스피 NOW</title>
+
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#080b10" />
+
+    <!--
+      Deliberately standalone: no app bundle, no analytics, no ads.
+
+      GitHub Pages serves this file for every unknown path, which includes an
+      asset a stale tab asks for after a deploy. Loading the whole application to
+      say "not found" would make the cheapest response on the site the most
+      expensive one.
+    -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f6f8fb;
+        --surface: #ffffff;
+        --border: rgba(15, 23, 42, 0.1);
+        --text: #0f172a;
+        --muted: #64748b;
+        --accent: #6b5ce7;
+        --accent-soft: rgba(139, 124, 255, 0.1);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #080b10;
+          --surface: #0d1118;
+          --border: rgba(255, 255, 255, 0.09);
+          --text: #f4f7fb;
+          --muted: #6f7a8c;
+          --accent: #a99cff;
+          --accent-soft: rgba(139, 124, 255, 0.14);
+        }
+      }
+
+      /* An explicit choice wins over the device, in both directions. */
+      :root[data-theme="dark"] {
+        --bg: #080b10;
+        --surface: #0d1118;
+        --border: rgba(255, 255, 255, 0.09);
+        --text: #f4f7fb;
+        --muted: #6f7a8c;
+        --accent: #a99cff;
+        --accent-soft: rgba(139, 124, 255, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Pretendard, "Noto Sans KR", -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      main {
+        width: 100%;
+        max-width: 26rem;
+        text-align: center;
+      }
+
+      .mark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #8b7cff 0%, #6b5ce7 100%);
+        color: #fff;
+        font-size: 20px;
+        font-weight: 800;
+        margin-bottom: 20px;
+      }
+
+      .code {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        margin: 0 0 8px;
+      }
+
+      h1 {
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.4;
+        margin: 0 0 10px;
+        letter-spacing: -0.01em;
+      }
+
+      p.lead {
+        font-size: 15px;
+        line-height: 1.65;
+        color: var(--muted);
+        margin: 0 0 24px;
+      }
+
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      a {
+        display: block;
+        min-height: 48px;
+        line-height: 48px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-size: 15px;
+        font-weight: 600;
+      }
+
+      a.primary {
+        background: linear-gradient(135deg, #8b7cff 0%, #6b5ce7 100%);
+        color: #fff;
+      }
+
+      a.secondary {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      a:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      footer {
+        margin-top: 28px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+    </style>
+
+    <script>
+      /*
+       * Two jobs, both before the first paint.
+       *
+       * 1. Honour a saved theme, exactly as index.html does. Without it a reader
+       *    who pinned light gets a dark flash on the one page that is already
+       *    telling them something went wrong.
+       * 2. Send the two public routes to their hash form. The app routes on the
+       *    hash, so a shared or typed /board and /chat land here even though the
+       *    page exists — a redirect for those is a fix, not a guess. The list
+       *    is exactly the public routes; every other path stays on this page.
+       */
+      (function () {
+        var stored = null;
+        try {
+          stored = localStorage.getItem("kospinow:theme");
+        } catch (e) {
+          /* private mode — the media query decides */
+        }
+        if (stored === "light" || stored === "dark") {
+          document.documentElement.dataset.theme = stored;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) {
+            meta.setAttribute(
+              "content",
+              stored === "light" ? "#f6f8fb" : "#080b10"
+            );
+          }
+        }
+
+        var match = window.location.pathname.match(/^\/(board|chat)\/?$/);
+        if (match) {
+          window.location.replace("/#" + match[1]);
+        }
+      })();
+    </script>
+  </head>
+
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">K</div>
+
+      <p class="code">404</p>
+      <h1>페이지를 찾을 수 없습니다</h1>
+      <p class="lead">
+        주소가 바뀌었거나 잘못 입력된 것 같습니다.<br />
+        아래에서 원하시는 곳으로 이동하세요.
+      </p>
+
+      <div class="actions">
+        <a class="primary" href="/">시세 보러 가기</a>
+        <a class="secondary" href="/#chat">실시간 채팅</a>
+        <a class="secondary" href="/#board">커뮤니티</a>
+      </div>
+
+      <footer>코스피 NOW (코스피나우) · kospinow.com</footer>
+    </main>
+  </body>
+</html>
