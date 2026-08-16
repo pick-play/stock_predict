@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-15T07:41:13.896Z",
-  "windowStart": "2026-08-08",
-  "windowEnd": "2026-09-15",
+  "updatedAt": "2026-08-16T07:42:27.179Z",
+  "windowStart": "2026-08-09",
+  "windowEnd": "2026-09-16",
   "releases": [
     {
       "id": "cpi",
@@ -59,6 +59,13 @@
       "source": "BLS",
       "date": "2026-09-11",
       "releaseAtUtc": "2026-09-11T12:30:00.000Z"
+    },
+    {
+      "id": "retail",
+      "label": "소매판매",
+      "source": "Census",
+      "date": "2026-09-16",
+      "releaseAtUtc": "2026-09-16T12:30:00.000Z"
     }
   ]
 }
