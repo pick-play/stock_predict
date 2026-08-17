@@ -50,6 +50,21 @@ export const CHAT_RECONNECT_DELAYS_MS = [
  * auto-response table without waking, so an idle room stays hibernated.
  */
 export const CHAT_PING_INTERVAL_MS = 45_000;
+/**
+ * How long a keepalive may go unanswered before the socket is treated as dead.
+ *
+ * Sending a ping proves nothing on its own. A phone that slept leaves the TCP
+ * connection half-open: readyState stays OPEN, send() puts bytes in a buffer
+ * that goes nowhere and throws nothing, and onclose does not arrive until the
+ * kernel gives up — minutes later. For that whole window the room looks
+ * connected and receives nothing, which is what "모바일에서 채팅이 안 뜬다"
+ * actually was. The reply is what has to be waited for.
+ *
+ * Generous enough to survive a slow mobile round trip, short enough that a
+ * reader notices a reconnect rather than a dead room.
+ */
+export const CHAT_PONG_TIMEOUT_MS = 10_000;
+
 export const CHAT_PING_FRAME = "ping";
 export const CHAT_PONG_FRAME = "pong";
 

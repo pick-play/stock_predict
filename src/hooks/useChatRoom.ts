@@ -26,6 +26,7 @@ import {
   CHAT_MESSAGE_CAP,
   CHAT_PING_FRAME,
   CHAT_PING_INTERVAL_MS,
+  CHAT_PONG_TIMEOUT_MS,
   CHAT_PONG_FRAME,
   CHAT_RECONNECT_DELAYS_MS,
 } from "../lib/chat/config";
@@ -87,6 +88,14 @@ export function useChatRoom(): ChatRoomController {
   const reconnectTimerRef = useRef<number | null>(null);
   const pingTimerRef = useRef<number | null>(null);
   /**
+   * Timer that fires if a keepalive goes unanswered.
+   *
+   * Its existence is the "a ping is in flight" flag; clearing it is how a pong
+   * is acknowledged. See CHAT_PONG_TIMEOUT_MS for why waiting for the reply is
+   * the only way to notice a socket the OS killed while the phone slept.
+   */
+  const pongTimerRef = useRef<number | null>(null);
+  /**
    * When a connection was last attempted.
    *
    * A phone fires visibilitychange constantly — every screen lock, every app
@@ -117,12 +126,57 @@ export function useChatRoom(): ChatRoomController {
       window.clearInterval(pingTimerRef.current);
       pingTimerRef.current = null;
     }
+    if (pongTimerRef.current !== null) {
+      window.clearTimeout(pongTimerRef.current);
+      pongTimerRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Sends a keepalive and requires an answer.
+   *
+   * The socket is dropped on purpose when the deadline passes: closing it is
+   * what produces the onclose the reconnect logic already knows how to handle.
+   * Doing nothing instead leaves a socket that reports OPEN, accepts sends and
+   * delivers nothing — the state a slept phone comes back in.
+   */
+  const pingAndExpectPong = useCallback((socket: WebSocket) => {
+    if (socket.readyState !== WebSocket.OPEN) return;
+
+    try {
+      socket.send(CHAT_PING_FRAME);
+    } catch {
+      // Already gone; onclose will run and the reconnect follows from there.
+      return;
+    }
+
+    // One deadline at a time: a second ping while one is pending keeps the
+    // original clock rather than granting an extension.
+    if (pongTimerRef.current !== null) return;
+
+    pongTimerRef.current = window.setTimeout(() => {
+      pongTimerRef.current = null;
+      if (!liveRef.current) return;
+      console.warn("[chat] keepalive unanswered; dropping the socket");
+      try {
+        socket.close();
+      } catch {
+        // Nothing to close means onclose has already run.
+      }
+    }, CHAT_PONG_TIMEOUT_MS);
   }, []);
 
   const handleServerFrame = useCallback((raw: string) => {
     // The keepalive reply is a bare word, not JSON — check before parsing so a
-    // pong does not log as a protocol error.
-    if (raw === CHAT_PONG_FRAME) return;
+    // pong does not log as a protocol error. Clearing the deadline here is what
+    // marks the connection as proven alive.
+    if (raw === CHAT_PONG_FRAME) {
+      if (pongTimerRef.current !== null) {
+        window.clearTimeout(pongTimerRef.current);
+        pongTimerRef.current = null;
+      }
+      return;
+    }
 
     let parsed: unknown;
     try {
@@ -203,7 +257,7 @@ export function useChatRoom(): ChatRoomController {
         setStatus("open");
         setError(null);
         pingTimerRef.current = window.setInterval(() => {
-          if (socket.readyState === WebSocket.OPEN) socket.send(CHAT_PING_FRAME);
+          pingAndExpectPong(socket);
         }, CHAT_PING_INTERVAL_MS);
       };
 
@@ -280,7 +334,7 @@ export function useChatRoom(): ChatRoomController {
         }, delay);
       };
     },
-    [handleServerFrame]
+    [handleServerFrame, pingAndExpectPong]
   );
 
   const join = useCallback(
@@ -375,13 +429,16 @@ export function useChatRoom(): ChatRoomController {
 
       const socket = socketRef.current;
       if (socket && socket.readyState === WebSocket.OPEN) {
-        // Prod the socket so a connection the OS killed while we were away is
-        // discovered now rather than at the next keepalive.
-        try {
-          socket.send(CHAT_PING_FRAME);
-        } catch {
-          // A throw here means the socket is already gone; onclose will run.
-        }
+        /*
+         * Prod the socket AND wait for the answer.
+         *
+         * This branch used to send a ping and return, treating an OPEN
+         * readyState as proof of life. It is not: a phone coming back from sleep
+         * holds a half-open connection that reports OPEN and swallows sends
+         * silently, so the room sat there looking connected and receiving
+         * nothing until the kernel timed the socket out minutes later.
+         */
+        pingAndExpectPong(socket);
         return;
       }
       if (socket && socket.readyState === WebSocket.CONNECTING) return;
@@ -422,7 +479,7 @@ export function useChatRoom(): ChatRoomController {
       socketRef.current = null;
       if (socket) socket.close(1000, "leaving room");
     };
-  }, [connect, clearTimers]);
+  }, [connect, clearTimers, pingAndExpectPong]);
 
   return {
     status,

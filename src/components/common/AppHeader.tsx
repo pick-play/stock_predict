@@ -2,7 +2,6 @@ import { ConnectionBadge } from "./ConnectionBadge";
 import { HeaderMenu } from "./HeaderMenu";
 import { ThemeToggle } from "./ThemeToggle";
 import { MarketStatusBadge } from "./MarketStatusBadge";
-import { RelativeTime } from "./RelativeTime";
 import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
 import { BRAND_NAME, BRAND_NAME_LATIN } from "../../config/brand";
 
@@ -72,12 +71,13 @@ export function AppHeader({
           lastUpdated={lastUpdated}
           wsStatus={wsStatus}
         />
-        {lastUpdated && !isLoading && (
-          <RelativeTime
-            iso={lastUpdated}
-            className="hidden md:block text-[12px] text-[var(--text-muted)] tabular-nums"
-          />
-        )}
+        {/*
+          The header's own "N초 전" is gone (owner decision, 2026-08-17).
+          It sat next to a 실시간 badge that already means "the feed is current",
+          and each stock card carries the age of the price it is showing — so the
+          header's copy read 0초 전 nearly always and said nothing the badge
+          beside it had not. It was desktop-only, which is where it was noise.
+        */}
         {onNavigateBoard && (
           <button
             type="button"

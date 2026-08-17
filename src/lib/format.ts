@@ -84,7 +84,18 @@ export function formatKoreanTimeDetailed(isoString: string): string {
 }
 
 export function formatRelativeTime(isoString: string, now?: Date): string {
-  const diff = (now ?? new Date()).getTime() - new Date(isoString).getTime();
+  /*
+   * Clamped at zero, which is what stops "-1초 전" appearing.
+   *
+   * The event can legitimately be stamped later than `now`: the readout takes a
+   * snapshot of a clock that ticks once a second, while the price socket stamps
+   * a new quote about a hundred times a second. A quote from 1.4s sitting next
+   * to a clock still reading 1.0s is 400ms in the future, and
+   * Math.floor(-0.4) is -1. Nothing is wrong with either value — they are just
+   * read at different rates — so the answer is 0초 전, not a negative age.
+   */
+  const rawDiff = (now ?? new Date()).getTime() - new Date(isoString).getTime();
+  const diff = Math.max(0, rawDiff);
   const seconds = Math.floor(diff / 1000);
   if (seconds < 60) return `${seconds}초 전`;
   const minutes = Math.floor(seconds / 60);

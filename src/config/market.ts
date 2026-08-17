@@ -1,5 +1,24 @@
 export const CLIENT_REFRESH_INTERVAL_MS = 60_000;
 
+/**
+ * How often a phone re-reads the futures price over REST.
+ *
+ * Measured, not guessed: the bookTicker socket the desktop uses delivers 103.8
+ * frames per second for these two symbols — 653 KB every 30 seconds, roughly
+ * 78 MB an hour, and about a hundred JSON parses a second. Rendering is batched
+ * to 1s, but the receiving is not, and a modem fed a hundred packets a second
+ * never returns to idle. That is the heat.
+ *
+ * markPrice, ticker and aggTrade were all probed and emit nothing for TradFi
+ * symbols, so there is no slower stream to switch to. Polling is the only lever:
+ * two 153-byte responses every few seconds is about 0.7 MB an hour and lets the
+ * radio sleep in between.
+ *
+ * Four seconds keeps the reading current enough for an overnight reference price
+ * while cutting the traffic by two orders of magnitude.
+ */
+export const MOBILE_QUOTE_POLL_INTERVAL_MS = 4_000;
+
 export const STALE_WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 export const STALE_CRITICAL_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
 

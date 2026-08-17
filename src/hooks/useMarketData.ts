@@ -1,5 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { StockId, StockSnapshot } from "../types/market";
+import type {
+  ReferencePriceMode,
+  StockId,
+  StockSnapshot,
+} from "../types/market";
 import { fetchStockQuote } from "../lib/binance/client";
 import type { StockQuoteResult } from "../lib/binance/client";
 import { calculateEstimate } from "../lib/calculateEstimate";
@@ -13,8 +17,10 @@ import { useMinuteRefresh } from "./useMinuteRefresh";
 import { connectBinanceFuturesStream } from "../lib/binance/websocketAdapter";
 import type { WsConnectionStatus } from "../lib/binance/websocketAdapter";
 import type { NormalizedQuote } from "../lib/binance/types";
+import { prefersPolledFeed } from "../lib/liveFeedMode";
 import {
   MAX_CHANGE_RATE,
+  MOBILE_QUOTE_POLL_INTERVAL_MS,
   MIN_PRICE_RATIO,
   MAX_PRICE_RATIO,
 } from "../config/market";
@@ -61,6 +67,13 @@ export function useMarketData(): MarketDataState {
   // stay on the same scale as the anchor, which is a mark price.
   const markMidOffsetRef = useRef<Partial<Record<StockId, number>>>({});
 
+  /**
+   * Which price the baseline says to quote from, kept where the polling feed can
+   * read it. The REST refresh below learns it from baseline.json; a poll that
+   * guessed differently would price against a different scale than the anchor.
+   */
+  const referenceModeRef = useRef<ReferencePriceMode>("mark");
+
   const refresh = useCallback(async () => {
     const baseline = await fetchGithubBaseline();
 
@@ -87,6 +100,7 @@ export function useMarketData(): MarketDataState {
     });
 
     const mode = baseline?.referencePriceMode ?? "mark";
+    referenceModeRef.current = mode;
     const quoteSettled = await Promise.allSettled(
       STOCK_IDS.map((id) => fetchStockQuote(id, mode))
     );
@@ -257,24 +271,88 @@ export function useMarketData(): MarketDataState {
 
   useMinuteRefresh(refresh);
 
-  // Live prices come from the order book stream. Probing the futures socket
-  // showed markPrice, ticker and aggTrade emit nothing for these symbols, so
-  // bookTicker is the only live feed; the estimate is repriced from its mid
-  // once per second while REST keeps supplying the authoritative mark.
+  /*
+   * Live prices, by one of two routes.
+   *
+   * Desktop streams the order book. Probing the futures socket showed markPrice,
+   * ticker and aggTrade emit nothing for these symbols, so bookTicker is the only
+   * stream available; the estimate is repriced from its mid once per second while
+   * REST keeps supplying the authoritative mark.
+   *
+   * A phone polls REST instead. That stream costs 103.8 frames a second — about
+   * 78 MB an hour and a hundred JSON parses a second — and a modem fed that never
+   * idles, which is what made the page warm to hold. Two 153-byte reads every
+   * four seconds carry the same number to a reader who is checking a price.
+   *
+   * Both routes end in the same place: a NormalizedQuote in latestWsQuotesRef,
+   * flushed and repriced by the one timer below. Only the delivery differs, so
+   * the estimate cannot drift between a phone and a desktop.
+   */
   useEffect(() => {
     const symbols = STOCK_IDS.map((id) => MARKET_SYMBOLS[id].binanceSymbol);
+    const polled = prefersPolledFeed();
 
-    const disconnect = connectBinanceFuturesStream(
-      symbols,
-      (quote) => {
-        // Store in ref only — no setState here. The 1s flush timer below
-        // batches these into a single setState, preventing multiple re-renders/s.
-        latestWsQuotesRef.current[quote.symbol] = quote;
-      },
-      (status) => {
-        setState((prev) => ({ ...prev, wsStatus: status }));
-      }
-    );
+    let disconnect: () => void;
+
+    if (polled) {
+      const mode = referenceModeRef.current;
+
+      const poll = async () => {
+        // Hidden tab: nothing to update and every request keeps the radio awake.
+        if (document.visibilityState !== "visible") return;
+
+        const settled = await Promise.allSettled(
+          STOCK_IDS.map((id) => fetchStockQuote(id, mode))
+        );
+
+        let anySucceeded = false;
+        for (const result of settled) {
+          if (result.status !== "fulfilled") continue;
+          const quote = result.value.quote;
+          if (!quote) continue;
+          latestWsQuotesRef.current[quote.symbol] = quote;
+          anySucceeded = true;
+        }
+
+        /*
+         * wsStatus is what the card consults before it claims 실시간, so it has
+         * to mean "the live feed is working" rather than "a socket is open".
+         * A poll that answered is exactly as live as a socket that ticked.
+         */
+        setState((prev) => ({
+          ...prev,
+          wsStatus: anySucceeded ? "connected" : "disconnected",
+        }));
+      };
+
+      void poll();
+      const pollTimer = window.setInterval(
+        () => void poll(),
+        MOBILE_QUOTE_POLL_INTERVAL_MS
+      );
+      // Coming back to the tab should not wait out the interval.
+      const onVisible = () => {
+        if (document.visibilityState === "visible") void poll();
+      };
+      document.addEventListener("visibilitychange", onVisible);
+
+      disconnect = () => {
+        window.clearInterval(pollTimer);
+        document.removeEventListener("visibilitychange", onVisible);
+      };
+    } else {
+      disconnect = connectBinanceFuturesStream(
+        symbols,
+        (quote) => {
+          // Store in ref only — no setState here. The 1s flush timer below
+          // batches these into a single setState, preventing multiple re-renders/s.
+          latestWsQuotesRef.current[quote.symbol] = quote;
+        },
+        (status) => {
+          setState((prev) => ({ ...prev, wsStatus: status }));
+        }
+      );
+    }
 
     // Flush pending WS bid/ask quotes to state at most once per second.
     // Tab visibility guard: skip flush when hidden to avoid waking up React.

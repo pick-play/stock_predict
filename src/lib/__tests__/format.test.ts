@@ -128,6 +128,27 @@ describe("formatRelativeTime", () => {
     expect(formatRelativeTime(BASE, now)).toBe("0초 전");
   });
 
+  /*
+   * The readout showed "-1초 전". The clock behind it ticks once a second while
+   * the price socket stamps a quote about a hundred times a second, so a fresh
+   * quote is routinely a few hundred milliseconds ahead of the clock it is
+   * compared against — and Math.floor of a small negative is -1.
+   */
+  it("never reports a negative age", () => {
+    const oneMsAhead = new Date(Date.parse(BASE) + 1).toISOString();
+    expect(formatRelativeTime(oneMsAhead, new Date(BASE))).toBe("0초 전");
+
+    const halfSecondAhead = new Date(Date.parse(BASE) + 500).toISOString();
+    expect(formatRelativeTime(halfSecondAhead, new Date(BASE))).toBe("0초 전");
+  });
+
+  // A clock skewed by minutes is a different problem; it still must not print a
+  // negative number at a reader.
+  it("clamps a badly skewed clock to 0초 전", () => {
+    const wayAhead = new Date(Date.parse(BASE) + 5 * 60_000).toISOString();
+    expect(formatRelativeTime(wayAhead, new Date(BASE))).toBe("0초 전");
+  });
+
   it("shows minutes when 60+ seconds ago", () => {
     const now = new Date("2026-08-02T12:05:00.000Z");
     expect(formatRelativeTime(BASE, now)).toBe("5분 전");
