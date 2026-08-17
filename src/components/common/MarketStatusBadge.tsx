@@ -1,7 +1,28 @@
-import { getMarketStatus, getMarketStatusLabel } from "../../lib/koreaMarket";
+import { getMarketStatusLabel, isWeekend, isKrxTradingHours } from "../../lib/koreaMarket";
+import { useKrxSession } from "../../hooks/useKrxSession";
+import type { MarketStatus } from "../../lib/koreaMarket";
 
+/**
+ * The badge reports the session the market feed observes, not the one the
+ * calendar predicts.
+ *
+ * When the clock says trading hours but the exchange is shut, that is a holiday
+ * — 대체공휴일, 임시공휴일, an election day — and the badge says 국내 휴장
+ * rather than inventing a session. §13 asks for exactly this: a weekday is not
+ * proof of a trading day.
+ */
 export function MarketStatusBadge() {
-  const status = getMarketStatus();
+  const { trading } = useKrxSession();
+
+  const status: MarketStatus = trading
+    ? "trading"
+    : isWeekend()
+      ? "weekend"
+      : isKrxTradingHours()
+        ? // Weekday, inside the hours, and still closed: a holiday.
+          "holiday-unknown"
+        : "overnight";
+
   const label = getMarketStatusLabel(status);
 
   const colorMap: Record<string, string> = {

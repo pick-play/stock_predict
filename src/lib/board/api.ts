@@ -9,10 +9,11 @@
 
 import type { BoardListResponse, BoardPost, BoardComment, CommentListResponse, LikeResponse, SubmitErrorKind } from "../../types/board";
 import { BoardApiError } from "../../types/board";
+import { resolveApiBase } from "../apiBase";
 
-export const BOARD_API_BASE = (
-  (import.meta.env.VITE_BOARD_API_BASE as string | undefined) ?? ""
-).replace(/\/$/, "");
+export const BOARD_API_BASE = resolveApiBase(
+  import.meta.env.VITE_BOARD_API_BASE as string | undefined
+);
 
 export const isBoardConfigured = BOARD_API_BASE.length > 0;
 

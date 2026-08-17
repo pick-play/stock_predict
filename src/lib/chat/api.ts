@@ -11,10 +11,11 @@
 
 import type { ChatTicket } from "../../types/chat";
 import { ChatApiError } from "../../types/chat";
+import { resolveApiBase } from "../apiBase";
 
-export const CHAT_API_BASE = (
-  (import.meta.env.VITE_BOARD_API_BASE as string | undefined) ?? ""
-).replace(/\/$/, "");
+export const CHAT_API_BASE = resolveApiBase(
+  import.meta.env.VITE_BOARD_API_BASE as string | undefined
+);
 
 export const isChatConfigured = CHAT_API_BASE.length > 0;
 

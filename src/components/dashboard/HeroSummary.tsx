@@ -1,4 +1,5 @@
-import { isWeekend, isKrxTradingHours } from "../../lib/koreaMarket";
+import { isWeekend } from "../../lib/koreaMarket";
+import { useKrxSession } from "../../hooks/useKrxSession";
 import { BRAND_NAME } from "../../config/brand";
 
 /**
@@ -9,7 +10,9 @@ import { BRAND_NAME } from "../../config/brand";
  */
 export function HeroSummary() {
   const weekend = isWeekend();
-  const trading = isKrxTradingHours();
+  // Observed, not predicted: on a holiday the calendar would tell a reader to
+  // trust live fills from an exchange that is closed.
+  const { trading } = useKrxSession();
 
   // Brand line stays constant; the session-specific notice below carries the
   // "market is open, trust the real ticks" warning instead of the headline.

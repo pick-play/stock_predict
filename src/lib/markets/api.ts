@@ -9,10 +9,11 @@
 
 import { z } from "zod";
 import type { MarketsResponse } from "../../types/ticker";
+import { resolveApiBase } from "../apiBase";
 
-export const MARKETS_API_BASE = (
-  (import.meta.env.VITE_BOARD_API_BASE as string | undefined) ?? ""
-).replace(/\/$/, "");
+export const MARKETS_API_BASE = resolveApiBase(
+  import.meta.env.VITE_BOARD_API_BASE as string | undefined
+);
 
 export const isMarketsConfigured = MARKETS_API_BASE.length > 0;
 
