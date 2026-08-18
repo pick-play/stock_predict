@@ -39,13 +39,19 @@ describe("seoulDateString", () => {
 });
 
 describe("resolveAnchor", () => {
-  it("uses today's open during regular hours", () => {
-    // Monday 2026-08-10 11:00 KST = 02:00 UTC
+  /*
+   * The open anchor was dropped by owner decision on 2026-08-18. It applied only
+   * during the regular session — the hours this site tells the reader to look at
+   * real fills instead — and cost a second reference point to capture, validate
+   * and explain. The close is now the basis at every hour of the day.
+   */
+  it("uses the last close during regular hours too", () => {
+    // Monday 2026-08-10 11:00 KST = 02:00 UTC, with today's open captured
     at("2026-08-10T02:00:00.000Z");
     const anchor = resolveAnchor(makeBaseline());
-    expect(anchor?.kind).toBe("open");
-    expect(anchor?.marketDate).toBe("2026-08-10");
-    expect(anchor?.krxPrice.samsung).toBe(240_000);
+    expect(anchor?.kind).toBe("close");
+    expect(anchor?.marketDate).toBe("2026-08-07");
+    expect(anchor?.krxPrice.samsung).toBe(231_000);
   });
 
   it("uses the last close after the bell", () => {
@@ -70,19 +76,23 @@ describe("resolveAnchor", () => {
     expect(resolveAnchor(makeBaseline())?.kind).toBe("close");
   });
 
-  it("falls back to close when today's open has not been captured yet", () => {
-    // Regular hours, but the open anchor still holds Friday's date
+  // The open block is still written by the collector; nothing may resolve to it
+  // while a close exists, whatever date it carries.
+  it("ignores the open block even when it is today's", () => {
     at("2026-08-10T02:00:00.000Z");
-    const stale = makeBaseline({
-      open: {
-        marketDate: "2026-08-07",
-        anchorTimeUtc: "2026-08-07T00:00:00.000Z",
-        stocks: { samsung: { krxPrice: 235_000 }, skHynix: { krxPrice: 1_521_000 } },
-      },
-    });
-    const anchor = resolveAnchor(stale);
-    expect(anchor?.kind).toBe("close");
-    expect(anchor?.marketDate).toBe("2026-08-07");
+    expect(resolveAnchor(makeBaseline())?.kind).toBe("close");
+  });
+
+  /*
+   * The one case an open anchor is still used: there is no close at all. A fresh
+   * deployment or a baseline that lost its close block — an older real reference
+   * point beats showing no price.
+   */
+  it("falls back to an open anchor only when there is no close", () => {
+    at("2026-08-10T02:00:00.000Z");
+    const anchor = resolveAnchor(makeBaseline({ close: null }));
+    expect(anchor?.kind).toBe("open");
+    expect(anchor?.krxPrice.samsung).toBe(240_000);
   });
 
   it("resolves the anchor instant as UTC milliseconds", () => {

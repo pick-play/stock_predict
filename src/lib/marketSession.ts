@@ -3,10 +3,18 @@
  *
  * Chooses which KRX reference point the estimate is built on.
  *
- * During the regular session the market has already opened, so today's opening
- * price is the meaningful basis: the overnight gap is realised and what matters
- * is the move since the open. Outside the session — evening, overnight, weekend,
- * holiday — the last completed close is the basis.
+ * It is always the last completed close (owner decision, 2026-08-18).
+ *
+ * The open anchor is gone. It only ever applied during the regular session —
+ * the hours when this site tells the reader to look at real fills instead — and
+ * in exchange it introduced a second reference point that had to be captured,
+ * validated and explained. What the site is for is the move since the market
+ * last closed, and one basis means one number to reason about.
+ *
+ * The `open` block is still written into baseline.json and the AnchorKind type
+ * still has its "open" member: the collector reads both from the same daily bar
+ * at no extra cost, and keeping the shape means restoring the behaviour is a
+ * resolver change rather than a migration.
  */
 
 import type {
@@ -15,7 +23,7 @@ import type {
   BaselineAnchor,
   StockId,
 } from "../types/market";
-import { getSeoulDate, isKrxTradingHours } from "./koreaMarket";
+import { getSeoulDate } from "./koreaMarket";
 
 export interface ResolvedAnchor {
   kind: AnchorKind;
@@ -49,24 +57,15 @@ function toResolved(anchor: BaselineAnchor, kind: AnchorKind): ResolvedAnchor | 
 }
 
 /**
- * Resolve the anchor to estimate against.
+ * Resolve the anchor to estimate against: the most recent close.
  *
- * Uses today's open only while the market is actually open and that open has
- * already been captured; right after 09:00 the collector may not have run yet,
- * in which case the previous close still describes the market correctly.
+ * The fallback to an open anchor at the end is not the old behaviour returning.
+ * It only fires when there is no close at all — a fresh deployment, or a
+ * baseline that lost its close block — where an older real reference point
+ * still beats showing nothing.
  */
-export function resolveAnchor(
-  baseline: Baseline | null,
-  now: Date = new Date()
-): ResolvedAnchor | null {
+export function resolveAnchor(baseline: Baseline | null): ResolvedAnchor | null {
   if (!baseline) return null;
-
-  if (isKrxTradingHours(now) && baseline.open) {
-    if (baseline.open.marketDate === seoulDateString(now)) {
-      const resolved = toResolved(baseline.open, "open");
-      if (resolved) return resolved;
-    }
-  }
 
   if (baseline.close) {
     const resolved = toResolved(baseline.close, "close");

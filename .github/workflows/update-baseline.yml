@@ -9,9 +9,12 @@ on:
         options: [open, close]
         default: close
   schedule:
-    # 시가 앵커: 정규장 개장(09:00 KST = 00:00 UTC) 후 20분 여유
-    - cron: "20 0 * * 1-5"
-    # 종가 앵커: 정규장 마감(15:30 KST = 06:30 UTC) 후 10분 여유
+    # 종가 앵커: 정규장 마감(15:30 KST = 06:30 UTC) 후 10분 여유.
+    #
+    # 시가 앵커용 09:20 실행은 제거했다(2026-08-18 소유자 결정). 예상가는 이제
+    # 종가만 기준으로 삼으므로 아무도 읽지 않는 값을 매일 아침 커밋하고 그때마다
+    # 배포까지 돌리고 있었다. close 실행이 같은 일봉에서 시가와 종가를 함께
+    # 기록하므로 open 블록 자체는 계속 최신으로 유지된다.
     - cron: "40 6 * * 1-5"
 
 permissions:
@@ -53,8 +56,6 @@ jobs:
         run: |
           if [ -n "${{ github.event.inputs.session }}" ]; then
             echo "value=${{ github.event.inputs.session }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event.schedule }}" = "20 0 * * 1-5" ]; then
-            echo "value=open" >> "$GITHUB_OUTPUT"
           else
             echo "value=close" >> "$GITHUB_OUTPUT"
           fi
