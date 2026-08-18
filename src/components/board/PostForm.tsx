@@ -19,6 +19,7 @@ import { BoardApiError } from "../../types/board";
 import type { BoardPost } from "../../types/board";
 import { TurnstileWidget } from "./TurnstileWidget";
 import { isTurnstileConfigured } from "../../lib/board/turnstileConfig";
+import { PILL_PRIMARY } from "../common/controls";
 
 interface PostFormProps {
   onPostCreated: (post: BoardPost) => void;
@@ -254,7 +255,7 @@ export function PostForm({ onPostCreated, authToken, authorNickname }: PostFormP
           type="submit"
           disabled={!canSubmit}
           aria-label={isSubmitting ? "등록 중" : "글 등록"}
-          className="px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--surface-1)] disabled:opacity-40 disabled:cursor-not-allowed"
+          className={PILL_PRIMARY}
           style={{
             background: canSubmit
               ? "linear-gradient(135deg, #8b7cff 0%, #6b5ce7 100%)"

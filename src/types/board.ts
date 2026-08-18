@@ -88,6 +88,11 @@ export interface AuthUser {
   nickname: string;
   createdAt: string;
   postCount: number;
+  commentCount: number;
+  /** Distinct Seoul days this member has opened the site, including today. */
+  visitDays: number;
+  /** Consecutive days ending today. */
+  visitStreak: number;
 }
 
 export type AuthErrorKind =

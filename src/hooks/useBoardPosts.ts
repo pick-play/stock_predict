@@ -22,8 +22,28 @@ export function useBoardPosts() {
   // Ref-based lock prevents concurrent fetches from the same hook instance
   const loadingRef = useRef(false);
 
+  /**
+   * Loads the first page, superseding any load already running.
+   *
+   * The lock below is deliberately NOT applied here, and that is the whole
+   * point of this comment.
+   *
+   * React StrictMode mounts an effect, tears it down and mounts it again. The
+   * first run started a fetch and set the lock; the cleanup aborted its signal;
+   * the second run arrived while the first promise was still in the air, saw the
+   * lock and returned. The first then resolved, saw `aborted`, and returned
+   * without storing anything. Nobody was left to load the list, so the board
+   * showed "아직 글이 없습니다" with six posts sitting in the database.
+   *
+   * It only ever happened in development, because only StrictMode remounts —
+   * which is exactly why it survived: production was fine and the tests did not
+   * render under StrictMode.
+   *
+   * A refresh now supersedes rather than yields. loadMore keeps the lock, since
+   * a second page request really should wait for the first.
+   */
   const refresh = useCallback(async (signal?: AbortSignal) => {
-    if (!isBoardConfigured || loadingRef.current) return;
+    if (!isBoardConfigured) return;
     loadingRef.current = true;
     setIsLoading(true);
     setError(null);

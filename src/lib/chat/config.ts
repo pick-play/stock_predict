@@ -72,6 +72,16 @@ export const CHAT_PONG_FRAME = "pong";
 export const CHAT_IP_HASH_HEADER = "X-Chat-Ip-Hash";
 
 /**
+ * Header carrying a logged-in member's nickname to the room.
+ *
+ * Set by the Worker only, and only from a ticket whose signature it has just
+ * checked — the same trust boundary as the IP hash header. The room never reads
+ * a name from a client frame, so a nickname on screen is always one the server
+ * put there.
+ */
+export const CHAT_MEMBER_HANDLE_HEADER = "X-Chat-Member";
+
+/**
  * Concurrent sockets one IP hash may hold in the room.
  *
  * This is the control that replaced the entry CAPTCHA. Its job is resource

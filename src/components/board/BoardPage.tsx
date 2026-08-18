@@ -6,6 +6,8 @@ import { BoardNotReady } from "./BoardNotReady";
 import { PostCard } from "./PostCard";
 import { PostForm } from "./PostForm";
 import { AuthModal } from "./auth/AuthModal";
+import { BackButton } from "../common/BackButton";
+import { AccountButton } from "../common/AccountButton";
 import { RecoveryCodeModal } from "./auth/RecoveryCodeModal";
 import type { BoardPost, SignupResult } from "../../types/board";
 import { DashboardLayout } from "../layout/DashboardLayout";
@@ -84,28 +86,7 @@ export function BoardPage({
       {/* ── Header ── */}
       <header className="animate-fade-in flex items-center justify-between py-4 px-4 md:px-6 border-b border-[var(--border-mid)]">
         <div className="flex items-center gap-3">
-          {/* Back to dashboard */}
-          <button
-            type="button"
-            onClick={onNavigateDashboard}
-            className="flex items-center justify-center w-8 h-8 rounded-lg border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
-            aria-label={`${BRAND_NAME} 대시보드로 돌아가기`}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              className="text-[var(--text-secondary)]"
-            >
-              <path d="M19 12H5M12 5l-7 7 7 7" />
-            </svg>
-          </button>
+          <BackButton onClick={onNavigateDashboard} />
 
           <div>
             <h1 className="text-sm font-semibold text-[var(--text-primary)] leading-none tracking-tight">
@@ -125,49 +106,7 @@ export function BoardPage({
               aria-hidden="true"
             />
           )}
-          {/* Auth button — shows login state or triggers auth modal */}
-          {isBoardConfigured && (
-            <button
-              type="button"
-              onClick={handleOpenAuth}
-              aria-label={
-                auth.status === "authenticated"
-                  ? `내 계정: ${auth.nickname ?? ""}`
-                  : "로그인 또는 가입"
-              }
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
-              style={{
-                borderColor:
-                  auth.status === "authenticated"
-                    ? "rgba(139,124,255,0.3)"
-                    : "var(--border-subtle)",
-                color:
-                  auth.status === "authenticated"
-                    ? "#8b7cff"
-                    : "var(--text-muted)",
-                background:
-                  auth.status === "authenticated"
-                    ? "rgba(139,124,255,0.07)"
-                    : "transparent",
-              }}
-            >
-              {auth.status === "checking" ? (
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)] animate-pulse" aria-hidden="true" />
-              ) : auth.status === "authenticated" ? (
-                <>
-                  <span aria-hidden="true">◆</span>
-                  <span className="max-w-[80px] truncate">{auth.nickname}</span>
-                </>
-              ) : (
-                "로그인"
-              )}
-            </button>
-          )}
-          {!isBoardConfigured && (
-            <span className="text-[12px] text-[var(--text-muted)]">
-              준비 중
-            </span>
-          )}
+          <AccountButton auth={auth} onOpen={handleOpenAuth} />
         </div>
       </header>
 

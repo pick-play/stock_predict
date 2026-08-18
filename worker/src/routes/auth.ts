@@ -11,6 +11,7 @@
  */
 
 import { moderatePost } from '../../../src/lib/moderation/filter';
+import { nicknameProblem } from '../../../src/lib/auth/nickname';
 import { hashIp } from '../lib/ipHash';
 import { isSignupRateLimited, isLoginRateLimited } from '../lib/rateLimit';
 import {
@@ -27,6 +28,7 @@ import {
 } from '../lib/sessionToken';
 import { verifyTurnstile } from '../lib/turnstile';
 import { requireAuth } from '../lib/session';
+import { recordVisit } from '../lib/attendance';
 import { jsonResponse, errorResponse } from '../lib/cors';
 import type { Env, UserRow } from '../types';
 
@@ -36,7 +38,7 @@ const encoder = new TextEncoder();
 const DUMMY_SALT = '0'.repeat(32);
 const DUMMY_HASH = '0'.repeat(64);
 
-const NICKNAME_REGEX = /^[가-힣a-zA-Z0-9_]{2,16}$/;
+
 const RESERVED_NICKNAMES = new Set([
   '관리자',
   '운영자',
@@ -53,9 +55,9 @@ function normalizeNickname(nickname: string): string {
 
 /** Returns a Korean error message, or null if the nickname is valid. */
 function validateNickname(nickname: string): string | null {
-  if (!NICKNAME_REGEX.test(nickname)) {
-    return '2~16자, 한글·영문·숫자·밑줄만 사용할 수 있습니다.';
-  }
+  // Shared with the signup form so both say the same thing; see the module.
+  const shapeProblem = nicknameProblem(nickname);
+  if (shapeProblem) return shapeProblem;
   if (RESERVED_NICKNAMES.has(normalizeNickname(nickname))) {
     return '사용할 수 없는 닉네임입니다.';
   }
@@ -321,17 +323,29 @@ export async function handleGetMe(request: Request, env: Env): Promise<Response>
     );
   }
 
-  const postCountRow = await env.DB.prepare(
-    'SELECT COUNT(*) AS cnt FROM posts WHERE member_id = ?'
-  )
-    .bind(user.id)
-    .first<{ cnt: number }>();
+  /*
+   * The account panel's three numbers, gathered here because this is the one
+   * call the client already makes when a page mounts. Two counts and, at most
+   * once a day, one write for attendance.
+   */
+  const [postCountRow, commentCountRow, attendance] = await Promise.all([
+    env.DB.prepare('SELECT COUNT(*) AS cnt FROM posts WHERE member_id = ?')
+      .bind(user.id)
+      .first<{ cnt: number }>(),
+    env.DB.prepare('SELECT COUNT(*) AS cnt FROM comments WHERE member_id = ?')
+      .bind(user.id)
+      .first<{ cnt: number }>(),
+    recordVisit(env.DB, user.id),
+  ]);
 
   return jsonResponse(
     {
       nickname: user.nickname,
       createdAt: user.createdAt,
       postCount: postCountRow?.cnt ?? 0,
+      commentCount: commentCountRow?.cnt ?? 0,
+      visitDays: attendance.visitDays,
+      visitStreak: attendance.visitStreak,
     },
     200,
     request,

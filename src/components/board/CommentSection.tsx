@@ -14,6 +14,7 @@ import { BoardApiError } from "../../types/board";
 import { reportComment } from "../../lib/board/api";
 import { usePostComments } from "../../hooks/usePostComments";
 import { CommentForm } from "./CommentForm";
+import { PILL_QUIET, PILL_QUIET_DANGER } from "../common/controls";
 
 // ── Time formatter (mirrors PostCard's formatBoardTime) ───────────────────────
 
@@ -80,7 +81,7 @@ function CommentRow({ comment }: { comment: BoardComment }) {
           <button
             type="button"
             onClick={() => setReportState("confirming")}
-            className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-tertiary)] transition-colors rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+            className={PILL_QUIET}
             aria-label={`댓글 ${comment.id} 신고`}
           >
             신고
@@ -95,7 +96,7 @@ function CommentRow({ comment }: { comment: BoardComment }) {
             <button
               type="button"
               onClick={handleReportConfirm}
-              className="text-[11px] text-[#ff5d6c] hover:opacity-80 transition-opacity rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff5d6c]"
+              className={PILL_QUIET_DANGER}
               aria-label="신고 확인"
             >
               확인
@@ -103,7 +104,7 @@ function CommentRow({ comment }: { comment: BoardComment }) {
             <button
               type="button"
               onClick={() => setReportState("idle")}
-              className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-tertiary)] transition-colors rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+              className={PILL_QUIET}
               aria-label="신고 취소"
             >
               취소

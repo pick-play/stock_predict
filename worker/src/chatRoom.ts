@@ -17,6 +17,7 @@ import {
   CHAT_ADMIN_DELETE_PATH,
   CHAT_HISTORY_PATH,
   CHAT_IP_HASH_HEADER,
+  CHAT_MEMBER_HANDLE_HEADER,
   CHAT_PING_FRAME,
   CHAT_PONG_FRAME,
   CHAT_MESSAGE_CAP,
@@ -39,6 +40,8 @@ import type { ChatRejectCode, ChatServerEvent } from '../../src/types/chat';
 interface SocketIdentity {
   ipHash: string;
   handle: string;
+  /** True when the handle is a logged-in member's nickname, not a daily alias. */
+  isMember: boolean;
 }
 
 /** Narrows the untyped socket attachment back into an identity. */
@@ -47,10 +50,12 @@ function readIdentity(socket: WebSocket): SocketIdentity | null {
   if (typeof raw !== 'object' || raw === null) return null;
 
   const candidate = raw as Record<string, unknown>;
-  const { ipHash, handle } = candidate;
+  const { ipHash, handle, isMember } = candidate;
   if (typeof ipHash !== 'string' || typeof handle !== 'string') return null;
 
-  return { ipHash, handle };
+  // Sockets attached before members existed have no flag; anonymous is correct
+  // for them and the hibernation store keeps old attachments across a deploy.
+  return { ipHash, handle, isMember: isMember === true };
 }
 
 /**
@@ -156,12 +161,27 @@ export class ChatRoom implements DurableObject {
       return new Response('too many connections', { status: 429 });
     }
 
-    const handle = chatHandleFromIpHash(ipHash);
+    /*
+     * A member nickname arrives only in a header the Worker set from a signed
+     * ticket it had just verified. Anything a client sent under that name was
+     * deleted before the request got here, so this cannot be spoofed.
+     */
+    const memberRaw = request.headers.get(CHAT_MEMBER_HANDLE_HEADER);
+    let memberHandle = '';
+    if (memberRaw) {
+      try {
+        memberHandle = decodeURIComponent(memberRaw);
+      } catch {
+        memberHandle = '';
+      }
+    }
+    const isMember = memberHandle.length > 0;
+    const handle = isMember ? memberHandle : chatHandleFromIpHash(ipHash);
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
 
-    const identity: SocketIdentity = { ipHash, handle };
+    const identity: SocketIdentity = { ipHash, handle, isMember };
     server.serializeAttachment(identity);
     this.ctx.acceptWebSocket(server);
 
@@ -239,6 +259,7 @@ export class ChatRoom implements DurableObject {
     const stored = await this.store.append({
       body: validation.body,
       handle: identity.handle,
+      isMember: identity.isMember,
       createdAt: new Date(now).toISOString(),
     });
 

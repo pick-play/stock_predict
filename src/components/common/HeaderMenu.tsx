@@ -13,6 +13,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
+import { PILL_SURFACE } from "./controls";
 
 interface HeaderMenuProps {
   onNavigateBoard?: () => void;
@@ -22,8 +23,8 @@ interface HeaderMenuProps {
 function BoardIcon() {
   return (
     <svg
-      width="13"
-      height="13"
+      width="15"
+      height="15"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -40,8 +41,8 @@ function BoardIcon() {
 function ChatIcon() {
   return (
     <svg
-      width="13"
-      height="13"
+      width="15"
+      height="15"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -83,8 +84,14 @@ function MoonIcon() {
   );
 }
 
+/*
+ * Rows, not full-width bars: the hover fill is inset by the panel's own padding
+ * and rounded, so it reads as a row being picked rather than the panel changing
+ * colour at its edge. 13px to match the pills in the header behind it — the
+ * 12px it used to be looked like fine print inside a floating card.
+ */
 const ITEM_CLASS =
-  "flex w-full min-h-[44px] items-center gap-2.5 px-3 text-left text-xs text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--surface-overlay)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:bg-[var(--surface-overlay)]";
+  "flex w-full min-h-[44px] items-center gap-2.5 rounded-lg px-2.5 text-left text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--surface-3)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:bg-[var(--surface-3)]";
 
 export function HeaderMenu({
   onNavigateBoard,
@@ -125,7 +132,7 @@ export function HeaderMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="메뉴"
-        className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-[var(--border-subtle)] text-[var(--text-tertiary)] transition-colors duration-150 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+        className={`${PILL_SURFACE} w-9 px-0`}
       >
         <svg
           width="15"
@@ -152,7 +159,7 @@ export function HeaderMenu({
            * dedicated token, a strong border and a deep shadow give the panel an
            * edge instead of asking the reader to find one.
            */
-          className="animate-fade-in absolute right-0 top-[calc(100%+6px)] z-50 w-40 overflow-hidden rounded-xl border border-[var(--border-strong)] py-1 shadow-2xl shadow-black/40"
+          className="animate-fade-in absolute right-0 top-[calc(100%+8px)] z-50 w-44 overflow-hidden rounded-2xl border border-[var(--border-strong)] p-1.5 shadow-2xl shadow-black/40"
           style={{ backgroundColor: "var(--surface-menu)" }}
         >
           {onNavigateBoard && (

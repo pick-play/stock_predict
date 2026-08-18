@@ -205,3 +205,44 @@ describe("ChatMessageStore history", () => {
     expect(await store.count()).toBe(1);
   });
 });
+
+/**
+ * Members joined the room after 500 messages had already been written without
+ * the flag. Those rows are anonymous and must read that way rather than
+ * disappearing or defaulting to "회원".
+ */
+describe("member flag", () => {
+  it("stores whether the sender was a logged-in member", async () => {
+    const storage = createMemoryChatStorage();
+    const store = new ChatMessageStore(storage);
+
+    await store.append({
+      body: "회원입니다",
+      handle: "국장의전설",
+      isMember: true,
+      createdAt: "2026-08-18T12:00:00.000Z",
+    });
+    await store.append({
+      body: "익명입니다",
+      handle: "느긋한 수달",
+      createdAt: "2026-08-18T12:00:01.000Z",
+    });
+
+    const history = await store.history();
+    expect(history[0].isMember).toBe(true);
+    expect(history[1].isMember).toBe(false);
+  });
+
+  it("reads a row written before the flag existed as anonymous", async () => {
+    const storage = createMemoryChatStorage();
+    storage.entries.set("chat:m:000000000000", {
+      body: "예전 메시지",
+      handle: "느긋한 수달",
+      createdAt: "2026-08-01T12:00:00.000Z",
+    });
+
+    const [message] = await new ChatMessageStore(storage).history();
+    expect(message.handle).toBe("느긋한 수달");
+    expect(message.isMember).toBe(false);
+  });
+});

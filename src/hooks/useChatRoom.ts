@@ -71,7 +71,20 @@ function reconnectDelay(attempt: number): number {
   return CHAT_RECONNECT_DELAYS_MS[index];
 }
 
-export function useChatRoom(): ChatRoomController {
+export interface UseChatRoomOptions {
+  /**
+   * Session token of the logged-in member, or null when anonymous.
+   *
+   * Changing it re-mints the ticket and reconnects: the display name is decided
+   * when the ticket is signed, so a login or logout has to reach the server to
+   * take effect in the room.
+   */
+  authToken?: string | null;
+}
+
+export function useChatRoom(
+  { authToken = null }: UseChatRoomOptions = {}
+): ChatRoomController {
   const [status, setStatus] = useState<ChatConnectionStatus>(() =>
     isChatConfigured ? "gated" : "unavailable"
   );
@@ -116,6 +129,13 @@ export function useChatRoom(): ChatRoomController {
   /** Set while tearing down on purpose, so cleanup does not reconnect. */
   const closingRef = useRef(false);
   const joiningRef = useRef(false);
+  /**
+   * The session the current ticket was minted with.
+   *
+   * Held in a ref so `join` does not have to be rebuilt when it changes, and
+   * compared in the effect below to notice a login or logout.
+   */
+  const authTokenRef = useRef<string | null>(authToken);
 
   const clearTimers = useCallback(() => {
     if (reconnectTimerRef.current !== null) {
@@ -346,7 +366,7 @@ export function useChatRoom(): ChatRoomController {
       setIsJoining(true);
       setError(null);
 
-      void requestChatTicket(turnstileToken)
+      void requestChatTicket(turnstileToken, undefined, authTokenRef.current)
         .then((ticket) => {
           if (!liveRef.current) return;
           storeTicket(ticket);
@@ -480,6 +500,37 @@ export function useChatRoom(): ChatRoomController {
       if (socket) socket.close(1000, "leaving room");
     };
   }, [connect, clearTimers, pingAndExpectPong]);
+
+  /*
+   * A login or logout changes who the room should show, and that is decided by
+   * the server when the ticket is signed. So the held ticket is discarded and a
+   * fresh one minted; the socket goes down and comes back under the new name.
+   *
+   * Skipped on the first run: the initial ticket is already being fetched with
+   * whatever session was present at mount.
+   */
+  const firstAuthRunRef = useRef(true);
+  useEffect(() => {
+    if (firstAuthRunRef.current) {
+      firstAuthRunRef.current = false;
+      authTokenRef.current = authToken;
+      return;
+    }
+    if (authTokenRef.current === authToken) return;
+
+    authTokenRef.current = authToken;
+    clearCachedTicket();
+    ticketRef.current = null;
+
+    const socket = socketRef.current;
+    socketRef.current = null;
+    if (socket) {
+      closingRef.current = true;
+      socket.close(1000, "session changed");
+      closingRef.current = false;
+    }
+    joinRef.current("");
+  }, [authToken]);
 
   return {
     status,

@@ -13,8 +13,20 @@ export interface ChatMessage {
   id: string;
   /** Plain text — caller must render as text, never set as innerHTML. */
   body: string;
-  /** Server-generated display handle, e.g. "느긋한 수달". Rotates daily. */
+  /**
+   * Server-generated display handle: a logged-in member's nickname, or a daily
+   * alias like "느긋한 수달" for an anonymous sender. Either way the server
+   * assigns it — a client cannot state its own name.
+   */
   handle: string;
+  /**
+   * True when the handle is a member nickname.
+   *
+   * Needed on screen: an anonymous alias is two ordinary Korean words, so a
+   * member could register a nickname shaped exactly like one. The badge this
+   * flag drives is what tells them apart.
+   */
+  isMember?: boolean;
   createdAt: string;
 }
 
@@ -80,6 +92,8 @@ export class ChatApiError extends Error {
 /** Short-lived join ticket returned by POST /api/chat/ticket. */
 export interface ChatTicket {
   ticket: string;
+  /** Nickname the room will show, when the ticket was minted for a member. */
+  handle?: string | null;
   /** ISO 8601 UTC. The client re-gates once this passes. */
   expiresAt: string;
 }

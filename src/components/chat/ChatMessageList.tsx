@@ -113,13 +113,33 @@ export function ChatMessageList({ messages, ownHandle }: ChatMessageListProps) {
                 }}
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <span
-                    className="truncate text-xs font-semibold"
-                    style={{
-                      color: isOwnHandle ? "#8b7cff" : "var(--text-secondary)",
-                    }}
-                  >
-                    {message.handle}
+                  <span className="flex min-w-0 items-center gap-1">
+                    <span
+                      className="truncate text-xs font-semibold"
+                      style={{
+                        color: isOwnHandle ? "#8b7cff" : "var(--text-secondary)",
+                      }}
+                    >
+                      {message.handle}
+                    </span>
+                    {/*
+                      An anonymous alias is two ordinary Korean words, so a member
+                      could register a nickname shaped exactly like one. This mark
+                      is what separates "a name someone chose and kept" from "a
+                      name the server made up for today".
+                    */}
+                    {message.isMember && (
+                      <span
+                        className="shrink-0 rounded px-1 text-[10px] font-medium leading-[14px]"
+                        style={{
+                          backgroundColor: "rgba(139,124,255,0.16)",
+                          color: "#8b7cff",
+                        }}
+                        title="로그인 회원"
+                      >
+                        회원
+                      </span>
+                    )}
                   </span>
                   <time
                     dateTime={message.createdAt}

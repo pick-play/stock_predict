@@ -1,9 +1,20 @@
 /**
- * Join tickets for the anonymous chat room.
+ * Join tickets for the chat room.
  *
- * A ticket is an HMAC over (version, expiry). It is verified in the Worker
- * before the Durable Object is touched, so an unverified probe costs a Worker
- * request rather than waking the room.
+ * A ticket is an HMAC over (version, expiry, handle). It is verified in the
+ * Worker before the Durable Object is touched, so an unverified probe costs a
+ * Worker request rather than waking the room.
+ *
+ * The handle is empty for an anonymous joiner and carries the member's nickname
+ * for a logged-in one. Binding it here is what makes a fixed nickname safe: the
+ * session is checked once, against the database, when the ticket is minted, and
+ * the signature means the client cannot edit the name it was given. A nickname
+ * arriving in a socket frame would be a claim; this is a server statement.
+ *
+ * Note the difference from the IP binding that was removed below: an IP changes
+ * under a phone that walks between cells, so binding it broke reconnects. A
+ * nickname does not change while a ticket lives, and if the member logs out the
+ * client simply asks for a new ticket.
  *
  * It used to be signed over the IP hash as well, to stop a ticket being shared.
  * That binding was removed, for two reasons.
@@ -40,6 +51,19 @@ async function ticketKey(salt: string): Promise<CryptoKey> {
   );
 }
 
+/**
+ * Percent-encodes a handle so it can sit in a dot-joined ticket.
+ *
+ * encodeURIComponent leaves "." alone, and a dot inside the handle would split
+ * the ticket into five parts and make it unverifiable — a member with a dot in
+ * their nickname simply could not join. Nicknames cannot contain one today, but
+ * a format that breaks on a character it never escaped is a trap for whoever
+ * relaxes that rule later.
+ */
+function encodeHandle(handle: string): string {
+  return encodeURIComponent(handle).replace(/\./g, "%2E");
+}
+
 async function sign(payload: string, salt: string): Promise<string> {
   const key = await ticketKey(salt);
   const sig = await crypto.subtle.sign(
@@ -52,8 +76,13 @@ async function sign(payload: string, salt: string): Promise<string> {
     .join('');
 }
 
-function payloadFor(expiresAt: number): string {
-  return `${TICKET_VERSION}.${expiresAt}`;
+/**
+ * The signed payload. The handle is length-prefixed so a nickname containing a
+ * separator cannot be re-parsed into a different expiry, which is the classic
+ * way a delimiter-joined MAC payload gets forged.
+ */
+function payloadFor(expiresAt: number, handle: string): string {
+  return `${TICKET_VERSION}.${expiresAt}.${handle.length}.${handle}`;
 }
 
 /** Compares two hex digests without leaking where they first differ. */
@@ -66,34 +95,55 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-/** Mints a ticket valid until `expiresAt` (epoch ms). */
+/**
+ * Mints a ticket valid until `expiresAt` (epoch ms).
+ *
+ * `handle` is the member nickname the Worker verified from the session, or ""
+ * for an anonymous joiner. It travels in the clear — it is a public display
+ * name, not a secret — and the signature is what stops it being changed.
+ */
 export async function issueChatTicket(
   salt: string,
-  expiresAt: number
+  expiresAt: number,
+  handle = ''
 ): Promise<string> {
-  const signature = await sign(payloadFor(expiresAt), salt);
-  return `${TICKET_VERSION}.${expiresAt}.${signature}`;
+  const signature = await sign(payloadFor(expiresAt, handle), salt);
+  return `${TICKET_VERSION}.${expiresAt}.${encodeHandle(handle)}.${signature}`;
+}
+
+export interface VerifiedTicket {
+  /** The member nickname the ticket was signed with, or null when anonymous. */
+  handle: string | null;
 }
 
 /**
- * True only when the ticket is well-formed, unexpired and correctly signed.
- * Every failure path returns the same false — a caller learns nothing about
- * which check tripped.
+ * Returns the ticket's contents only when it is well-formed, unexpired and
+ * correctly signed; null otherwise. Every failure path returns the same null —
+ * a caller learns nothing about which check tripped.
  */
 export async function verifyChatTicket(
   ticket: string,
   salt: string,
   now: number
-): Promise<boolean> {
+): Promise<VerifiedTicket | null> {
   const parts = ticket.split('.');
-  if (parts.length !== 3) return false;
+  if (parts.length !== 4) return null;
 
-  const [version, expiresRaw, signature] = parts;
-  if (version !== TICKET_VERSION) return false;
+  const [version, expiresRaw, handleRaw, signature] = parts;
+  if (version !== TICKET_VERSION) return null;
 
   const expiresAt = Number(expiresRaw);
-  if (!Number.isSafeInteger(expiresAt) || expiresAt <= now) return false;
+  if (!Number.isSafeInteger(expiresAt) || expiresAt <= now) return null;
 
-  const expected = await sign(payloadFor(expiresAt), salt);
-  return timingSafeEqual(signature, expected);
+  let handle: string;
+  try {
+    handle = decodeURIComponent(handleRaw);
+  } catch {
+    return null;
+  }
+
+  const expected = await sign(payloadFor(expiresAt, handle), salt);
+  if (!timingSafeEqual(signature, expected)) return null;
+
+  return { handle: handle.length > 0 ? handle : null };
 }

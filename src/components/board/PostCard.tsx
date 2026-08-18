@@ -3,6 +3,7 @@ import type { BoardPost } from "../../types/board";
 import { BoardApiError } from "../../types/board";
 import { reportPost, likePost } from "../../lib/board/api";
 import { CommentSection } from "./CommentSection";
+import { PILL_QUIET, PILL_QUIET_DANGER } from "../common/controls";
 
 interface PostCardProps {
   post: BoardPost;
@@ -110,7 +111,7 @@ export function PostCard({
 
   return (
     <article
-      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 hover:border-[var(--border-strong)] transition-colors duration-150"
+      className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 hover:border-[var(--border-strong)] transition-colors duration-150"
       aria-label={`${post.authorTag}의 글`}
     >
       {/* ── Header ── */}
@@ -143,10 +144,10 @@ export function PostCard({
           aria-label={
             liked ? `공감함 · 공감 ${likeCount}개` : `이 글에 공감하기 · 현재 ${likeCount}개`
           }
-          className={`min-h-[44px] -my-2 pr-3 flex items-center gap-1.5 text-xs rounded transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] ${
+          className={`${PILL_QUIET} ${
             liked
-              ? "text-[#ff4d5e] cursor-default"
-              : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+              ? "text-[#ff4d5e] hover:bg-[rgba(255,77,94,0.10)] hover:text-[#ff4d5e] cursor-default"
+              : ""
           }`}
         >
           <span aria-hidden="true" className="text-sm leading-none">
@@ -160,7 +161,7 @@ export function PostCard({
           <button
             type="button"
             onClick={handleReportClick}
-            className="text-[12px] text-[var(--text-muted)] hover:text-[var(--text-tertiary)] transition-colors duration-100 rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+            className={PILL_QUIET}
             aria-label={`글 id ${post.id} 신고`}
           >
             신고
@@ -175,7 +176,7 @@ export function PostCard({
             <button
               type="button"
               onClick={handleReportConfirm}
-              className="text-[12px] text-[#ff5d6c] hover:opacity-80 transition-opacity rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff5d6c]"
+              className={PILL_QUIET_DANGER}
               aria-label="신고 확인"
             >
               확인
@@ -183,7 +184,7 @@ export function PostCard({
             <button
               type="button"
               onClick={handleReportCancel}
-              className="text-[12px] text-[var(--text-muted)] hover:text-[var(--text-tertiary)] transition-colors rounded px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+              className={PILL_QUIET}
               aria-label="신고 취소"
             >
               취소

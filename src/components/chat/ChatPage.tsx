@@ -8,7 +8,14 @@
  * moderation filter, and a per-IP-hash cap on concurrent sockets.
  */
 
+import { useState } from "react";
 import { useChatRoom } from "../../hooks/useChatRoom";
+import { useAuth } from "../../hooks/useAuth";
+import { AccountButton } from "../common/AccountButton";
+import { BackButton } from "../common/BackButton";
+import { AuthModal } from "../board/auth/AuthModal";
+import { RecoveryCodeModal } from "../board/auth/RecoveryCodeModal";
+import type { SignupResult } from "../../types/board";
 import { DashboardLayout } from "../layout/DashboardLayout";
 import { CHAT_MESSAGE_CAP } from "../../lib/chat/config";
 import { ChatComposer } from "./ChatComposer";
@@ -17,7 +24,6 @@ import { ChatNotReady } from "./ChatNotReady";
 import { ParticipantCount } from "./ParticipantCount";
 import type { ChatConnectionStatus } from "../../types/chat";
 import { StockMiniCards } from "../common/StockMiniCards";
-import { BRAND_NAME } from "../../config/brand";
 
 interface ChatPageProps {
   onNavigateDashboard: () => void;
@@ -43,7 +49,28 @@ const STATUS_COLOR: Record<ChatConnectionStatus, string> = {
 };
 
 export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
-  const room = useChatRoom();
+  /*
+   * The session decides the display name.
+   *
+   * A logged-in member chats under their fixed nickname; everyone else keeps the
+   * daily alias the server derives from an IP hash. The token is only handed to
+   * the ticket request — the room itself never receives it — and the name comes
+   * back signed, so nothing here can claim a name it was not given.
+   */
+  const auth = useAuth();
+  const room = useChatRoom({ authToken: auth.token });
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  /**
+   * Held after a signup so the recovery code can be shown once.
+   *
+   * Not optional: it is the only way back into an account whose password is
+   * lost, and a member who signed up from the chat room must not be the one
+   * reader who never sees it.
+   */
+  const [pendingRecovery, setPendingRecovery] = useState<SignupResult | null>(
+    null
+  );
   const isConnected = room.status === "open";
 
   return (
@@ -53,34 +80,41 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
         <header className="animate-fade-in shrink-0 border-b border-[var(--border-mid)] px-4 py-4 md:px-6">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={onNavigateDashboard}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--border-subtle)] transition-all duration-150 hover:border-[var(--border-strong)] hover:bg-[var(--surface-overlay)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
-                aria-label={`${BRAND_NAME} 대시보드로 돌아가기`}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                  className="text-[var(--text-secondary)]"
-                >
-                  <path d="M19 12H5M12 5l-7 7 7 7" />
-                </svg>
-              </button>
+              <BackButton onClick={onNavigateDashboard} />
 
               <div className="min-w-0">
-                <h1 className="truncate text-sm font-semibold leading-none tracking-tight text-[var(--text-primary)]">
+                <h1 className="truncate text-base font-bold leading-tight tracking-tight text-[var(--text-primary)]">
                   실시간 채팅
                 </h1>
-                <p className="mt-1 truncate text-[12px] text-[var(--text-muted)]">
-                  {BRAND_NAME} · 로그인 없이 참여
+                {/*
+                  The subtitle used to read "코스피 NOW · 로그인 없이 참여 가능":
+                  the brand, to somebody already inside the site, and a rule that
+                  stops being news the moment you are in the room. It now carries
+                  the one thing a reader here wants to know — the name they are
+                  speaking under — with the connection state as a dot beside it.
+                */}
+                <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px]">
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: STATUS_COLOR[room.status] }}
+                    role="status"
+                    aria-label={STATUS_LABEL[room.status]}
+                  />
+                  {room.handle ? (
+                    <span className="truncate text-[var(--text-muted)]">
+                      <span className="font-medium text-[#8b7cff]">
+                        {room.handle}
+                      </span>
+                      {auth.nickname ? " · 고정 닉네임" : " · 익명"}
+                    </span>
+                  ) : (
+                    <span
+                      className="truncate"
+                      style={{ color: STATUS_COLOR[room.status] }}
+                    >
+                      {STATUS_LABEL[room.status]}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -90,32 +124,21 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
                 participants={room.participants}
                 isLive={isConnected}
               />
+              {/*
+                The room says a login fixes your nickname and until now offered no
+                way to do it — the only route was to leave for the community, sign
+                in and come back.
+              */}
+              <AccountButton auth={auth} onOpen={() => setAuthModalOpen(true)} />
             </div>
           </div>
 
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span
-              className="flex items-center gap-1.5 text-[12px]"
-              role="status"
-              aria-live="polite"
-            >
-              <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ background: STATUS_COLOR[room.status] }}
-                aria-hidden="true"
-              />
-              <span style={{ color: STATUS_COLOR[room.status] }}>
-                {STATUS_LABEL[room.status]}
-              </span>
-            </span>
-
-            {room.handle && (
-              <span className="text-[12px] text-[var(--text-muted)]">
-                내 이름 <span className="text-[#8b7cff]">{room.handle}</span> ·
-                같은 이름의 메시지가 강조됩니다
-              </span>
-            )}
-          </div>
+          {/* Shown only to a reader who could still gain something by logging in. */}
+          {!auth.nickname && room.handle && (
+            <p className="mt-2 text-[12px] text-[var(--text-muted)]">
+              로그인하면 이 이름 대신 내 닉네임으로 참여합니다.
+            </p>
+          )}
         </header>
 
         {/*
@@ -153,6 +176,25 @@ export function ChatPage({ onNavigateDashboard }: ChatPageProps) {
           </>
         )}
       </div>
+
+      {authModalOpen && (
+        <AuthModal
+          auth={auth}
+          onClose={() => setAuthModalOpen(false)}
+          onRecoveryCode={(result) => {
+            setAuthModalOpen(false);
+            setPendingRecovery(result);
+          }}
+        />
+      )}
+
+      {pendingRecovery && (
+        <RecoveryCodeModal
+          recoveryCode={pendingRecovery.recoveryCode}
+          nickname={pendingRecovery.nickname}
+          onConfirmed={() => setPendingRecovery(null)}
+        />
+      )}
     </DashboardLayout>
   );
 }

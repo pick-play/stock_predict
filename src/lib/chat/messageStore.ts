@@ -44,12 +44,15 @@ export interface ChatMessageInput {
   body: string;
   handle: string;
   createdAt: string;
+  /** True when the handle is a member nickname rather than a daily alias. */
+  isMember?: boolean;
 }
 
 interface StoredMessage {
   body: string;
   handle: string;
   createdAt: string;
+  isMember?: boolean;
 }
 
 interface Cursor {
@@ -79,7 +82,8 @@ function toStoredMessage(value: unknown): StoredMessage | null {
   ) {
     return null;
   }
-  return { body, handle, createdAt };
+  // Rows written before members could join carry no flag; they were anonymous.
+  return { body, handle, createdAt, isMember: candidate.isMember === true };
 }
 
 function toCursor(value: unknown): Cursor | null {
@@ -150,6 +154,7 @@ export class ChatMessageStore {
       body: input.body,
       handle: input.handle,
       createdAt: input.createdAt,
+      isMember: input.isMember === true,
     };
     const nextCursor: Cursor = {
       oldestSeq: overflow > 0 ? cursor.oldestSeq + overflow : cursor.oldestSeq,

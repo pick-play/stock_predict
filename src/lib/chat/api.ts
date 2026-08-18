@@ -39,13 +39,25 @@ const ERROR_KIND_MAP: Partial<Record<string, ChatApiError["kind"]>> = {
  */
 export async function requestChatTicket(
   turnstileToken: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  /**
+   * Session token of a logged-in member, if there is one.
+   *
+   * This is the only request in the chat flow that carries it. The server checks
+   * it once, against the database, and signs the resulting nickname into the
+   * ticket — so the socket handshake needs no credential in its URL and the room
+   * never has to trust a name the client typed.
+   */
+  authToken?: string | null
 ): Promise<ChatTicket> {
   let res: Response;
   try {
     res = await fetch(`${CHAT_API_BASE}/api/chat/ticket`, {
       method: "POST",
-      headers: { "Content-Type": "application/json; charset=utf-8" },
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
       body: JSON.stringify({ turnstileToken }),
       signal,
     });

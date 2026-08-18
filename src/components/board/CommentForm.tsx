@@ -15,6 +15,7 @@ import { moderatePost } from "../../lib/moderation/filter";
 import { submitComment } from "../../lib/board/api";
 import { BoardApiError } from "../../types/board";
 import type { BoardComment } from "../../types/board";
+import { PILL_PRIMARY } from "../common/controls";
 
 /** Max length mirroring the server-side limit from board-api.md. */
 const COMMENT_MAX_LENGTH = 500;
@@ -146,7 +147,7 @@ export function CommentForm({
           type="submit"
           disabled={!canSubmit}
           aria-label={isSubmitting ? "댓글 등록 중" : "댓글 등록"}
-          className="px-3 py-1 rounded-lg text-[12px] font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff] disabled:opacity-40 disabled:cursor-not-allowed"
+          className={`${PILL_PRIMARY} h-8 px-3.5 text-[12px]`}
           style={{
             background: canSubmit
               ? "linear-gradient(135deg, #8b7cff 0%, #6b5ce7 100%)"

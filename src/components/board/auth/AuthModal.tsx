@@ -34,6 +34,7 @@ import { isTurnstileConfigured } from "../../../lib/board/turnstileConfig";
 import { getMeApi } from "../../../lib/board/authApi";
 import { getMyPostsApi } from "../../../lib/board/authApi";
 import type { MyPost } from "../../../types/board";
+import { nicknameProblem } from "../../../lib/auth/nickname";
 
 type AuthTab = "login" | "signup" | "reset";
 
@@ -177,6 +178,17 @@ function SignupForm({ auth, onSuccess }: SignupFormProps) {
     setLocalError(null);
     auth.clearError();
 
+    /*
+     * Same rule the Worker applies, checked here so someone who typed a space
+     * is told that in the form rather than by a rejected request. The server
+     * remains the authority — this only saves the round trip.
+     */
+    const nicknameIssue = nicknameProblem(nickname.trim());
+    if (nicknameIssue) {
+      setLocalError(nicknameIssue);
+      return;
+    }
+
     if (password !== passwordConfirm) {
       setLocalError("비밀번호가 일치하지 않습니다.");
       return;
@@ -207,7 +219,7 @@ function SignupForm({ auth, onSuccess }: SignupFormProps) {
 
   const displayError = localError ?? auth.error;
   const canSubmit =
-    nickname.trim().length >= 2 &&
+    nicknameProblem(nickname.trim()) === null &&
     password.length >= 8 &&
     passwordConfirm.length >= 1 &&
     (!isTurnstileConfigured || turnstileToken !== null) &&
@@ -228,7 +240,7 @@ function SignupForm({ auth, onSuccess }: SignupFormProps) {
           }}
           autoComplete="username"
           maxLength={16}
-          placeholder="2~16자, 한글·영문·숫자·밑줄"
+          placeholder="2~16자, 한글·영문·숫자·밑줄 (띄어쓰기 불가)"
           disabled={auth.isLoading}
           className={fieldClass}
         />
@@ -470,6 +482,18 @@ function ResetPasswordForm({ auth, onSuccess }: ResetPasswordFormProps) {
   );
 }
 
+/** One number in the account summary. */
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-[var(--surface-3)] px-2 py-1.5 text-center">
+      <dt className="text-[11px] text-[var(--text-muted)]">{label}</dt>
+      <dd className="mt-0.5 text-[13px] font-semibold text-[var(--text-primary)] tabular-nums">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 // ── AccountPanel ──────────────────────────────────────────────────────────────
 
 interface AccountPanelProps {
@@ -544,9 +568,24 @@ function AccountPanel({ auth, onClose }: AccountPanelProps) {
           {auth.nickname}
         </p>
         {userInfo && (
-          <p className="text-[12px] text-[var(--text-tertiary)] mt-1">
-            작성 글 {userInfo.postCount}개
-          </p>
+          <>
+            {/*
+              Attendance first: it is the one number that moves without the
+              member doing anything, so it is the one they came to look at.
+              The streak is shown only while it is running — "연속 1일" on the
+              day someone returns after a gap reads as a rebuke.
+            */}
+            <dl className="mt-3 grid grid-cols-3 gap-2">
+              <Stat label="출석" value={`${userInfo.visitDays}일`} />
+              <Stat label="작성 글" value={`${userInfo.postCount}개`} />
+              <Stat label="댓글" value={`${userInfo.commentCount}개`} />
+            </dl>
+            {userInfo.visitStreak > 1 && (
+              <p className="mt-2 text-[12px] text-[#8b7cff]">
+                연속 {userInfo.visitStreak}일 출석 중
+              </p>
+            )}
+          </>
         )}
       </div>
 

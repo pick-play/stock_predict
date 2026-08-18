@@ -3,10 +3,12 @@ import { hashIp } from '../lib/ipHash';
 import { issueChatTicket, verifyChatTicket } from '../lib/chatTicket';
 import { getChatRoomNamespace } from '../chatEnv';
 import { isAdmin } from '../lib/adminAuth';
+import { requireAuth } from '../lib/session';
 import {
   CHAT_ADMIN_DELETE_PATH,
   CHAT_HISTORY_PATH,
   CHAT_IP_HASH_HEADER,
+  CHAT_MEMBER_HANDLE_HEADER,
   CHAT_PREVIEW_TTL_MS,
   CHAT_ROOM_NAME,
   CHAT_TICKET_TTL_MS,
@@ -75,11 +77,23 @@ export async function handleChatTicket(
   // No IP is read here: the ticket is no longer bound to one. The room still
   // gets its identity from the hash the Worker computes on the socket request,
   // which is the only place it has ever mattered.
+  //
+  // A bearer token, if one came with the request, is where a fixed nickname
+  // comes from. This is the only moment the session is examined: the name is
+  // then signed into the ticket, so the socket handshake needs no credential of
+  // its own and no name ever arrives as a client claim.
+  const user = await requireAuth(request, env);
+
   const expiresAt = Date.now() + CHAT_TICKET_TTL_MS;
-  const ticket = await issueChatTicket(env.IP_SALT, expiresAt);
+  const ticket = await issueChatTicket(env.IP_SALT, expiresAt, user?.nickname);
 
   return jsonResponse(
-    { ticket, expiresAt: new Date(expiresAt).toISOString() },
+    {
+      ticket,
+      expiresAt: new Date(expiresAt).toISOString(),
+      // Echoed so the client can say who it will appear as before it connects.
+      handle: user?.nickname ?? null,
+    },
     200,
     request,
     env
@@ -125,7 +139,8 @@ export async function handleChatRoom(
   const ip = getClientIp(request);
   const ipHash = await hashIp(ip, env.IP_SALT);
 
-  if (!(await verifyChatTicket(ticket, env.IP_SALT, Date.now()))) {
+  const verified = await verifyChatTicket(ticket, env.IP_SALT, Date.now());
+  if (!verified) {
     return errorResponse(
       'invalid-ticket',
       '입장 확인이 만료되었습니다. 다시 입장해주세요.',
@@ -135,10 +150,17 @@ export async function handleChatRoom(
     );
   }
 
-  // The room derives the display handle from this header alone, so the client
-  // never gets to state who it is.
+  /*
+   * The room takes its identity from these headers alone, so the client never
+   * gets to state who it is. Both are stripped-and-set here rather than
+   * forwarded: a client that sent its own copy must not have it survive.
+   */
   const headers = new Headers(request.headers);
   headers.set(CHAT_IP_HASH_HEADER, ipHash);
+  headers.delete(CHAT_MEMBER_HANDLE_HEADER);
+  if (verified.handle) {
+    headers.set(CHAT_MEMBER_HANDLE_HEADER, encodeURIComponent(verified.handle));
+  }
 
   const stub = namespace.get(namespace.idFromName(CHAT_ROOM_NAME));
   return stub.fetch(request.url, { method: request.method, headers });

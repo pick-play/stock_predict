@@ -2,6 +2,7 @@ import { ConnectionBadge } from "./ConnectionBadge";
 import { HeaderMenu } from "./HeaderMenu";
 import { ThemeToggle } from "./ThemeToggle";
 import { MarketStatusBadge } from "./MarketStatusBadge";
+import { PILL_SURFACE } from "./controls";
 import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
 import { BRAND_NAME, BRAND_NAME_LATIN } from "../../config/brand";
 
@@ -17,6 +18,16 @@ interface AppHeaderProps {
    */
   onNavigateChat?: () => void;
 }
+
+/**
+ * The header's navigation pills.
+ *
+ * Same shape as the back and account controls on the subpages — 36px tall,
+ * fully rounded, a surface of their own rather than an outline on the page
+ * background. They used to be 28px outlined rectangles with 11px icons, which
+ * read as disabled next to the status badges beside them.
+ */
+const NAV_BUTTON_CLASS = `hidden md:inline-flex ${PILL_SURFACE}`;
 
 export function AppHeader({
   isLoading,
@@ -82,12 +93,12 @@ export function AppHeader({
           <button
             type="button"
             onClick={onNavigateBoard}
-            className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+            className={NAV_BUTTON_CLASS}
             aria-label="커뮤니티 열기"
           >
             <svg
-              width="11"
-              height="11"
+              width="14"
+              height="14"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -105,12 +116,12 @@ export function AppHeader({
           <button
             type="button"
             onClick={onNavigateChat}
-            className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-tertiary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-overlay)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+            className={NAV_BUTTON_CLASS}
             aria-label="실시간 채팅 열기 (로그인 없이 참여)"
           >
             <svg
-              width="11"
-              height="11"
+              width="14"
+              height="14"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
