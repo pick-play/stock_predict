@@ -1,29 +1,29 @@
 {
   "schemaVersion": 2,
   "timezone": "Asia/Seoul",
-  "updatedAt": "2026-08-19T07:23:56.561Z",
+  "updatedAt": "2026-08-20T07:26:20.901Z",
   "referencePriceMode": "mark",
   "open": {
-    "marketDate": "2026-08-19",
-    "anchorTimeUtc": "2026-08-19T00:00:00.000Z",
+    "marketDate": "2026-08-20",
+    "anchorTimeUtc": "2026-08-20T00:00:00.000Z",
     "stocks": {
       "samsung": {
-        "krxPrice": 251500
+        "krxPrice": 257000
       },
       "skHynix": {
-        "krxPrice": 1545000
+        "krxPrice": 1613000
       }
     }
   },
   "close": {
-    "marketDate": "2026-08-19",
-    "anchorTimeUtc": "2026-08-19T06:30:00.000Z",
+    "marketDate": "2026-08-20",
+    "anchorTimeUtc": "2026-08-20T06:30:00.000Z",
     "stocks": {
       "samsung": {
-        "krxPrice": 247500
+        "krxPrice": 271000
       },
       "skHynix": {
-        "krxPrice": 1500000
+        "krxPrice": 1691000
       }
     }
   }
