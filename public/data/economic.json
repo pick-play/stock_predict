@@ -1,16 +1,9 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-16T07:42:27.179Z",
-  "windowStart": "2026-08-09",
-  "windowEnd": "2026-09-16",
+  "updatedAt": "2026-08-20T07:54:11.364Z",
+  "windowStart": "2026-08-13",
+  "windowEnd": "2026-09-20",
   "releases": [
-    {
-      "id": "cpi",
-      "label": "소비자물가 (CPI)",
-      "source": "BLS",
-      "date": "2026-08-12",
-      "releaseAtUtc": "2026-08-12T12:30:00.000Z"
-    },
     {
       "id": "ppi",
       "label": "생산자물가 (PPI)",
