@@ -1,16 +1,9 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-20T07:54:11.364Z",
-  "windowStart": "2026-08-13",
-  "windowEnd": "2026-09-20",
+  "updatedAt": "2026-08-21T07:54:32.211Z",
+  "windowStart": "2026-08-14",
+  "windowEnd": "2026-09-21",
   "releases": [
-    {
-      "id": "ppi",
-      "label": "생산자물가 (PPI)",
-      "source": "BLS",
-      "date": "2026-08-13",
-      "releaseAtUtc": "2026-08-13T12:30:00.000Z"
-    },
     {
       "id": "retail",
       "label": "소매판매",
