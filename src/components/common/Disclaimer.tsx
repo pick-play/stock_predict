@@ -1,4 +1,8 @@
-import { BRAND_NAME, BRAND_NAME_HANGUL } from "../../config/brand";
+import {
+  BRAND_NAME,
+  BRAND_NAME_HANGUL,
+  BRAND_NAME_LATIN,
+} from "../../config/brand";
 
 interface DisclaimerProps {
   short?: boolean;
@@ -34,7 +38,12 @@ export function Disclaimer({ short = false }: DisclaimerProps) {
             본 정보는 투자 권유 또는 매매 추천이 아닙니다.
           </p>
           <p className="text-[12px] text-[var(--text-muted)]">
-            {BRAND_NAME}({BRAND_NAME_HANGUL}) · 해외 선물가격 기반 참고 서비스
+            {/* All three spellings of the name, as body text. The header used
+                to carry the Latin one; it now shows only the wordmark, and a
+                search engine matches text it can find rather than a design. */}
+            {BRAND_NAME}({BRAND_NAME_HANGUL}, {BRAND_NAME_LATIN}) · 해외 선물가격
+            기반 코스피 야간 선물(야간선물·야선) 참고 서비스 · 야간, 주말 언제
+            어디서나 삼성전자·SK하이닉스 예상가격을 확인하세요.
           </p>
         </div>
       </div>

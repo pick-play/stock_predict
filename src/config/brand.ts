@@ -20,3 +20,14 @@ export const BRAND_NAME_LATIN = "KOSPI NOW";
  * spellings competing in the header.
  */
 export const BRAND_NAME_HANGUL = "코스피나우";
+
+/**
+ * The wordmark's two halves.
+ *
+ * The header sets 코스피 in the text colour and NOW in the brand violet, and
+ * that is the only place the name is drawn rather than written — so the split
+ * lives here instead of being sliced out of BRAND_NAME at the call site, where
+ * the next rename would silently break it.
+ */
+export const BRAND_NAME_KO = "코스피";
+export const BRAND_NAME_NOW = "NOW";

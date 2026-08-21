@@ -13,6 +13,11 @@ interface ShareCardButtonProps {
    * the chart, which is what it did before.
    */
   sparklineData?: number[];
+  /**
+   * Styling from the card, so this sits in the same row as 차트 보기 and
+   * 상세보기 rather than carrying a look of its own.
+   */
+  className?: string;
 }
 
 type ButtonState = "idle" | "generating" | "error";
@@ -48,6 +53,7 @@ function kstDateTag(): string {
 export function ShareCardButton({
   snapshot,
   sparklineData,
+  className,
 }: ShareCardButtonProps) {
   const [btnState, setBtnState] = useState<ButtonState>("idle");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -106,16 +112,10 @@ export function ShareCardButton({
       ? "생성 중..."
       : btnState === "error"
         ? "오류"
-        : "사진 저장";
+        : "공유하기";
 
-  const stateClass =
-    btnState === "error"
-      ? "text-[#ff5d6c] border-[#ff5d6c]/30 bg-[#ff5d6c]/10"
-      : [
-          "text-[var(--text-tertiary)] border-[var(--border-subtle)] bg-transparent",
-          "hover:text-[var(--text-secondary)] hover:border-[var(--border-strong)]",
-          "hover:bg-[var(--surface-overlay)]",
-        ].join(" ");
+  // Only the error state paints itself; the rest is whatever the card passes in.
+  const stateClass = btnState === "error" ? "text-[#ff5d6c]" : "";
 
   return (
     <>
@@ -123,15 +123,8 @@ export function ShareCardButton({
         type="button"
         onClick={() => void handleClick()}
         disabled={btnState === "generating"}
-        aria-label={`${snapshot.displayName} 예상가격 이미지 만들기`}
-        className={[
-          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg",
-          "text-[13px] font-medium border",
-          "transition-all duration-150 ease-out",
-          "cursor-pointer select-none min-h-[28px] min-w-[44px]",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          stateClass,
-        ].join(" ")}
+        aria-label={`${snapshot.displayName} 예상가격 이미지로 공유하기`}
+        className={[className ?? "", stateClass].join(" ")}
       >
         {btnState === "generating" ? (
           <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />

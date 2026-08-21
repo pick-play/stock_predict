@@ -148,18 +148,14 @@ describe("StockEstimateCard chart toggle", () => {
 });
 
 /**
- * Which metric rows a phone shows has now been changed twice by owner decision.
- * Pinned here so the next edit to this table has to be deliberate.
+ * What the card shows without being asked, and what waits behind 상세보기.
+ *
+ * Owner decision (2026-08-21). One line stays out — the domestic close the
+ * estimate is measured from — because without it the headline price has no
+ * origin. The rest describes how the calculation was performed, which is a
+ * question somebody asks deliberately.
  */
-describe("StockEstimateCard metric rows on mobile", () => {
-  /** The row element that carries the responsive class, given its label. */
-  function row(label: RegExp) {
-    const labelNode = screen.getByText(label);
-    const element = labelNode.parentElement;
-    if (!element) throw new Error(`no row for ${label}`);
-    return element;
-  }
-
+describe("StockEstimateCard details toggle", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(NOW);
@@ -169,23 +165,60 @@ describe("StockEstimateCard metric rows on mobile", () => {
     vi.useRealTimers();
   });
 
-  // The percentage has no visible denominator without this row.
-  it("shows 기준가 on every screen size", () => {
+  it("always shows the domestic anchor the price came from", () => {
     renderCard();
-    expect(row(/^기준가/).className).not.toContain("hidden");
+    expect(screen.getByText(/최근 국내 종가|국내 시가/)).toBeTruthy();
+    expect(screen.getByText("230,000원")).toBeTruthy();
   });
 
-  it("shows the domestic anchor and the current futures price on mobile", () => {
+  it("keeps the calculation rows out of the way until asked", () => {
     renderCard();
-    expect(row(/최근 국내 종가|국내 시가/).className).not.toContain("hidden");
-    expect(row(/현재 해외 선물가/).className).not.toContain("hidden");
+    expect(screen.queryByText("현재 해외 선물가")).toBeNull();
+    expect(screen.queryByText(/^기준가/)).toBeNull();
+    expect(screen.queryByText("매수 / 매도 호가")).toBeNull();
+    expect(screen.queryByText("호가 스프레드")).toBeNull();
   });
 
-  // Quote quality, not the calculation — detail for a desktop inspection.
-  it("keeps the bid/ask and the spread off the phone", () => {
+  it("shows them all on any screen once opened", async () => {
+    const user = userEvent.setup();
     renderCard();
-    expect(row(/매수 \/ 매도 호가/).className).toContain("hidden md:flex");
-    expect(row(/호가 스프레드/).className).toContain("hidden md:flex");
+
+    await user.click(screen.getByRole("button", { name: "상세보기" }));
+
+    // No desktop-only rows any more: opening the panel is the opt-in.
+    for (const label of [
+      "현재 해외 선물가",
+      "매수 / 매도 호가",
+      "호가 스프레드",
+    ]) {
+      const row = screen.getByText(label).closest("[data-metric-row]");
+      expect(row).toBeTruthy();
+      expect(row!.className).not.toContain("hidden");
+    }
+    expect(screen.getByText(/^기준가/)).toBeTruthy();
+  });
+
+  it("closes again", async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.click(screen.getByRole("button", { name: "상세보기" }));
+    await user.click(screen.getByRole("button", { name: "상세 닫기" }));
+
+    expect(screen.queryByText("현재 해외 선물가")).toBeNull();
+  });
+
+  it("ties the button to the panel it opens", async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    const button = screen.getByRole("button", { name: "상세보기" });
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+
+    await user.click(button);
+    const opened = screen.getByRole("button", { name: "상세 닫기" });
+    expect(opened.getAttribute("aria-expanded")).toBe("true");
+    expect(document.getElementById(opened.getAttribute("aria-controls")!)).toBeTruthy();
   });
 });
 
@@ -206,13 +239,16 @@ describe("StockEstimateCard metric dividers", () => {
   });
 
   function rows() {
-    return Array.from(
-      document.querySelectorAll("[class*='justify-between'][class*='py-[5px]']")
-    );
+    // Attribute, not a class: the padding these rows use is design surface and
+    // has already changed under this test once.
+    return Array.from(document.querySelectorAll("[data-metric-row]"));
   }
 
-  it("draws dividers on the top edge, never the bottom", () => {
+  it("draws dividers on the top edge, never the bottom", async () => {
+    const user = userEvent.setup();
     renderCard();
+    await user.click(screen.getByRole("button", { name: "상세보기" }));
+
     const all = rows();
     expect(all.length).toBeGreaterThan(2);
     all.forEach((row) => {
@@ -222,8 +258,11 @@ describe("StockEstimateCard metric dividers", () => {
   });
 
   // Anchoring to first: is what makes a hidden trailing row harmless.
-  it("skips the divider above the first row only", () => {
+  it("skips the divider above the first row only", async () => {
+    const user = userEvent.setup();
     renderCard();
+    await user.click(screen.getByRole("button", { name: "상세보기" }));
+
     expect(rows()[0].className).toContain("first:border-0");
     expect(rows()[0].className).not.toContain("last:border-0");
   });
@@ -264,11 +303,256 @@ describe("StockEstimateCard render cost", () => {
       });
     }
 
-    // Ten seconds of the footer counting, and the body was never re-rendered:
-    // its own clock is coarse enough that no boundary was crossed.
+    // Ten seconds pass and the body was never re-rendered: its clock is coarse
+    // enough that no boundary was crossed.
     expect(freshness.mock.calls.length).toBe(initial);
 
-    // The readout itself did keep up — 10s old at render, 20s after the wait.
-    expect(screen.getByText("20초 전")).toBeTruthy();
+    /*
+     * There is no seconds readout to check any more — it was removed once the
+     * 실시간 badge said the same thing. The coarse clock stays because the badge
+     * itself degrades on a stale tick, and that must still happen.
+     */
+    expect(screen.getByText("실시간")).toBeTruthy();
+  });
+});
+
+/**
+ * What the card is for, in order: which stock, what it is worth tonight, which
+ * way it moved. Everything else explains those three and must not compete with
+ * them — the name used to be 14px, the same size as a metric label.
+ */
+describe("StockEstimateCard hierarchy", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("sets the company name above every other piece of text", () => {
+    renderCard();
+    const name = screen.getByRole("heading", { name: "삼성전자" });
+    expect(name.className).toContain("text-2xl");
+    expect(name.className).toContain("font-bold");
+  });
+
+  it("keeps the price the largest thing on the card", () => {
+    renderCard();
+    const price = screen.getByLabelText(/예상가격 208,000원/);
+    // clamp() so it grows with the card rather than being pinned to one size.
+    expect(price.getAttribute("style")).toContain("clamp");
+  });
+
+  /*
+   * The change sits on its own line directly under the price (owner decision,
+   * 2026-08-21). Beside it — where it was briefly — it read as a footnote to
+   * the number rather than the second thing worth knowing.
+   */
+  it("puts the change on its own line under the price", () => {
+    renderCard();
+    const price = screen.getByLabelText(/예상가격 208,000원/);
+    const change = price.nextElementSibling;
+
+    expect(change?.textContent).toContain("▼");
+    expect(change?.textContent).toContain("-9.48%");
+    // Large enough to be read second, not last.
+    expect(change?.className).toContain("text-lg");
+  });
+
+  // Colour is never the only signal (§11.2).
+  it("still states the direction with a symbol and a sign", () => {
+    renderCard();
+    const price = screen.getByLabelText(/예상가격 208,000원/);
+    expect(price.nextElementSibling?.textContent).toMatch(/▼\s*-22,000원/);
+  });
+
+  /*
+   * The line above the price carries the live state and then the caption —
+   * "is this current" and "what is it" — in that order, both immediately above
+   * the figure they qualify. The badge used to live in the card header, a whole
+   * block away from the number.
+   */
+  it("labels the price and states its freshness directly above it", () => {
+    renderCard();
+    const price = screen.getByLabelText(/예상가격 208,000원/);
+    const above = price.previousElementSibling;
+
+    expect(above?.textContent).toBe("실시간예상가");
+    expect(above?.firstElementChild?.textContent).toBe("실시간");
+  });
+
+  it("keeps the supporting rows smaller than the headline", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(screen.getByRole("button", { name: "상세보기" }));
+
+    const rows = document.querySelectorAll("[data-metric-row]");
+    expect(rows.length).toBeGreaterThan(0);
+    // Same size as the 최근 국내 종가 line they sit under: they are one list,
+    // and two sizes in one list reads as a mistake.
+    rows.forEach((row) => {
+      expect(row.querySelector("span")?.className).toContain("text-[0.6875rem]");
+    });
+  });
+});
+
+/**
+ * The card's three actions read as one control.
+ *
+ * They were a left-aligned pair with the share button pushed to the far edge,
+ * which left the bottom of the card looking unfinished. Equal cells in one row,
+ * and the row last, give it a base.
+ */
+describe("StockEstimateCard actions", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("offers the three actions in one row", () => {
+    renderCard();
+    const chart = screen.getByRole("button", { name: "차트 보기" });
+    const details = screen.getByRole("button", { name: "상세보기" });
+
+    expect(chart.parentElement).toBe(details.parentElement);
+    expect(chart.parentElement?.className).toContain("grid-cols-3");
+  });
+
+  it("styles them identically", () => {
+    renderCard();
+    const chart = screen.getByRole("button", { name: "차트 보기" });
+    const details = screen.getByRole("button", { name: "상세보기" });
+
+    expect(details.className).toBe(chart.className);
+    // The share control is mocked in this file, so its class cannot be read
+    // here — its own test file covers that it takes the class it is handed.
+  });
+
+  it("ends the card with the actions, under the anchor line", () => {
+    renderCard();
+    const row = screen.getByRole("button", { name: "차트 보기" }).parentElement;
+    const foot = row?.parentElement;
+
+    expect(foot?.textContent).toContain("최근 국내 종가");
+    // Last interactive row. Only the maker's mark sits below it.
+    expect(foot?.lastElementChild?.previousElementSibling).toBe(row);
+  });
+});
+
+/**
+ * The anchor line and the rows behind 상세보기 are one list. They were 11px and
+ * 12px in different greys, which reads as two things that failed to line up
+ * rather than one list with a heading.
+ */
+describe("StockEstimateCard foot typography", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("sets the detail rows at the same size as the anchor line", async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    const anchorLabel = screen.getByText(/최근 국내 종가|국내 시가/);
+    await user.click(screen.getByRole("button", { name: "상세보기" }));
+    const detailLabel = screen.getByText("현재 해외 선물가");
+
+    const size = (el: Element) =>
+      (el.className.match(/text-\[[\d.]+rem\]/) ?? [])[0];
+
+    expect(size(detailLabel)).toBe(size(anchorLabel));
+    expect(size(detailLabel)).toBe("text-[0.6875rem]");
+  });
+});
+
+/**
+ * Every gap in the foot list has a line in it.
+ *
+ * The one between 최근 국내 종가 and 현재 해외 선물가 did not: each row draws its
+ * own top border except the first, and "first" is relative to the details
+ * wrapper, so the wrapper has to supply that one.
+ */
+describe("StockEstimateCard foot dividers", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("rules between the anchor line and the first detail row", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(screen.getByRole("button", { name: "상세보기" }));
+
+    const panel = document.getElementById("stock-details-005930");
+    expect(panel?.className).toContain("border-t");
+
+    // …and the row itself must not add a second one on top of it.
+    const firstRow = screen.getByText("현재 해외 선물가").closest("[data-metric-row]");
+    expect(firstRow?.className).toContain("first:border-0");
+  });
+});
+
+/**
+ * A maker's mark under the actions.
+ *
+ * Screenshots of this card travel further than the site does, and a card
+ * cropped out of a phone screen otherwise carries nothing saying where the
+ * number came from. It must stay a mark: no row of its own, no shrinking of the
+ * buttons above it, and out of the accessibility tree — a screen reader that
+ * announced the brand on every card would be reading furniture.
+ */
+describe("StockEstimateCard maker's mark", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("signs the card under the actions", () => {
+    renderCard();
+    const mark = document.querySelector("[aria-hidden='true'].text-center");
+
+    expect(mark?.textContent).toBe("코스피 NOW");
+    expect(
+      screen.getByRole("button", { name: "차트 보기" }).parentElement
+        ?.nextElementSibling
+    ).toBe(mark);
+  });
+
+  it("stays small enough to read as an edge, not a line of content", () => {
+    renderCard();
+    const mark = document.querySelector("[aria-hidden='true'].text-center");
+
+    expect(mark?.className).toContain("text-[0.5625rem]");
+    expect(mark?.className).toContain("opacity-60");
+  });
+
+  /*
+   * queryByText would still find it — ByText ignores aria-hidden — so the
+   * attribute itself is what gets asserted. A screen reader announcing the
+   * brand on every card would be reading furniture.
+   */
+  it("is not announced to a screen reader", () => {
+    renderCard();
+    const mark = document.querySelector(".text-center.opacity-60");
+    expect(mark?.getAttribute("aria-hidden")).toBe("true");
   });
 });

@@ -45,9 +45,59 @@ export function getSeoulDate(date: Date = new Date()): {
   };
 }
 
+/** Wall-clock weekday and minutes-past-midnight in New York. */
+function easternParts(date: Date): { dayOfWeek: number; minutes: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    weekday: "short",
+  }).formatToParts(date);
+
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "0";
+  const weekdayMap: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+
+  // h23 still yields "24" for midnight in some engines.
+  const hour = get("hour") === "24" ? 0 : parseInt(get("hour"));
+  return {
+    dayOfWeek: weekdayMap[get("weekday")] ?? 0,
+    minutes: hour * 60 + parseInt(get("minute")),
+  };
+}
+
+/** 16:00 in New York — the closing bell, in minutes past midnight. */
+const US_CLOSE_MINUTES = 16 * 60;
+
+/**
+ * True while no major market is open — what the site calls 주말 참고가격.
+ *
+ * The weekend starts at the American close, not at midnight in Seoul (owner
+ * decision, 2026-08-22). Saturday in Korea begins while New York is still
+ * trading Friday afternoon, and for those hours the estimate moves on real
+ * overseas volume; calling that a weekend and warning about thin liquidity was
+ * describing the wrong market.
+ *
+ * The boundary is computed from New York's own clock rather than a fixed KST
+ * hour, because the gap is nine hours under DST and ten hours without it — a
+ * hard-coded 05:00 or 06:00 would be wrong for half the year.
+ *
+ * The end of the window is unchanged: Monday in Seoul. After that the site is
+ * back in its ordinary overnight state ahead of the domestic open.
+ */
 export function isWeekend(date: Date = new Date()): boolean {
-  const { dayOfWeek } = getSeoulDate(date);
-  return dayOfWeek === 0 || dayOfWeek === 6;
+  const { dayOfWeek: seoulDay } = getSeoulDate(date);
+
+  // Sunday in Seoul is Saturday or early Sunday in New York: closed either way.
+  if (seoulDay === 0) return true;
+  if (seoulDay !== 6) return false;
+
+  const eastern = easternParts(date);
+  // Saturday in Seoul, which is Friday in New York until its evening.
+  if (eastern.dayOfWeek === 5) return eastern.minutes >= US_CLOSE_MINUTES;
+  return true;
 }
 
 export function isKrxTradingHours(date: Date = new Date()): boolean {

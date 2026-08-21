@@ -3,8 +3,10 @@ import { HeaderMenu } from "./HeaderMenu";
 import { ThemeToggle } from "./ThemeToggle";
 import { MarketStatusBadge } from "./MarketStatusBadge";
 import { PILL_SURFACE } from "./controls";
+import { AccountButton } from "./AccountButton";
+import type { UseAuthReturn } from "../../hooks/useAuth";
 import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
-import { BRAND_NAME, BRAND_NAME_LATIN } from "../../config/brand";
+import { BRAND_NAME_KO, BRAND_NAME_NOW } from "../../config/brand";
 
 interface AppHeaderProps {
   isLoading: boolean;
@@ -17,6 +19,12 @@ interface AppHeaderProps {
    * mounted. DashboardPage has to pass it for the button to appear.
    */
   onNavigateChat?: () => void;
+  /**
+   * Opens the account panel. Optional for the same reason as the routes above:
+   * a page without an auth modal to open must not show a control that opens it.
+   */
+  auth?: UseAuthReturn;
+  onOpenAuth?: () => void;
 }
 
 /**
@@ -36,6 +44,8 @@ export function AppHeader({
   wsStatus,
   onNavigateBoard,
   onNavigateChat,
+  auth,
+  onOpenAuth,
 }: AppHeaderProps) {
   return (
     /*
@@ -49,26 +59,32 @@ export function AppHeader({
      * panel was both invisible where they overlapped and unclickable, because
      * the taps landed on the content in front of it.
      */
-    <header className="animate-fade-in relative z-40 flex items-center justify-between py-4 px-4 md:px-6 border-b border-[var(--border-mid)]">
-      {/* Logo mark */}
-      <div className="flex items-center gap-3">
-        <img
-          src={`${import.meta.env.BASE_URL}favicon-48.png`}
-          alt=""
-          width={32}
-          height={32}
-          className="w-8 h-8 rounded-lg flex-shrink-0"
-          aria-hidden="true"
-        />
-        <div>
-          <h1 className="text-sm font-semibold text-[var(--text-primary)] leading-none tracking-tight">
-            {BRAND_NAME}
-          </h1>
-          <p className="text-[12px] text-[var(--text-muted)] mt-0.5 tracking-wide">
-            {BRAND_NAME_LATIN}
-          </p>
-        </div>
-      </div>
+    <header className="animate-fade-in relative z-40 px-4 md:px-6">
+      {/*
+        The rule sits on this inner row, not on the header itself.
+        
+        With the border on the padded element it ran the full width of the
+        container while every card below started 16px in, so the line stuck out
+        past the content on both sides. Now it spans exactly the column the
+        cards occupy.
+      */}
+      <div className="flex items-center justify-between pt-5 pb-3.5 border-b border-[var(--border-mid)]">
+      {/*
+        A wordmark, and nothing else (owner decision, 2026-08-22).
+        
+        The icon and the "KOSPI NOW" line under it are gone: three renderings of
+        one name stacked in a corner, where the site already announces itself by
+        being open. What is left is set as a mark rather than a label — 코스피 in
+        the text colour, NOW in the brand violet — so it reads as an identity at
+        one line instead of needing a picture to carry it.
+        
+        The Latin spelling moved to the footer rather than disappearing: it is
+        the domain, and a search engine only matches text it can find.
+      */}
+      <h1 className="flex shrink-0 items-baseline text-xl md:text-2xl font-extrabold tracking-tight leading-none">
+        <span className="text-[var(--text-primary)]">{BRAND_NAME_KO}</span>
+        <span className="ml-1 text-[#8b7cff]">{BRAND_NAME_NOW}</span>
+      </h1>
 
       {/* Right controls */}
       <div className="flex items-center gap-2">
@@ -137,10 +153,21 @@ export function AppHeader({
           </button>
         )}
 
+        {/* Desktop only: on a phone this lives in the overflow menu, where the
+            other two navigation items already went. */}
+        {auth && onOpenAuth && (
+          <span className="hidden md:inline-flex">
+            <AccountButton auth={auth} onOpen={onOpenAuth} />
+          </span>
+        )}
+
         <HeaderMenu
           onNavigateBoard={onNavigateBoard}
           onNavigateChat={onNavigateChat}
+          nickname={auth?.status === "authenticated" ? auth.nickname : null}
+          onOpenAuth={onOpenAuth}
         />
+        </div>
       </div>
     </header>
   );

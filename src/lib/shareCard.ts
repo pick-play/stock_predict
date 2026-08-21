@@ -15,7 +15,6 @@ import {
   formatChangeAmount,
   formatDirectionSymbol,
   getDirection,
-  formatBinancePrice,
 } from "./format";
 import { COLORS } from "../config/theme";
 import { BRAND_NAME } from "../config/brand";
@@ -64,12 +63,15 @@ const HEAD_GAP = 16; // header bottom → divider
 const NAME_GAP = 30; // divider → name baseline
 const EYEBROW_GAP = 24; // name baseline → caption baseline
 const PRICE_GAP = 54; // caption baseline → price baseline
-const BADGE_GAP = 18; // price baseline → badge top
-const BADGE_H = 32;
-const PANEL_GAP = 22; // badge bottom → metrics panel top
-const PANEL_PAD = 14;
-const ROW_H = 25;
-const PANEL_H = PANEL_PAD * 2 + 12 + ROW_H * 2 + 4;
+/*
+ * The change is a line of text under the price, not a filled badge beside it,
+ * and the three-row metrics panel is one line — the same shape the card on
+ * screen settled on. Someone who shares this should recognise what they were
+ * looking at, and the rows the card now hides behind 상세보기 have no toggle
+ * here to be hidden behind.
+ */
+const CHANGE_GAP = 30; // price baseline → change baseline
+const ANCHOR_GAP = 20; // divider → anchor row baseline
 /**
  * Recent-history chart, in the same place the card puts it: top right, beside
  * the company name. Drawn only when there are at least two points.
@@ -82,7 +84,7 @@ const SPARK_W = 112;
 const SPARK_H = 40;
 const SPARK_MIN_POINTS = 2;
 
-const FOOT_GAP = 20; // panel bottom → divider
+const FOOT_GAP = 22; // change baseline → divider
 const DISC_TOP = 18; // divider → first disclaimer baseline
 const DISC_LINE_H = 15;
 const DOMAIN_GAP = 12; // last disclaimer baseline → domain pill top
@@ -97,11 +99,9 @@ const CARD_BASE_H =
   NAME_GAP +
   EYEBROW_GAP +
   PRICE_GAP +
-  BADGE_GAP +
-  BADGE_H +
-  PANEL_GAP +
-  PANEL_H +
+  CHANGE_GAP +
   FOOT_GAP +
+  ANCHOR_GAP +
   DISC_TOP +
   DOMAIN_GAP +
   DOMAIN_H +
@@ -280,8 +280,25 @@ function drawSparkline(
   y: number,
   w: number,
   h: number,
-  color: string,
 ): void {
+  /*
+   * The colour comes from the series, first point to last — the same rule the
+   * on-screen Sparkline uses.
+   *
+   * It used to be handed the card's direction, which is the estimate against
+   * its anchor: a different question over a different window. Whenever the last
+   * few hours ran opposite to the day, the shared picture came out the other
+   * colour from the one the sender had just been looking at.
+   */
+  const firstValue = series[0];
+  const lastValue = series[series.length - 1];
+  const color =
+    lastValue > firstValue
+      ? COLORS.rise
+      : lastValue < firstValue
+        ? COLORS.fall
+        : LIGHT.textTertiary;
+
   const min = Math.min(...series);
   const max = Math.max(...series);
   const range = max - min;
@@ -410,20 +427,6 @@ export async function generateShareImage(
         ? COLORS.fall
         : LIGHT.textSecondary;
 
-  const dirBadgeBg =
-    direction === "rise"
-      ? COLORS.riseSoft
-      : direction === "fall"
-        ? COLORS.fallSoft
-        : "rgba(15,23,42,0.05)";
-
-  const dirBorderColor =
-    direction === "rise"
-      ? "rgba(255,77,94,0.22)"
-      : direction === "fall"
-        ? "rgba(63,130,255,0.22)"
-        : "rgba(15,23,42,0.10)";
-
   const dirGlow =
     direction === "rise"
       ? "rgba(255,77,94,0.16)"
@@ -515,7 +518,7 @@ export async function generateShareImage(
 
   // ── Name + ticker chip ────────────────────────────────────────────────
   y += NAME_GAP;
-  ctx.font = `700 19px ${FONT}`;
+  ctx.font = `800 23px ${FONT}`;
   ctx.fillStyle = LIGHT.textPrimary;
   ctx.fillText(snapshot.displayName, iX, y);
   const nameW = ctx.measureText(snapshot.displayName).width;
@@ -539,14 +542,25 @@ export async function generateShareImage(
   // Recent trend, right-aligned against the name — the card's arrangement, so a
   // reader who saw the screen recognises the picture.
   if (hasChart) {
-    drawSparkline(ctx, series, iR - SPARK_W, y - 26, SPARK_W, SPARK_H, dirColor);
+    drawSparkline(ctx, series, iR - SPARK_W, y - 26, SPARK_W, SPARK_H);
   }
 
-  // ── Caption — states what the number is before the number is read ─────
+  /*
+   * ── Caption ──
+   *
+   * "예상가", the same word the card uses. It read "해외 선물가격 기반 참고
+   * 예상가" — a sentence where the card has a label, which is the one place the
+   * two were still out of step.
+   *
+   * The shortening is only safe because the disclaimer below is untouched: it
+   * still names the basis and says the number is not a domestic fill (§21,
+   * §28.2). That line is now the whole of what keeps this picture honest, so it
+   * does not come out of the image for any reason.
+   */
   y += EYEBROW_GAP;
-  ctx.font = `500 12px ${FONT}`;
-  ctx.fillStyle = LIGHT.textTertiary;
-  ctx.fillText("해외 선물가격 기반 참고 예상가", iX, y);
+  ctx.font = `500 11px ${FONT}`;
+  ctx.fillStyle = LIGHT.textMuted;
+  ctx.fillText("예상가", iX, y);
 
   // ── Estimated price ───────────────────────────────────────────────────
   y += PRICE_GAP;
@@ -560,110 +574,50 @@ export async function generateShareImage(
   ctx.fillStyle = LIGHT.textTertiary;
   ctx.fillText(price.unit, iX + priceW + 6, y);
 
-  // ── Direction badge: symbol + change amount + percentage ──────────────
-  // All three elements are drawn so colour alone never conveys direction.
-  y += BADGE_GAP;
+  // ── Change: symbol, amount and percentage on one line under the price ─
+  // Drawn as text rather than a filled badge, matching the card. All three
+  // elements are present so colour alone never conveys direction (§11.2).
+  y += CHANGE_GAP;
   const changeStr = `${dirSymbol} ${formatChangeAmount(snapshot.changeAmount)}`;
-  const sepStr = "  ·  ";
   const pctStr = formatPercent(snapshot.changeRate);
 
-  ctx.font = `700 14px ${FONT}`;
+  ctx.font = `800 22px ${FONT}`;
+  ctx.fillStyle = dirColor;
+  ctx.fillText(changeStr, iX, y);
   const changeW = ctx.measureText(changeStr).width;
-  const pctW = ctx.measureText(pctStr).width;
-  ctx.font = `500 14px ${FONT}`;
-  const sepW = ctx.measureText(sepStr).width;
 
-  const bPad = 14;
-  const bW = changeW + sepW + pctW + bPad * 2;
-
-  chip(ctx, iX, y, bW, BADGE_H, 10, dirBadgeBg, dirBorderColor);
-
-  const bTextY = y + BADGE_H / 2 + 5;
-  let bx = iX + bPad;
-
-  ctx.font = `700 14px ${FONT}`;
+  ctx.font = `600 17px ${FONT}`;
   ctx.fillStyle = dirColor;
-  ctx.fillText(changeStr, bx, bTextY);
-  bx += changeW;
+  ctx.globalAlpha = 0.75;
+  ctx.fillText(pctStr, iX + changeW + 10, y);
+  ctx.globalAlpha = 1;
 
-  ctx.font = `500 14px ${FONT}`;
-  ctx.fillStyle = LIGHT.textMuted;
-  ctx.fillText(sepStr, bx, bTextY);
-  bx += sepW;
-
-  ctx.font = `700 14px ${FONT}`;
-  ctx.fillStyle = dirColor;
-  ctx.fillText(pctStr, bx, bTextY);
-
-  // ── Key metrics, grouped in a tinted panel ────────────────────────────
-  y += BADGE_H + PANEL_GAP;
-  const panelTop = y;
-  chip(
-    ctx,
-    iX,
-    panelTop,
-    iR - iX,
-    PANEL_H,
-    14,
-    LIGHT.panel,
-    "rgba(15,23,42,0.05)",
-  );
+  // ── The anchor the estimate was measured from ─────────────────────────
+  // One line, like the card. The rows it hides behind 상세보기 have no toggle
+  // here, and the disclaimer below already names the basis.
+  y += FOOT_GAP;
+  hLine(ctx, iX, iR, y, LIGHT.divider);
 
   const anchorDate = snapshot.anchorMarketDate ?? "";
   const anchorKind = snapshot.anchorKind ?? "close";
-  const anchorKindLabel = anchorKind === "open" ? "시가" : "종가";
   const dateSlash = anchorDate ? anchorDate.slice(5).replace("-", "/") : "";
-
   const krxLabel =
     anchorKind === "open"
       ? `국내 시가 (${dateSlash})`
       : `최근 국내 종가 (${dateSlash})`;
+  const krxValue =
+    snapshot.krxClose > 0 ? formatKrw(snapshot.krxClose) : "—";
 
-  const metrics: { label: string; value: string }[] = [
-    {
-      label: krxLabel,
-      value: snapshot.krxClose > 0 ? formatKrw(snapshot.krxClose) : "—",
-    },
-    {
-      label: "현재 해외 선물가",
-      value:
-        snapshot.currentBinancePrice > 0
-          ? formatBinancePrice(snapshot.currentBinancePrice)
-          : "—",
-    },
-    {
-      label: `기준가 (${dateSlash} ${anchorKindLabel})`,
-      value:
-        snapshot.baselineBinancePrice > 0
-          ? formatBinancePrice(snapshot.baselineBinancePrice)
-          : "—",
-    },
-  ];
+  y += ANCHOR_GAP;
+  ctx.font = `400 11px ${FONT}`;
+  ctx.fillStyle = LIGHT.textMuted;
+  ctx.fillText(krxLabel, iX, y);
 
-  const rowX = iX + PANEL_PAD;
-  const rowR = iR - PANEL_PAD;
-
-  for (let mi = 0; mi < metrics.length; mi++) {
-    const { label, value } = metrics[mi];
-    const rowY = panelTop + PANEL_PAD + 12 + mi * ROW_H;
-
-    ctx.font = `400 12px ${FONT}`;
-    ctx.fillStyle = LIGHT.textTertiary;
-    ctx.fillText(label, rowX, rowY);
-
-    ctx.font = `600 12px ${MONO}`;
-    ctx.fillStyle = LIGHT.textPrimary;
-    ctx.fillText(value, rowR - ctx.measureText(value).width, rowY);
-
-    if (mi < metrics.length - 1) {
-      hLine(ctx, rowX, rowR, rowY + 8, LIGHT.divider, 0.5);
-    }
-  }
+  ctx.font = `500 11px ${MONO}`;
+  ctx.fillStyle = LIGHT.textTertiary;
+  ctx.fillText(krxValue, iR - ctx.measureText(krxValue).width, y);
 
   // ── Footer ────────────────────────────────────────────────────────────
-  y = panelTop + PANEL_H + FOOT_GAP;
-  hLine(ctx, iX, iR, y, LIGHT.divider);
-
   // Disclaimer — mandatory per spec
   y += DISC_TOP;
   ctx.font = DISC_FONT;

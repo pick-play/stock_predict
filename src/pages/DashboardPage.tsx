@@ -2,6 +2,10 @@ import { useState } from "react";
 import { useMarketData } from "../hooks/useMarketData";
 import { useChartHistory } from "../hooks/useChartHistory";
 import { AppHeader } from "../components/common/AppHeader";
+import { AuthModal } from "../components/board/auth/AuthModal";
+import { RecoveryCodeModal } from "../components/board/auth/RecoveryCodeModal";
+import { useAuth } from "../hooks/useAuth";
+import type { SignupResult } from "../types/board";
 import { StockEstimateCard } from "../components/dashboard/StockEstimateCard";
 import { InstallButton } from "../components/common/InstallButton";
 import { HeroSummary } from "../components/dashboard/HeroSummary";
@@ -49,7 +53,15 @@ export function DashboardPage({
   const { stocks, lastUpdated, error, isLoading, usingFallback, wsStatus } =
     useMarketData();
 
-  const [chartRange, setChartRange] = useState<ChartRange>("24h");
+  /**
+   * 6시간 by default (owner decision, 2026-08-21).
+   *
+   * The chart opens from a card showing tonight's estimate, and 24h answered a
+   * question nobody asked there — it spans the domestic session the site tells
+   * readers to ignore. Six hours covers an evening's worth of overseas trading,
+   * which is the window the estimate actually moves in.
+   */
+  const [chartRange, setChartRange] = useState<ChartRange>("6h");
   /**
    * Which card's chart is open, or null.
    *
@@ -58,6 +70,17 @@ export function DashboardPage({
    * card into a large empty box beside it — and a chart is easier to read wide
    * than half-wide anyway.
    */
+  /*
+   * The dashboard carries the account control now, so it owns the modal too.
+   * Signing up from here must still show the recovery code — it is the only way
+   * back into an account whose password is lost, and shown exactly once.
+   */
+  const auth = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [pendingRecovery, setPendingRecovery] = useState<SignupResult | null>(
+    null
+  );
+
   const [chartStock, setChartStock] = useState<StockId | null>(null);
 
   // The candles are converted with the same anchor the cards are priced from,
@@ -103,9 +126,15 @@ export function DashboardPage({
         wsStatus={wsStatus}
         onNavigateBoard={onNavigateBoard}
         onNavigateChat={onNavigateChat}
+        auth={auth}
+        onOpenAuth={() => setAuthModalOpen(true)}
       />
 
-      <main className="px-4 md:px-6 pb-24 md:pb-10 space-y-4">
+      {/* pt-4 because the hero above is usually absent now: without it the
+          chat strip sits flush against the header's border. */}
+      {/* The hero above renders nothing most of the time now, so this padding
+          is what keeps the first card off the header's border. */}
+      <main className="px-4 md:px-6 pt-3.5 md:pt-4 pb-24 md:pb-10 space-y-4">
         <HeroSummary />
 
         {/* Chat leads the page by owner decision, on its own at full width. */}
@@ -142,7 +171,10 @@ export function DashboardPage({
             Desktop keeps it last and full width (md:order-none): inside the
             two-column row it would stretch the neighbouring card to the chart's
             height and leave a tall empty box beside it. */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* items-start: a card that opens 상세보기 grows, and without this the
+            other one stretches to match and reads as a half-empty box. Same
+            failure the chart caused when it lived inside a card. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-4">
           {STOCK_IDS.map((id, index) => {
             const snapshot = stocks[id];
             if (isLoading && !snapshot) {
@@ -202,6 +234,25 @@ export function DashboardPage({
 
       {/* Phones only, and only where nothing else owns the bottom-right. */}
       <InstallButton />
+
+      {authModalOpen && (
+        <AuthModal
+          auth={auth}
+          onClose={() => setAuthModalOpen(false)}
+          onRecoveryCode={(result) => {
+            setAuthModalOpen(false);
+            setPendingRecovery(result);
+          }}
+        />
+      )}
+
+      {pendingRecovery && (
+        <RecoveryCodeModal
+          recoveryCode={pendingRecovery.recoveryCode}
+          nickname={pendingRecovery.nickname}
+          onConfirmed={() => setPendingRecovery(null)}
+        />
+      )}
 
       <MobileBottomBar />
     </DashboardLayout>

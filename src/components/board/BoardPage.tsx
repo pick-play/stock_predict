@@ -93,7 +93,7 @@ export function BoardPage({
               커뮤니티
             </h1>
             <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
-              {BRAND_NAME} · 참고 의견 공유
+              {BRAND_NAME} · 의견 공유
             </p>
           </div>
         </div>

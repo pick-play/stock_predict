@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNow } from "../../hooks/useNow";
-import { RelativeTime } from "../common/RelativeTime";
 import type { StockSnapshot } from "../../types/market";
 import {
   formatKrw,
@@ -15,6 +14,7 @@ import { getDataFreshness } from "../../lib/staleData";
 import { Sparkline } from "./Sparkline";
 import { ShareCardButton } from "./ShareCardButton";
 import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
+import { BRAND_NAME } from "../../config/brand";
 
 /**
  * How often the card re-evaluates whether its price is still fresh.
@@ -23,6 +23,27 @@ import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
  * would only buy re-renders.
  */
 const FRESHNESS_TICK_MS = 30_000;
+
+/**
+ * The card's three actions: 차트 보기 · 상세보기 · 공유하기.
+ *
+ * One class, and a three-column grid rather than a left-aligned row with the
+ * share button pushed to the far edge. Equal widths make them read as one
+ * control instead of two things and a stray, and a full-width band gives the
+ * card a base — the bottom looked unfinished with a short row floating above
+ * whitespace.
+ *
+ * Small on purpose: they are ways to ask for more, not the point of the card.
+ */
+const ACTION_CLASS = [
+  "inline-flex h-8 w-full items-center justify-center gap-1",
+  "rounded-lg text-[0.6875rem] font-medium",
+  "bg-[var(--surface-2)] text-[var(--text-tertiary)]",
+  "transition-colors duration-150 active:scale-[0.97] motion-reduce:active:scale-100",
+  "hover:bg-[var(--surface-3)] hover:text-[var(--text-secondary)]",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]",
+  "disabled:opacity-50 disabled:active:scale-100",
+].join(" ");
 
 interface StockEstimateCardProps {
   snapshot: StockSnapshot;
@@ -57,6 +78,17 @@ export function StockEstimateCard({
    * one-second clock inside a leaf, where a tick repaints one text node.
    */
   useNow(FRESHNESS_TICK_MS);
+
+  /**
+   * The calculation rows, collapsed.
+   *
+   * Card-local rather than lifted to the page like the chart: these rows are
+   * short and sit inside the card, so opening one does not stretch the grid row
+   * and leave the neighbouring card as a tall empty box — which is exactly what
+   * the chart did before it was moved out.
+   */
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsPanelId = `stock-details-${snapshot.koreanTicker}`;
   const direction = getDirection(snapshot.changeRate);
   const dirSymbol = formatDirectionSymbol(snapshot.changeRate);
   const isNoBaseline = snapshot.status === "no-baseline";
@@ -84,13 +116,6 @@ export function StockEstimateCard({
       : direction === "fall"
       ? "text-[#3f82ff]"
       : "text-[#d6dde8]";
-
-  const dirBadgeCls =
-    direction === "rise"
-      ? "bg-[rgba(255,77,94,0.1)] border border-[rgba(255,77,94,0.2)]"
-      : direction === "fall"
-      ? "bg-[rgba(63,130,255,0.1)] border border-[rgba(63,130,255,0.2)]"
-      : "bg-[rgba(214,221,232,0.07)] border border-[rgba(214,221,232,0.12)]";
 
   const accentColor =
     direction === "rise"
@@ -164,22 +189,26 @@ export function StockEstimateCard({
         aria-hidden="true"
       />
 
-      <div className="p-5 md:p-6">
+      <div className="px-5 pt-5 pb-3 md:px-6 md:pt-6 md:pb-3.5">
         {/* ── Header ── */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-semibold text-[var(--text-primary)] tracking-tight leading-none">
-                {snapshot.displayName}
-              </h2>
-              <span className="text-[12px] font-mono text-[var(--text-tertiary)] bg-surface-3 px-1.5 py-0.5 rounded">
-                {snapshot.koreanTicker}
-              </span>
-            </div>
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="flex min-w-0 items-baseline gap-2">
+            {/* The name reads first. It was 14px, the same size as a metric
+                label, in a card whose whole subject it is. */}
+            <h2 className="truncate text-2xl md:text-3xl font-bold text-[var(--text-primary)] tracking-tight leading-none">
+              {snapshot.displayName}
+            </h2>
+            {/* The ticker identifies, it does not announce: no chip, no fill. */}
+            <span className="shrink-0 text-[0.6875rem] font-mono text-[var(--text-muted)]">
+              {snapshot.koreanTicker}
+            </span>
           </div>
+          {/* Bigger than it was, and now the only thing on this side: the live
+              state moved down to the caption, where it qualifies the price it
+              belongs to. */}
           {sparklineData && sparklineData.length >= 2 && (
-            <div className="flex-shrink-0 ml-3 mt-0.5">
-              <Sparkline data={sparklineData} width={72} height={28} />
+            <div className="flex-shrink-0">
+              <Sparkline data={sparklineData} width={104} height={36} />
             </div>
           )}
         </div>
@@ -215,155 +244,201 @@ export function StockEstimateCard({
             </div>
           ) : (
             <div>
+              {/*
+                Price and change share a baseline instead of sitting in two
+                separate blocks with a filled badge between them. They answer one
+                question — what is it worth tonight, and which way did it move —
+                so they read as one line, and the eye lands on them together.
+                Wrapping is allowed: on a narrow phone the change drops below
+                rather than shrinking the price.
+              */}
+              {/* State first, then what the number is, then the number. The
+                  live badge sat in the header a moment ago, a whole card away
+                  from the figure it qualifies. */}
+              <div className="flex items-center gap-2 leading-none">
+                <span
+                  className="flex items-center gap-1.5"
+                  aria-live="polite"
+                  aria-label={`데이터 상태 ${live.label}`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full flex-shrink-0${live.pulse ? " animate-pulse" : ""}`}
+                    style={{ backgroundColor: live.color }}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className="text-[0.6875rem] font-medium"
+                    style={{ color: live.color }}
+                  >
+                    {live.label}
+                  </span>
+                </span>
+                <span className="text-[0.6875rem] text-[var(--text-muted)]">
+                  예상가
+                </span>
+              </div>
               <p
-                className="font-bold text-[var(--text-primary)] tabular-nums leading-none tracking-tight"
-                style={{ fontSize: "clamp(2rem, 5vw, 3rem)" }}
+                className="mt-1.5 font-bold text-[var(--text-primary)] tabular-nums leading-none tracking-tight"
+                style={{ fontSize: "clamp(2.125rem, 6vw, 3.25rem)" }}
                 aria-label={`예상가격 ${formatKrw(snapshot.estimatedPrice)}`}
               >
                 {formatKrw(snapshot.estimatedPrice)}
               </p>
-              <p className="text-[12px] text-[var(--text-muted)] mt-1.5 leading-none">
-                예상가
+              {/* Its own line under the price, and large enough to be the second
+                  thing read. Beside the price it was a footnote to it. */}
+              <p
+                className={`mt-2 flex items-baseline gap-2 text-lg md:text-xl font-bold tabular-nums leading-none ${dirColor}`}
+              >
+                <span>
+                  {dirSymbol} {formatChangeAmount(snapshot.changeAmount)}
+                </span>
+                <span className="text-base font-semibold opacity-75">
+                  {formatPercent(snapshot.changeRate)}
+                </span>
               </p>
             </div>
           )}
         </div>
 
-        {/* ── Direction badge ── */}
-        {!isNoBaseline && (
-          <div
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg mt-3 mb-4 ${dirBadgeCls}`}
-          >
-            <span className={`text-sm font-bold tabular-nums ${dirColor}`}>
-              {dirSymbol} {formatChangeAmount(snapshot.changeAmount)}
+
+        {/*
+          ── Foot ──
+
+          One band, not two: the anchor line and the actions used to sit in
+          separate sections with a rule each, and the card ended on a short row
+          of buttons floating above whitespace. Together they give the card a
+          base, and the actions being last is what makes it read as finished.
+        */}
+        <div className="border-t border-[var(--border-mid)] pt-1 mt-4">
+          {/* The one figure a glancing reader needs to place the price above:
+              where it was measured from. Everything else that describes the
+              calculation waits behind 상세보기. */}
+          <div className="flex items-center justify-between gap-3 py-1">
+            <span className="text-[0.6875rem] text-[var(--text-muted)]">
+              {krxAnchorLabel}
             </span>
-            <span className="text-[#4a5568] select-none">·</span>
-            <span className={`text-sm font-medium tabular-nums ${dirColor}`}>
-              {formatPercent(snapshot.changeRate)}
+            <span className="text-[0.6875rem] text-[var(--text-muted)] font-mono tabular-nums">
+              {snapshot.krxClose > 0 ? formatKrw(snapshot.krxClose) : "—"}
             </span>
           </div>
-        )}
 
-        {/* ── Metrics table ──
-            A phone shows the three rows the headline price is actually derived
-            from: the domestic anchor, the current overseas futures price, and the
-            futures anchor it is measured against. Without that third row the
-            percentage has no visible denominator.
-
-            The bid/ask and the spread stay desktop-only — they describe the
-            quality of the quote, not the calculation, and they are detail for
-            someone inspecting it rather than someone glancing at a price. */}
-        <div className="border-t border-[var(--border-mid)] pt-3 mt-1">
-          <MetricRow
-            label={krxAnchorLabel}
-            value={snapshot.krxClose > 0 ? formatKrw(snapshot.krxClose) : "—"}
-          />
-          <MetricRow
-            label="현재 해외 선물가"
-            value={
-              snapshot.currentBinancePrice > 0
-                ? formatBinancePrice(snapshot.currentBinancePrice)
-                : "—"
-            }
-          />
-          <MetricRow
-            label={anchorLabel}
-            value={
-              snapshot.baselineBinancePrice > 0
-                ? formatBinancePrice(snapshot.baselineBinancePrice)
-                : "—"
-            }
-          />
-          {snapshot.bidPrice !== null && snapshot.askPrice !== null && (
-            <MetricRow
-              desktopOnly
-              label="매수 / 매도 호가"
-              value={`${formatBinancePrice(snapshot.bidPrice)} / ${formatBinancePrice(snapshot.askPrice)}`}
-            />
-          )}
-          <MetricRow desktopOnly label="호가 스프레드" value={spreadLabel} />
-        </div>
-
-        {/* ── Footer: live state + time ── */}
-        <div className="border-t border-[var(--border-mid)] pt-3 mt-3">
-          <div className="flex items-center justify-between">
+          {detailsOpen && (
             <div
-              className="flex items-center gap-1.5"
-              aria-live="polite"
-              aria-label={`데이터 상태 ${live.label}`}
+              id={detailsPanelId}
+              /*
+               * The panel carries the divider that belongs above its first row.
+               * Each MetricRow draws its own top border except the first, and
+               * "first" is relative to this wrapper — so without a border here
+               * the gap between 최근 국내 종가 and 현재 해외 선물가 was the only
+               * one in the list with no line in it.
+               */
+              className="animate-fade-in border-t border-[var(--border-subtle)]"
             >
-              <span
-                className={`w-1.5 h-1.5 rounded-full flex-shrink-0${live.pulse ? " animate-pulse" : ""}`}
-                style={{ backgroundColor: live.color }}
-                aria-hidden="true"
+              <MetricRow
+                label="현재 해외 선물가"
+                value={
+                  snapshot.currentBinancePrice > 0
+                    ? formatBinancePrice(snapshot.currentBinancePrice)
+                    : "—"
+                }
               />
-              <span className="text-xs font-medium" style={{ color: live.color }}>
-                {live.label}
-              </span>
+              <MetricRow
+                label={anchorLabel}
+                value={
+                  snapshot.baselineBinancePrice > 0
+                    ? formatBinancePrice(snapshot.baselineBinancePrice)
+                    : "—"
+                }
+              />
+              {snapshot.bidPrice !== null && snapshot.askPrice !== null && (
+                <MetricRow
+                  label="매수 / 매도 호가"
+                  value={`${formatBinancePrice(snapshot.bidPrice)} / ${formatBinancePrice(snapshot.askPrice)}`}
+                />
+              )}
+              <MetricRow label="호가 스프레드" value={spreadLabel} />
             </div>
-            <RelativeTime
-              iso={snapshot.eventTime}
-              className="text-[12px] text-[var(--text-muted)] tabular-nums"
-            />
-          </div>
-
-          {/* ── Chart, collapsed by default ── */}
-          <div className="flex items-center justify-between gap-2 mt-3">
+          )}
+          <div className="mt-2.5 grid grid-cols-3 gap-1.5">
             <button
               type="button"
               onClick={onToggleChart}
               aria-expanded={chartOpen}
               aria-controls={chartPanelId}
-              className="min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.06)] transition-colors duration-150"
+              className={ACTION_CLASS}
             >
               {chartOpen ? "차트 닫기" : "차트 보기"}
             </button>
 
-            {/* Share / download button — hidden when no real estimate available */}
-            {snapshot.status === "healthy" && (
+            <button
+              type="button"
+              onClick={() => setDetailsOpen((open) => !open)}
+              aria-expanded={detailsOpen}
+              aria-controls={detailsPanelId}
+              className={ACTION_CLASS}
+            >
+              {detailsOpen ? "상세 닫기" : "상세보기"}
+            </button>
+
+            {/* Only offered when there is a real number to put in the picture. */}
+            {snapshot.status === "healthy" ? (
               <ShareCardButton
                 snapshot={snapshot}
                 sparklineData={sparklineData}
+                className={ACTION_CLASS}
               />
+            ) : (
+              <span aria-hidden="true" />
             )}
           </div>
+
+          {/*
+            A maker's mark, not a banner.
+            
+            Screenshots of this card travel further than the site does, and a
+            card cropped out of a phone screen carries nothing that says where
+            the number came from. Small and faint enough to read as part of the
+            card's edge rather than a line of content — it takes no row of its
+            own and the buttons above it keep their size.
+          */}
+          <p
+            className="mt-1.5 text-center text-[0.5625rem] font-medium tracking-[0.12em] text-[var(--text-muted)] opacity-60 select-none"
+            aria-hidden="true"
+          >
+            {BRAND_NAME}
+          </p>
         </div>
+
       </div>
     </article>
   );
 }
 
-function MetricRow({
-  label,
-  value,
-  desktopOnly,
-}: {
-  label: string;
-  value: string;
-  /**
-   * Hidden below the md breakpoint. Done in CSS rather than by branching on a
-   * measured width, so the row count cannot change after the first paint.
-   */
-  desktopOnly?: boolean;
-}) {
+/**
+ * One row inside 상세보기.
+ *
+ * There is no desktop-only variant any more: these rows used to be always
+ * visible with the quote-quality ones hidden below md, and now the whole group
+ * is collapsed for everyone. A reader who opened it asked for all of it.
+ */
+function MetricRow({ label, value }: { label: string; value: string }) {
   return (
     <div
+      /* Marked so tests can find these rows without pinning a padding value
+         that design passes keep changing. */
+      data-metric-row=""
       /*
-       * The divider sits on the TOP of each row but the first, not the bottom of
-       * each but the last.
+       * The divider sits on the TOP of each row but the first.
        *
-       * `last:border-0` counts DOM children, and the desktop-only rows are still
-       * children on a phone — merely invisible. So the last row a phone can see
-       * kept its bottom border, and the footer's own top border landed just
-       * below it: two lines under 기준가. Anchoring to `first:` is safe because
-       * the first row is visible on every screen.
+       * `last:border-0` counts DOM children, and rows hidden by CSS are still
+       * children — so the last row a phone could see kept its bottom border and
+       * the footer's own top border landed just below it: two lines under
+       * 기준가. Anchoring to `first:` has no such failure mode.
        */
-      className={`${
-        desktopOnly ? "hidden md:flex" : "flex"
-      } items-center justify-between py-[5px] border-t border-[var(--border-subtle)] first:border-0`}
+      className="flex items-center justify-between py-1 border-t border-[var(--border-subtle)] first:border-0"
     >
-      <span className="text-[13px] text-[var(--text-tertiary)]">{label}</span>
-      <span className="text-[13px] text-[var(--text-secondary)] font-mono tabular-nums ml-4 text-right">
+      <span className="text-[0.6875rem] text-[var(--text-muted)]">{label}</span>
+      <span className="text-[0.6875rem] text-[var(--text-muted)] font-mono tabular-nums ml-4 text-right">
         {value}
       </span>
     </div>

@@ -18,6 +18,29 @@ import { PILL_SURFACE } from "./controls";
 interface HeaderMenuProps {
   onNavigateBoard?: () => void;
   onNavigateChat?: () => void;
+  /** Opens the account panel. Absent on pages that have no modal to open. */
+  onOpenAuth?: () => void;
+  /** Shown in place of "로그인" once there is a session. */
+  nickname?: string | null;
+}
+
+function AccountIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
 }
 
 function BoardIcon() {
@@ -96,6 +119,8 @@ const ITEM_CLASS =
 export function HeaderMenu({
   onNavigateBoard,
   onNavigateChat,
+  onOpenAuth,
+  nickname,
 }: HeaderMenuProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -189,6 +214,21 @@ export function HeaderMenu({
             >
               <ChatIcon />
               실시간 채팅
+            </button>
+          )}
+
+          {onOpenAuth && (
+            <button
+              type="button"
+              role="menuitem"
+              className={ITEM_CLASS}
+              onClick={() => {
+                setOpen(false);
+                onOpenAuth();
+              }}
+            >
+              <AccountIcon />
+              <span className="truncate">{nickname ?? "로그인"}</span>
             </button>
           )}
 

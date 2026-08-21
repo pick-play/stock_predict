@@ -1,12 +1,20 @@
 import { isWeekend } from "../../lib/koreaMarket";
 import { useKrxSession } from "../../hooks/useKrxSession";
-import { BRAND_NAME } from "../../config/brand";
 
 /**
- * The anchor basis and its date used to sit under the subtitle. Removed by owner
- * decision: every stock card already carries the same two facts next to the
- * price they explain ("최근 국내 종가 (08/10)" and "기준가 (08/10 종가)"), so the
- * line was a fourth heading row that only added height above the fold.
+ * The session notice, and nothing else.
+ *
+ * This used to open the page with the brand, the "해외 선물가격 기반 코스피 야간
+ * 선물" headline and a subtitle. All three are gone (owner decision,
+ * 2026-08-22): the header already says whose site this is, and on a phone those
+ * lines pushed the prices — the reason anyone opened the page — below the fold.
+ * The keyword text they carried now lives in the footer, where a search engine
+ * reads it just as well and nobody has to scroll past it.
+ *
+ * What stays is the part that changes with the clock: the regular-hours warning
+ * §13 requires (real fills come first while the exchange is open) and the
+ * weekend liquidity note. When neither applies this renders nothing at all, and
+ * the page runs from the header straight into the room and the cards.
  */
 export function HeroSummary() {
   const weekend = isWeekend();
@@ -14,54 +22,27 @@ export function HeroSummary() {
   // trust live fills from an exchange that is closed.
   const { trading } = useKrxSession();
 
-  // Brand line stays constant; the session-specific notice below carries the
-  // "market is open, trust the real ticks" warning instead of the headline.
-  const titleLine1 = BRAND_NAME;
-  /*
-   * Owner decision of 2026-08-11, replacing "코스피 현재가".
-   *
-   * Worth knowing what it claims: the site prices 삼성전자 and SK하이닉스 from
-   * overseas futures. It does not quote the KOSPI 200 night future, which is what
-   * a reader arriving on the words 야간 선물 is most likely looking for. The
-   * disclaimer in §21 and the per-card 예상가 caption are what keep that honest,
-   * so neither may be removed while this headline stands.
-   */
-  const titleLine2Accent = "해외 선물가격 기반 코스피 야간 선물";
-
-  const subtitle = trading
-    ? "본 예상가격보다 국내 실제 체결가격을 우선 확인하세요."
-    : "야간, 주말 언제 어디서나 가격을 확인하세요.";
-
   const warning = trading
-    ? "현재 한국거래소 정규장이 진행 중입니다. 실제 체결가 기준으로 거래하세요."
+    ? "현재 한국거래소 정규장이 진행 중입니다. 실제 체결가를 먼저 확인하세요."
     : weekend
-    ? "주말에는 거래량과 유동성이 낮아 예상가격의 변동성이 커질 수 있습니다."
-    : null;
+      ? "주말에는 거래량과 유동성이 낮아 예상가격의 변동성이 커질 수 있습니다."
+      : null;
+
+  if (!warning) return null;
 
   return (
-    <div className="animate-slide-fade-in px-4 md:px-6 py-5">
-      <h2 className="text-xl md:text-2xl font-bold text-[var(--text-primary)] leading-snug tracking-tight">
-        {titleLine1}
-        <br />
-        <span className="text-[#8b7cff]">{titleLine2Accent}</span>
-      </h2>
-      <p className="text-sm text-[var(--text-tertiary)] mt-2 leading-relaxed">{subtitle}</p>
-
-      {warning && (
-        <div
-          className={`mt-3 inline-flex items-start gap-2 px-3 py-2 rounded-xl text-xs leading-relaxed ${
-            trading
-              ? "bg-[rgba(49,196,141,0.08)] text-[#31c48d] border border-[rgba(49,196,141,0.15)]"
-              : "bg-[rgba(245,185,66,0.08)] text-[#f5b942] border border-[rgba(245,185,66,0.15)]"
-          }`}
-          role="alert"
-        >
-          <span aria-hidden="true" className="flex-shrink-0 mt-0.5">
-            {trading ? "●" : "△"}
-          </span>
-          <span>{warning}</span>
-        </div>
-      )}
+    <div
+      className={`animate-slide-fade-in flex items-start gap-2 rounded-xl px-3.5 py-2.5 text-[0.8125rem] leading-relaxed ${
+        trading
+          ? "bg-[rgba(49,196,141,0.08)] text-[#31c48d] border border-[rgba(49,196,141,0.15)]"
+          : "bg-[rgba(245,185,66,0.08)] text-[#f5b942] border border-[rgba(245,185,66,0.15)]"
+      }`}
+      role="alert"
+    >
+      <span aria-hidden="true" className="flex-shrink-0">
+        {trading ? "●" : "△"}
+      </span>
+      <span>{warning}</span>
     </div>
   );
 }

@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { StockSnapshot } from "../../../types/market";
 
@@ -71,10 +71,15 @@ function setShareSupport(supported: boolean) {
   });
 }
 
+/** Queries scoped to the preview dialog — the card's trigger says 공유하기 too. */
+function inDialog() {
+  return within(screen.getByRole("dialog"));
+}
+
 async function openPreview() {
   const user = userEvent.setup();
   render(<ShareCardButton snapshot={snapshot()} />);
-  await user.click(screen.getByRole("button", { name: /이미지 만들기/ }));
+  await user.click(screen.getByRole("button", { name: /이미지로 공유하기/ }));
   await waitFor(() => screen.getByRole("dialog"));
   return user;
 }
@@ -126,7 +131,7 @@ describe("ShareCardButton", () => {
 
   it("shares the PNG file when the preview's 공유하기 is pressed", async () => {
     const user = await openPreview();
-    await user.click(screen.getByRole("button", { name: /공유하기/ }));
+    await user.click(inDialog().getByRole("button", { name: "공유하기" }));
 
     expect(navigator.share).toHaveBeenCalledOnce();
     const data = vi.mocked(navigator.share).mock.calls[0][0] as ShareData;
@@ -136,7 +141,7 @@ describe("ShareCardButton", () => {
 
   it("keeps a save action alongside sharing", async () => {
     const user = await openPreview();
-    await user.click(screen.getByRole("button", { name: /사진 저장/ }));
+    await user.click(inDialog().getByRole("button", { name: /사진 저장/ }));
     expect(anchorClick).toHaveBeenCalledOnce();
   });
 
@@ -144,8 +149,8 @@ describe("ShareCardButton", () => {
     setShareSupport(false);
     const user = await openPreview();
 
-    expect(screen.queryByRole("button", { name: /공유하기/ })).toBeNull();
-    await user.click(screen.getByRole("button", { name: /사진 저장/ }));
+    expect(inDialog().queryByRole("button", { name: "공유하기" })).toBeNull();
+    await user.click(inDialog().getByRole("button", { name: /사진 저장/ }));
     expect(anchorClick).toHaveBeenCalledOnce();
   });
 
@@ -155,7 +160,7 @@ describe("ShareCardButton", () => {
     vi.mocked(navigator.share).mockRejectedValueOnce(abort);
 
     const user = await openPreview();
-    await user.click(screen.getByRole("button", { name: /공유하기/ }));
+    await user.click(inDialog().getByRole("button", { name: "공유하기" }));
 
     expect(screen.queryByText(/실패/)).toBeNull();
     expect(screen.getByRole("dialog")).toBeTruthy();
@@ -187,7 +192,7 @@ describe("ShareCardButton", () => {
     const user = userEvent.setup();
 
     render(<ShareCardButton snapshot={snapshot()} />);
-    await user.click(screen.getByRole("button", { name: /이미지 만들기/ }));
+    await user.click(screen.getByRole("button", { name: /이미지로 공유하기/ }));
 
     await waitFor(() => screen.getByText("오류"));
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -211,7 +216,7 @@ describe("ShareCardButton chart data", () => {
     render(
       <ShareCardButton snapshot={snapshot()} sparklineData={[100, 110, 105]} />
     );
-    await user.click(screen.getByRole("button", { name: /이미지 만들기/ }));
+    await user.click(screen.getByRole("button", { name: /이미지로 공유하기/ }));
 
     await waitFor(() => expect(mockImage.generate).toHaveBeenCalled());
     expect(mockImage.generate.mock.calls[0][1]).toEqual({
@@ -222,9 +227,33 @@ describe("ShareCardButton chart data", () => {
   it("asks for no chart when the page has no history yet", async () => {
     const user = userEvent.setup();
     render(<ShareCardButton snapshot={snapshot()} />);
-    await user.click(screen.getByRole("button", { name: /이미지 만들기/ }));
+    await user.click(screen.getByRole("button", { name: /이미지로 공유하기/ }));
 
     await waitFor(() => expect(mockImage.generate).toHaveBeenCalled());
     expect(mockImage.generate.mock.calls[0][1]).toEqual({ sparkline: undefined });
+  });
+});
+
+/**
+ * The card sizes this button so it matches 차트 보기 and 상세보기 beside it.
+ * Carrying its own look is what made the three read as two things and a stray.
+ */
+describe("ShareCardButton styling", () => {
+  beforeEach(() => {
+    mockImage.generate.mockClear();
+    setShareSupport(true);
+  });
+
+  it("wears the class the card hands it", () => {
+    render(<ShareCardButton snapshot={snapshot()} className="from-the-card" />);
+    expect(
+      screen.getByRole("button", { name: /이미지로 공유하기/ }).className
+    ).toContain("from-the-card");
+  });
+
+  it("says 공유하기, not 사진 저장", () => {
+    render(<ShareCardButton snapshot={snapshot()} />);
+    expect(screen.getByRole("button").textContent).toContain("공유하기");
+    expect(screen.getByRole("button").textContent).not.toContain("사진 저장");
   });
 });

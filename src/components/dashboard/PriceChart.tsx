@@ -111,7 +111,7 @@ export function PriceChart({
     }).format(new Date(v));
 
   return (
-    <div className="rounded-2xl border border-[rgba(255,255,255,0.07)] bg-surface-1 p-5 md:p-6 animate-slide-fade-in">
+    <div className="rounded-2xl border border-[var(--border-subtle)] bg-surface-1 p-5 md:p-6 animate-slide-fade-in">
       <ChartHeader
         activeStock={activeStock}
         timeRange={timeRange}
@@ -122,7 +122,7 @@ export function PriceChart({
 
       {chartData.length < 2 ? (
         <div className="flex flex-col items-center justify-center h-52 mt-4 gap-3">
-          <div className="w-10 h-10 rounded-full border border-[rgba(255,255,255,0.07)] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full border border-[var(--border-subtle)] flex items-center justify-center">
             <svg
               width="16"
               height="16"
@@ -140,12 +140,12 @@ export function PriceChart({
             </svg>
           </div>
           <div className="text-center">
-            <p className="text-sm text-[#a6b0c0]">
+            <p className="text-sm text-[var(--text-secondary)]">
               {isLoading
                 ? "가격 추이를 불러오는 중입니다."
                 : "표시할 가격 추이가 없습니다."}
             </p>
-            <p className="text-xs text-[#6f7a8c] mt-1">
+            <p className="text-xs text-[var(--text-muted)] mt-1">
               {isLoading
                 ? "잠시만 기다려주세요."
                 : "네트워크 상태를 확인한 뒤 다시 시도해주세요."}
@@ -203,7 +203,7 @@ export function PriceChart({
               {baseline !== undefined && (
                 <ReferenceLine
                   y={baseline}
-                  stroke="rgba(255,255,255,0.12)"
+                  stroke="var(--border-strong)"
                   strokeDasharray="5 4"
                   label={{
                     value: "종가",
@@ -217,7 +217,7 @@ export function PriceChart({
               <Tooltip
                 contentStyle={{
                   background: "#121824",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  border: "1px solid rgba(255,255,255,0.16)",
                   borderRadius: "10px",
                   fontSize: "12px",
                   color: "#f4f7fb",
@@ -230,7 +230,7 @@ export function PriceChart({
                   marginBottom: "6px",
                   display: "block",
                 }}
-                cursor={{ stroke: "rgba(255,255,255,0.08)", strokeWidth: 1 }}
+                cursor={{ stroke: "var(--border-strong)", strokeWidth: 1 }}
                 formatter={(value, name) => {
                   const v = typeof value === "number" ? value : 0;
                   if (name === "price") return [formatKrw(v), "예상가격"];
@@ -301,10 +301,10 @@ function ChartHeader({
               onClick={() => onStockChange(id)}
               aria-label={`${STOCK_LABELS[id]} 차트 보기`}
               aria-pressed={activeStock === id}
-              className={`min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
+              className={`min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 ${
                 activeStock === id
                   ? "bg-[#8b7cff] text-white"
-                  : "bg-surface-3 text-[#a6b0c0] hover:text-[#f4f7fb] hover:bg-[rgba(255,255,255,0.06)]"
+                  : "bg-[var(--surface-3)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               }`}
             >
               {STOCK_LABELS[id]}
@@ -321,10 +321,19 @@ function ChartHeader({
             onClick={() => onRangeChange(r)}
             aria-label={`${RANGE_LABELS[r]} 기간 보기`}
             aria-pressed={timeRange === r}
-            className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs transition-all duration-150 ${
+            /*
+             * Theme tokens, not the dark palette spelled out.
+             *
+             * The selected chip was `bg-[rgba(255,255,255,0.08)]` with
+             * `text-[#f4f7fb]` — near-white text on a near-white wash, which is
+             * legible on the dark card it was designed against and invisible on
+             * the light one. The violet tint also matches how the rest of the
+             * site marks a current choice.
+             */
+            className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs transition-colors duration-150 ${
               timeRange === r
-                ? "bg-[rgba(255,255,255,0.08)] text-[#f4f7fb]"
-                : "text-[#6f7a8c] hover:text-[#a6b0c0]"
+                ? "bg-[rgba(139,124,255,0.16)] text-[#8b7cff] font-semibold"
+                : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
             }`}
           >
             {RANGE_LABELS[r]}
