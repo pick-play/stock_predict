@@ -10,6 +10,7 @@ import { useCallback, useState } from "react";
 import type { ChangeEvent, FormEvent, KeyboardEvent } from "react";
 import { CHAT_MESSAGE_MAX_LENGTH } from "../../lib/chat/config";
 import { validateChatMessage } from "../../lib/chat/rules";
+import { BODY_MIN_LENGTH } from "../../lib/moderation/filter";
 
 interface ChatComposerProps {
   /** Returns false when the socket is not open, so the text is kept. */
@@ -35,7 +36,20 @@ export function ChatComposer({
       setBody(next);
       if (notice) onClearNotice();
 
-      if (next.trim().length === 0) {
+      /*
+       * Nothing is said about a message that is merely unfinished.
+       *
+       * Typing one character used to answer with "2자 이상 입력해주세요"
+       * immediately — a complaint about a message nobody had tried to send,
+       * about a problem the next keystroke fixes. Below the minimum there is
+       * only ever one thing wrong and the writer is already fixing it, so the
+       * line stays quiet and the rule is stated when they press send.
+       *
+       * Above it the live check stays: a blocked word or an over-long paste is
+       * worth knowing before pressing send, not after.
+       */
+      const trimmed = next.trim();
+      if (trimmed.length < BODY_MIN_LENGTH) {
         setWarning(null);
         return;
       }

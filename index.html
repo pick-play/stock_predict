@@ -167,12 +167,29 @@
       gtag("js", new Date());
       gtag("config", "G-2N34C009M9");
     </script>
+    <!--
+      Pretendard, as a variable font split into unicode-range chunks.
+
+      The static stylesheet that used to be here defines one whole file per
+      weight, and this site sets five of them — 400, 500, 600, 700 and 800. Each
+      of those files is about 780 KB of Korean glyphs, so a first visit pulled
+      roughly 3.9 MB of font against a 110 KB script bundle. Nothing was wrong
+      with it; it is simply the wrong shape for a Korean page.
+
+      The dynamic subset splits the face into 92 ranges and the browser fetches
+      only the ones holding glyphs that actually appear — a few chunks of ~35 KB
+      each. One variable file covers every weight, so adding a sixth costs
+      nothing. Both stay font-display:swap, so neither blocks the first paint.
+
+      index.css asks for 'Pretendard Variable' first and plain Pretendard next,
+      which is what a reader with the font installed locally already has.
+    -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="anonymous" />
     <link
       rel="stylesheet"
       as="style"
       crossorigin="anonymous"
-      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
   </head>
   <body>

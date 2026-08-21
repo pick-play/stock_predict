@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMarketData } from "../hooks/useMarketData";
 import { useChartHistory } from "../hooks/useChartHistory";
 import { AppHeader } from "../components/common/AppHeader";
@@ -79,6 +79,16 @@ const CHART_ROW_ORDER = [
  */
 const CARDS_PER_ROW = 2;
 
+/**
+ * The entry stagger, as constants.
+ *
+ * A template literal rebuilt each render is a new string only in the sense that
+ * matters here — it is fine for equality, but writing it out keeps every prop
+ * on the card obviously stable at a glance, which is the property the memo
+ * depends on. Capped at six steps so the seventh card does not open late.
+ */
+const ANIMATION_DELAY = ["0ms", "60ms", "120ms", "180ms", "240ms", "300ms"];
+
 interface DashboardPageProps {
   onNavigateBoard?: () => void;
   onNavigateChat?: () => void;
@@ -149,7 +159,7 @@ export function DashboardPage({
   }
 
   /*
-   * The whole series behind the card's corner chart — not a tail of it.
+   * The whole series behind each card's corner chart — not a tail of it.
    *
    * This was capped at the last 24 points, which was right for an 88×30
    * thumbnail and wrong the moment the picture got bigger: at the default 6-hour
@@ -157,11 +167,31 @@ export function DashboardPage({
    * two-hour line in a space that reads as a chart. Handing over the full range
    * gives the same window the chart below shows, at the resolution it was
    * fetched with.
+   *
+   * Built once per history change rather than per render, and the arrays are
+   * kept — a new array on every render defeats the memo on the card, and prices
+   * arrive about once a second. See the note on StockEstimateCard.
    */
-  const getSparklineData = (id: StockId): number[] =>
-    history
-      .map((h) => h.stocks[id]?.estimatedPrice ?? null)
-      .filter((p): p is number => p !== null);
+  const sparklines = useMemo(() => {
+    const byStock = {} as Record<StockId, number[]>;
+    for (const id of STOCK_IDS) {
+      byStock[id] = history
+        .map((h) => h.stocks[id]?.estimatedPrice ?? null)
+        .filter((p): p is number => p !== null);
+    }
+    return byStock;
+  }, [history]);
+
+  /*
+   * One handler for all seven cards, keyed by the id it is called with.
+   *
+   * An inline `() => setChartStock(...)` per card is a new function on every
+   * render, which is the other half of what would keep React.memo from ever
+   * skipping a card.
+   */
+  const toggleChart = useCallback((id: StockId) => {
+    setChartStock((open) => (open === id ? null : id));
+  }, []);
 
   return (
     <DashboardLayout>
@@ -224,13 +254,12 @@ export function DashboardPage({
               <StockEstimateCard
                 key={id}
                 snapshot={snapshot}
-                sparklineData={getSparklineData(id)}
-                animationDelay={`${Math.min(index, 5) * 60}ms`}
+                sparklineData={sparklines[id]}
+                animationDelay={ANIMATION_DELAY[Math.min(index, 5)]}
                 wsStatus={wsStatus}
                 chartOpen={chartStock === id}
-                onToggleChart={() =>
-                  setChartStock((open) => (open === id ? null : id))
-                }
+                stockId={id}
+                onToggleChart={toggleChart}
                 chartPanelId={CHART_PANEL_ID}
                 className={`${PHONE_ROW_ORDER[index] ?? "order-last"} ${
                   ROW_ORDER[Math.floor(index / CARDS_PER_ROW)] ?? "md:order-last"

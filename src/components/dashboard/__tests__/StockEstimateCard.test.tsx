@@ -38,6 +38,7 @@ function renderCard(props: Partial<Parameters<typeof StockEstimateCard>[0]> = {}
   return render(
     <StockEstimateCard
       snapshot={snapshot()}
+      stockId="samsung"
       wsStatus="connected"
       chartOpen={false}
       onToggleChart={() => {}}

@@ -1,17 +1,9 @@
 import { useState, useId } from "react";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ReferenceLine,
-} from "recharts";
+import { ChartPlot } from "./ChartPlot";
+import { useElementWidth } from "../../hooks/useElementWidth";
 import type { HistoryEntry, StockId } from "../../types/market";
 import { MARKET_SYMBOLS, STOCK_IDS } from "../../config/symbols";
 import type { ChartRange } from "../../lib/binance/klineHistory";
-import { formatKrw, formatPercent } from "../../lib/format";
 
 interface PriceChartProps {
   history: HistoryEntry[];
@@ -73,6 +65,9 @@ export function PriceChart({
   const rawId = useId();
   const uid = rawId.replace(/:/g, "");
   const gradientId = `pg-${uid}`;
+  // The plot is drawn at a measured pixel width: axis labels have to stay
+  // upright and evenly spaced, which a stretched viewBox cannot do.
+  const { ref: plotRef, width: plotWidth } = useElementWidth<HTMLDivElement>();
 
   const now = Date.now();
   const cutoff = now - TIME_RANGE_MS[timeRange];
@@ -160,114 +155,23 @@ export function PriceChart({
           </div>
         </div>
       ) : (
-        <div className="h-56 mt-4" role="img" aria-label={`${STOCK_LABELS[activeStock]} 가격 추이 차트`}>
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={chartData}
-              margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
-            >
-              <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8b7cff" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#8b7cff" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-
-              <XAxis
-                dataKey="time"
-                type="number"
-                scale="time"
-                domain={["dataMin", "dataMax"]}
-                tickFormatter={formatAxisTime}
-                tick={{
-                  fill: "#6f7a8c",
-                  fontSize: 10,
-                  fontFamily:
-                    "Pretendard, 'Noto Sans KR', -apple-system, sans-serif",
-                }}
-                axisLine={false}
-                tickLine={false}
-                minTickGap={48}
-              />
-
-              <YAxis
-                dataKey="price"
-                domain={["auto", "auto"]}
-                tickFormatter={(v: number) =>
-                  new Intl.NumberFormat("ko-KR").format(Math.round(v))
-                }
-                tick={{
-                  fill: "#6f7a8c",
-                  fontSize: 10,
-                  fontFamily:
-                    "Pretendard, 'Noto Sans KR', -apple-system, sans-serif",
-                }}
-                axisLine={false}
-                tickLine={false}
-                width={70}
-              />
-
-              {baseline !== undefined && (
-                <ReferenceLine
-                  y={baseline}
-                  stroke="var(--border-strong)"
-                  strokeDasharray="5 4"
-                  label={{
-                    value: "종가",
-                    position: "insideTopRight",
-                    fill: "#6f7a8c",
-                    fontSize: 9,
-                  }}
-                />
-              )}
-
-              <Tooltip
-                contentStyle={{
-                  background: "#121824",
-                  border: "1px solid rgba(255,255,255,0.16)",
-                  borderRadius: "10px",
-                  fontSize: "12px",
-                  color: "#f4f7fb",
-                  padding: "10px 14px",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-                }}
-                labelStyle={{
-                  color: "#6f7a8c",
-                  fontSize: "10px",
-                  marginBottom: "6px",
-                  display: "block",
-                }}
-                cursor={{ stroke: "var(--border-strong)", strokeWidth: 1 }}
-                formatter={(value, name) => {
-                  const v = typeof value === "number" ? value : 0;
-                  if (name === "price") return [formatKrw(v), "예상가격"];
-                  if (name === "changeRate") return [formatPercent(v), "야간변동"];
-                  return [String(value), String(name)];
-                }}
-                labelFormatter={(label) =>
-                  formatTooltipTime(
-                    typeof label === "number" ? label : 0
-                  )
-                }
-              />
-
-              <Area
-                type="monotone"
-                dataKey="price"
-                stroke="#8b7cff"
-                strokeWidth={1.5}
-                fill={`url(#${gradientId})`}
-                dot={false}
-                activeDot={{
-                  r: 4,
-                  fill: "#8b7cff",
-                  stroke: "#121824",
-                  strokeWidth: 2,
-                }}
-                connectNulls={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div
+          ref={plotRef}
+          className="h-56 mt-4"
+          role="img"
+          aria-label={`${STOCK_LABELS[activeStock]} 가격 추이 차트`}
+        >
+          {plotWidth > 0 && (
+            <ChartPlot
+              points={chartData}
+              width={plotWidth}
+              height={224}
+              baseline={baseline}
+              formatAxisTime={formatAxisTime}
+              formatTooltipTime={formatTooltipTime}
+              gradientId={gradientId}
+            />
+          )}
         </div>
       )}
     </div>
@@ -302,7 +206,7 @@ function ChartHeader({
       {/* Stock selector — absent when the chart is pinned to one card's stock */}
       {showStockSelector && (
         <div className="flex gap-1" role="group" aria-label="종목 선택">
-          {(["samsung", "skHynix"] as StockId[]).map((id) => (
+          {STOCK_IDS.map((id) => (
             <button
               key={id}
               onClick={() => onStockChange(id)}

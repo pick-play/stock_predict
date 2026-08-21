@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useNow } from "../../hooks/useNow";
-import type { StockSnapshot } from "../../types/market";
+import type { StockId, StockSnapshot } from "../../types/market";
 import {
   formatKrw,
   formatPercent,
@@ -52,17 +52,27 @@ interface StockEstimateCardProps {
   animationDelay?: string;
   /** Live-stream state, which decides whether this card may say 실시간. */
   wsStatus?: WsConnectionStatus;
+  /** Which listing this card is, so the shared toggle knows who called it. */
+  stockId: StockId;
   /** Whether this card's chart is the one currently open below the grid. */
   chartOpen: boolean;
-  onToggleChart: () => void;
+  /**
+   * Shared by every card and called with this card's id.
+   *
+   * One stable function rather than a closure per card: an inline arrow is a
+   * new prop on every render of the page, which would make the memo below a
+   * no-op.
+   */
+  onToggleChart: (id: StockId) => void;
   /** Ties the button to the panel the page renders. */
   chartPanelId: string;
   /** Grid placement from the page — the phone stacking order. */
   className?: string;
 }
 
-export function StockEstimateCard({
+function StockEstimateCardImpl({
   snapshot,
+  stockId,
   sparklineData,
   animationDelay,
   wsStatus,
@@ -392,7 +402,7 @@ export function StockEstimateCard({
           <div className="mt-2.5 grid grid-cols-3 gap-1.5">
             <button
               type="button"
-              onClick={onToggleChart}
+              onClick={() => onToggleChart(stockId)}
               aria-expanded={chartOpen}
               aria-controls={chartPanelId}
               className={ACTION_CLASS}
@@ -443,6 +453,22 @@ export function StockEstimateCard({
     </article>
   );
 }
+
+/**
+ * Memoised, because seven of these share one price feed.
+ *
+ * The feed flushes about once a second and replaces only the snapshots whose
+ * numbers actually moved, so six of the seven cards usually have identical
+ * props — but a parent re-render used to redraw all seven anyway, each
+ * rebuilding a 72-point SVG path it had already drawn. On a phone repricing
+ * continuously that is the difference between one card's work and seven.
+ *
+ * This is only worth anything while every prop stays referentially stable
+ * across renders; DashboardPage memoises the series and the toggle for exactly
+ * that reason. Adding an inline arrow or a freshly built array at the call site
+ * silently turns this back off.
+ */
+export const StockEstimateCard = memo(StockEstimateCardImpl);
 
 /**
  * One row inside 상세보기.

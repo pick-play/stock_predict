@@ -18,11 +18,9 @@
     "data:economic": "node scripts/update-economic.mjs"
   },
   "dependencies": {
-    "date-fns": "^3.6.0",
     "lucide-react": "^0.441.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "recharts": "^2.12.7",
     "zod": "^3.23.8"
   },
   "devDependencies": {
