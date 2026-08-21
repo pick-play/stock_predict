@@ -43,7 +43,7 @@ export function Disclaimer({ short = false }: DisclaimerProps) {
                 search engine matches text it can find rather than a design. */}
             {BRAND_NAME}({BRAND_NAME_HANGUL}, {BRAND_NAME_LATIN}) · 해외 선물가격
             기반 코스피 야간 선물(야간선물·야선) 참고 서비스 · 야간, 주말 언제
-            어디서나 삼성전자·SK하이닉스 예상가격을 확인하세요.
+            어디서나 삼성전자·SK하이닉스·현대차 등 국내 주요 종목의 예상가격을 확인하세요.
           </p>
         </div>
       </div>

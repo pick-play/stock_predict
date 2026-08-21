@@ -168,7 +168,7 @@ export function PostForm({ onPostCreated, authToken, authorNickname }: PostFormP
           onChange={handleBodyChange}
           rows={4}
           maxLength={BODY_MAX_LENGTH + 50} /* let the validation message show before hard cut */
-          placeholder="삼성전자·SK하이닉스 야간 가격에 대한 의견을 남겨주세요. (익명)"
+          placeholder="국내 주요 종목 야간 가격에 대한 의견을 남겨주세요."
           disabled={isSubmitting}
           aria-invalid={!!moderationWarning || (body.length > BODY_MAX_LENGTH)}
           aria-describedby={

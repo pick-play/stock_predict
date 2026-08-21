@@ -14,10 +14,54 @@ const DATA_DIR = join(ROOT, "public", "data");
 const SYMBOLS = {
   samsung: { displayName: "삼성전자", koreanTicker: "005930", binanceSymbol: "SAMSUNGUSDT" },
   skHynix: { displayName: "SK하이닉스", koreanTicker: "000660", binanceSymbol: "SKHYNIXUSDT" },
+  hyundai: { displayName: "현대차", koreanTicker: "005380", binanceSymbol: "HYUNDAIUSDT" },
+  samsungEM: { displayName: "삼성전기", koreanTicker: "009150", binanceSymbol: "SAMSUNGEMUSDT" },
+  lgElectronics: { displayName: "LG전자", koreanTicker: "066570", binanceSymbol: "LGELECTRONICSUSDT" },
+  hanmi: { displayName: "한미반도체", koreanTicker: "042700", binanceSymbol: "HANMIUSDT" },
+  naver: { displayName: "NAVER", koreanTicker: "035420", binanceSymbol: "NAVERUSDT" },
 };
 
 // USDT-M Futures REST base
 const BINANCE_FUTURES_REST = "https://fapi.binance.com";
+
+/**
+ * Night-session limit, mirroring src/config/market.ts.
+ *
+ * Duplicated rather than imported: this script runs as plain Node with no
+ * bundler, and a browser module would drag in import.meta.env. If the browser's
+ * value changes, change it here too — a fallback that prices a stock past the
+ * limit the site itself enforces would contradict the card it stands in for.
+ */
+const NIGHT_SESSION_LIMIT_RATE = 0.08;
+
+/**
+ * The mark price at one exact minute, used as the anchor.
+ *
+ * The v2 baseline stores only the KRX side of the anchor; the futures side is
+ * whatever the contract printed at that same instant, which is what makes the
+ * ratio a like-for-like overnight move. Same endpoint and same rule the browser
+ * uses (src/lib/binance/klinesClient.ts), so the two cannot drift apart.
+ */
+async function fetchMarkPriceAtTime(symbol, openTimeMs) {
+  const url =
+    `${BINANCE_FUTURES_REST}/fapi/v1/markPriceKlines` +
+    `?symbol=${encodeURIComponent(symbol)}&interval=1m` +
+    `&startTime=${openTimeMs}&limit=1`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    const kline = rows[0];
+    if (!Array.isArray(kline) || kline.length < 2) return null;
+    // Binance clamps an unavailable startTime to the nearest kline it has, so
+    // the returned open time has to be the one that was asked for.
+    if (Number(kline[0]) !== openTimeMs) return null;
+    return parsePositive(kline[1]);
+  } catch {
+    return null;
+  }
+}
 
 async function fetchFutures24hr(symbol) {
   const url = `${BINANCE_FUTURES_REST}/fapi/v1/ticker/24hr?symbol=${encodeURIComponent(symbol)}`;
@@ -103,6 +147,27 @@ function loadBaseline() {
   }
 }
 
+/**
+ * The KRX side of the anchor, from the v2 baseline.
+ *
+ * Always the close (owner decision, 2026-08-18) — the `open` block is still
+ * written but nothing reads it. This script used to look for `stocks[id]
+ * .krxClose` and `.binanceReferencePrice`, fields the v1 file had and v2 does
+ * not, so every stock silently came out `no-baseline`: the collector would have
+ * written a latest.json with no estimates in it at all.
+ */
+function resolveAnchor(baseline) {
+  const close = baseline?.close;
+  if (!close?.stocks) return null;
+  const anchorTimeMs = Date.parse(close.anchorTimeUtc);
+  if (!Number.isFinite(anchorTimeMs)) return null;
+  return {
+    marketDate: close.marketDate,
+    anchorTimeMs,
+    krxPrice: close.stocks,
+  };
+}
+
 function loadLatest() {
   const path = join(DATA_DIR, "latest.json");
   if (!existsSync(path)) return null;
@@ -174,10 +239,23 @@ async function main() {
   console.log("[fetch-market-data] Starting (USDT-M Futures)...");
 
   const baseline = loadBaseline();
+  const anchor = resolveAnchor(baseline);
   const existing = loadLatest();
   const now = new Date().toISOString();
 
-  const stockIds = ["samsung", "skHynix"];
+  // Derived from SYMBOLS so adding a listing in one place is enough.
+  const stockIds = Object.keys(SYMBOLS);
+
+  if (!anchor) {
+    console.warn(
+      "[fetch-market-data] baseline.json에 close 앵커가 없습니다. 예상가 없이 시세만 기록합니다."
+    );
+  } else {
+    console.log(
+      `[fetch-market-data] 앵커: ${anchor.marketDate} 종가 ` +
+        `(${new Date(anchor.anchorTimeMs).toISOString()})`
+    );
+  }
   const newStocks = existing?.stocks ? { ...existing.stocks } : {};
   let anyUpdated = false;
 
@@ -197,8 +275,11 @@ async function main() {
         throw new Error(`Symbol mismatch: ${ticker.symbol}`);
       }
 
-      const baselineStock = baseline?.stocks?.[stockId];
-      const mode = baselineStock?.referencePriceMode ?? "mark";
+      const anchorKrxPrice = anchor?.krxPrice?.[stockId]?.krxPrice;
+      const anchorFuturesPrice = anchor
+        ? await fetchMarkPriceAtTime(config.binanceSymbol, anchor.anchorTimeMs)
+        : null;
+      const mode = baseline?.referencePriceMode ?? "mark";
       const currentPrice = selectReferencePrice(ticker, premiumIndex, bookTicker, mode);
 
       if (!currentPrice) {
@@ -218,15 +299,28 @@ async function main() {
         status: "no-baseline",
       };
 
-      if (baselineStock && baselineStock.krxClose > 0 && baselineStock.binanceReferencePrice > 0) {
-        const changeRate = currentPrice / baselineStock.binanceReferencePrice - 1;
-        const rawEstimatedPrice = baselineStock.krxClose * (1 + changeRate);
-        const estimatedPrice = roundToKrxTick(rawEstimatedPrice);
+      if (anchorKrxPrice > 0 && anchorFuturesPrice > 0) {
+        const rawChangeRate = currentPrice / anchorFuturesPrice - 1;
+        /*
+         * Clamped on the RATE, not on the price.
+         *
+         * Same rule as src/lib/calculateEstimate.ts: derive the shown price
+         * from the clamped rate so the two agree. Clamping a price that was
+         * built from an unclamped rate leaves a card whose percentage and
+         * won figure describe different calculations. rawEstimatedPrice keeps
+         * the unclamped number for anyone who wants to see how far out it was.
+         */
+        const changeRate =
+          Math.abs(rawChangeRate) > NIGHT_SESSION_LIMIT_RATE
+            ? Math.sign(rawChangeRate) * NIGHT_SESSION_LIMIT_RATE
+            : rawChangeRate;
+        const rawEstimatedPrice = anchorKrxPrice * (1 + rawChangeRate);
+        const estimatedPrice = roundToKrxTick(anchorKrxPrice * (1 + changeRate));
 
         estimateFields = {
           rawEstimatedPrice,
           estimatedPrice,
-          changeAmount: estimatedPrice - baselineStock.krxClose,
+          changeAmount: estimatedPrice - anchorKrxPrice,
           changeRate,
           status: "healthy",
         };
@@ -236,10 +330,10 @@ async function main() {
         displayName: config.displayName,
         koreanTicker: config.koreanTicker,
         binanceSymbol: config.binanceSymbol,
-        krxClose: baselineStock?.krxClose ?? 0,
-        baselineBinancePrice: baselineStock?.binanceReferencePrice ?? 0,
+        krxClose: anchorKrxPrice > 0 ? anchorKrxPrice : 0,
+        baselineBinancePrice: anchorFuturesPrice > 0 ? anchorFuturesPrice : 0,
         currentBinancePrice: currentPrice,
-        referencePriceMode: baselineStock?.referencePriceMode ?? "mark",
+        referencePriceMode: mode,
         bidPrice: bid,
         askPrice: ask,
         spreadPercent,
@@ -247,7 +341,10 @@ async function main() {
           ticker,
           premiumIndex,
           bookTicker,
-          baselineStock,
+          baselineStock: {
+            krxClose: anchorKrxPrice ?? 0,
+            binanceReferencePrice: anchorFuturesPrice ?? 0,
+          },
         }),
         eventTime: premiumIndex.time
           ? new Date(premiumIndex.time).toISOString()

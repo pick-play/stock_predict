@@ -17,8 +17,20 @@ import {
   getDirection,
 } from "./format";
 import { COLORS } from "../config/theme";
-import { BRAND_NAME } from "../config/brand";
+import { BRAND_NAME_KO, BRAND_NAME_NOW } from "../config/brand";
+import { markFor, markSrc, type StockMark } from "../config/logos";
 
+
+/*
+ * Weights run two steps lighter than the numbers the card uses.
+ *
+ * The card gets its weight from Pretendard, which the browser loads; this
+ * canvas draws in whatever Korean system face the device happens to have, and
+ * Apple SD Gothic Neo and Malgun Gothic both render a given weight far heavier
+ * than the site's own type at the same number. So the card's `font-bold` price
+ * becomes 600 here, not 700 — matching the number would not match the picture.
+ * The image should read as calm next to a chat thread, not shout.
+ */
 
 /**
  * The shared image always uses the light palette.
@@ -46,7 +58,16 @@ const LIGHT = {
 } as const;
 
 // ── Canvas dimensions ──────────────────────────────────────────────────────
-const CARD_W = 540;
+/*
+ * Width, tuned by eye rather than to a ratio.
+ *
+ * It was 540, which came out as a wide landscape strip in a chat thread — the
+ * price sat in a lot of empty room and the disclaimer ran as one long line.
+ * 430 was a step too far the other way. Height follows from the rhythm below
+ * plus however many lines the disclaimer wraps to, so narrowing the card makes
+ * it taller on its own; there is no aspect ratio to keep in step.
+ */
+const CARD_W = 470;
 /** Exported PNG is CARD_W × CARD_H × this — crisp on any phone. */
 const EXPORT_SCALE = 3;
 const MARGIN = 22; // outer gap between canvas edge and card
@@ -58,11 +79,20 @@ const PAD = 28; // card edge to content
 // is measured first and everything else is fixed.
 const ACCENT_BAR_H = 4;
 const HEAD_TOP = 20; // card top → header content top
-const MARK = 26; // brand mark square
+/**
+ * Height of the header row.
+ *
+ * It used to be the side of a violet square holding a "K", which the site's own
+ * header no longer draws — the header is the wordmark and nothing else (owner
+ * decision, 2026-08-22), and a shared image that opens with a logo the site
+ * does not use is a picture of a different site. The row keeps its height so
+ * the rhythm below is unchanged.
+ */
+const HEAD_H = 26;
 const HEAD_GAP = 16; // header bottom → divider
 const NAME_GAP = 30; // divider → name baseline
 const EYEBROW_GAP = 24; // name baseline → caption baseline
-const PRICE_GAP = 54; // caption baseline → price baseline
+const PRICE_GAP = 47; // caption baseline → price baseline
 /*
  * The change is a line of text under the price, not a filled badge beside it,
  * and the three-row metrics panel is one line — the same shape the card on
@@ -70,18 +100,23 @@ const PRICE_GAP = 54; // caption baseline → price baseline
  * looking at, and the rows the card now hides behind 상세보기 have no toggle
  * here to be hidden behind.
  */
-const CHANGE_GAP = 30; // price baseline → change baseline
+const CHANGE_GAP = 27; // price baseline → change baseline
 const ANCHOR_GAP = 20; // divider → anchor row baseline
 /**
- * Recent-history chart, in the same place the card puts it: top right, beside
- * the company name. Drawn only when there are at least two points.
+ * The trend's box: the card's upper right, under the wordmark.
  *
- * Slightly larger than the card's 72×28 because the image is read on its own
- * with nothing around it, but it stays inside the header row so it costs no
- * height — which is why the card's total height no longer depends on it.
+ * It starts where the brand row ends and stops where the price begins, so it
+ * costs no height and overlaps no text of its own. Anchoring it to the card's
+ * very top instead put the curve through 코스피 NOW, which is the one line on
+ * the image that says whose picture this is.
+ *
+ * Derived from the rhythm constants rather than typed as a number: the gaps
+ * above it have already been retuned once, and a hand-written offset would drift
+ * out of step silently.
  */
-const SPARK_W = 112;
-const SPARK_H = 40;
+const TREND_W_RATIO = 0.56;
+const TREND_TOP = HEAD_TOP + HEAD_H;
+const TREND_H = HEAD_GAP + NAME_GAP + EYEBROW_GAP + 20;
 const SPARK_MIN_POINTS = 2;
 
 const FOOT_GAP = 22; // change baseline → divider
@@ -94,7 +129,7 @@ const CARD_BOTTOM = 20; // domain pill bottom → card bottom
 /** Card height with a single-line disclaimer; extra lines are added on top. */
 const CARD_BASE_H =
   HEAD_TOP +
-  MARK +
+  HEAD_H +
   HEAD_GAP +
   NAME_GAP +
   EYEBROW_GAP +
@@ -273,7 +308,19 @@ function krwParts(value: number): { number: string; unit: string } {
  * moved. No axis labels: the numbers are already stated above and below, and the
  * shape is the only thing this adds.
  */
-function drawSparkline(
+/**
+ * The recent trend, drawn large in the card's top-right corner.
+ *
+ * The card on screen does exactly this, and for the same reason: the name sits
+ * top-left and the price bottom-left, so the upper right is the one region that
+ * carries no text of its own. A thumbnail beside the name was as small as a
+ * chart can be and still be one.
+ *
+ * Left edge is faded into the card rather than masked — a canvas has no
+ * mask-image, but the card behind it is a flat fill, so painting that same
+ * colour over the chart in a horizontal gradient dissolves it just as well.
+ */
+function drawTrendBackdrop(
   ctx: CanvasRenderingContext2D,
   series: number[],
   x: number,
@@ -283,7 +330,7 @@ function drawSparkline(
 ): void {
   /*
    * The colour comes from the series, first point to last — the same rule the
-   * on-screen Sparkline uses.
+   * on-screen chart uses.
    *
    * It used to be handed the card's direction, which is the estimate against
    * its anchor: a different question over a different window. Whenever the last
@@ -302,20 +349,24 @@ function drawSparkline(
   const min = Math.min(...series);
   const max = Math.max(...series);
   const range = max - min;
-  const padY = 8;
+
+  // Margins only, not headroom: nothing is written in this box, so the curve
+  // may use nearly all of it without a flat series looking like a border.
+  const top = y + h * 0.12;
+  const bottom = y + h * 0.9;
 
   const toX = (i: number) => x + (i / (series.length - 1)) * w;
   const toY = (v: number) =>
-    range === 0
-      ? y + h / 2
-      : y + h - padY - ((v - min) / range) * (h - padY * 2);
+    range === 0 ? (top + bottom) / 2 : bottom - ((v - min) / range) * (bottom - top);
 
   const points = series.map((v, i) => ({ x: toX(i), y: toY(v) }));
 
-  // Filled area first, so the line sits on top of its own shading.
-  const fill = ctx.createLinearGradient(0, y, 0, y + h);
-  fill.addColorStop(0, withAlpha(color, 0.18));
-  fill.addColorStop(1, withAlpha(color, 0.02));
+  // Fill fades downward from the line, the way an area chart's glow does, so it
+  // thins out toward the price instead of banding across it.
+  const fill = ctx.createLinearGradient(0, top, 0, y + h);
+  fill.addColorStop(0, withAlpha(color, 0.2));
+  fill.addColorStop(0.6, withAlpha(color, 0.07));
+  fill.addColorStop(1, withAlpha(color, 0));
 
   ctx.beginPath();
   ctx.moveTo(points[0].x, y + h);
@@ -328,23 +379,20 @@ function drawSparkline(
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
   for (const p of points.slice(1)) ctx.lineTo(p.x, p.y);
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = withAlpha(color, 0.5);
+  ctx.lineWidth = 1.5;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // The latest point, marked so the reader knows which end is now.
-  const last = points[points.length - 1];
-  ctx.beginPath();
-  ctx.arc(last.x, last.y, 3.5, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(last.x, last.y, 3.5, 0, Math.PI * 2);
-  ctx.strokeStyle = LIGHT.surface;
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
+  // No end dot. At this contrast a 3.5px disc reads as a blemish on the card,
+  // not as "the latest point" — and the price beside it already says that.
+
+  const fade = ctx.createLinearGradient(x, 0, x + w * 0.55, 0);
+  fade.addColorStop(0, LIGHT.surface);
+  fade.addColorStop(1, withAlpha(LIGHT.surface, 0));
+  ctx.fillStyle = fade;
+  ctx.fillRect(x, y, w * 0.55, h);
 }
 
 /**
@@ -380,6 +428,57 @@ function measureDisclaimerLines(contentWidth: number): number {
   }
 }
 
+/**
+ * Mark size here, relative to the card's own.
+ *
+ * 1 — the same size the card draws. It was 1.25 on the theory that a picture
+ * read on its own can carry a larger mark, and it could not: beside a 23px
+ * company name the logo stopped being a mark and started being a second
+ * headline. Whatever multiple this is, it is one multiple for all of them, so
+ * the relative sizing tuned by eye in src/config/logos.ts survives — SK하이닉스
+ * stays taller than NAVER here for the same reason it does there.
+ */
+const IMAGE_MARK_SCALE = 1;
+
+interface LoadedMark {
+  mark: StockMark;
+  image: HTMLImageElement;
+}
+
+/**
+ * Loads the company mark, or returns null.
+ *
+ * Null is not an error path worth surfacing: a listing with no file is the
+ * normal state, and so is a browser that could not decode a PNG in time. The
+ * image is drawn without it, exactly as it was before marks existed.
+ *
+ * Same-origin only — the file comes from this site's own public/logos/, so no
+ * cross-origin load taints the canvas and blocks toBlob().
+ */
+async function loadMark(koreanTicker: string): Promise<LoadedMark | null> {
+  const mark = markFor(koreanTicker);
+  if (!mark) return null;
+
+  try {
+    const image = new Image();
+    image.src = markSrc(mark);
+    // decode() resolves when the pixels are ready to draw; onload alone can
+    // still hand back an image the first drawImage has to wait on.
+    if (typeof image.decode === "function") {
+      await image.decode();
+    } else {
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("mark failed to load"));
+      });
+    }
+    if (!image.width || !image.height) return null;
+    return { mark, image };
+  } catch {
+    return null;
+  }
+}
+
 // ── Main export ────────────────────────────────────────────────────────────
 
 export interface ShareImageOptions {
@@ -397,6 +496,11 @@ export async function generateShareImage(
 ): Promise<Blob> {
   const series = (options.sparkline ?? []).filter((v) => Number.isFinite(v) && v > 0);
   const hasChart = series.length >= SPARK_MIN_POINTS;
+
+  // Loaded before anything is drawn: a canvas cannot wait mid-render, and a
+  // mark that arrives late would land on a finished image. Failure is silent —
+  // the name alone is the normal state for a listing with no file.
+  const logo = await loadMark(snapshot.koreanTicker);
 
   const contentW = CARD_W - MARGIN * 2 - PAD * 2;
   const discLineCount = measureDisclaimerLines(contentW);
@@ -483,6 +587,14 @@ export async function generateShareImage(
   bar.addColorStop(1, direction === "neutral" ? dirColor : "#8b7cff");
   ctx.fillStyle = bar;
   ctx.fillRect(cX, cY, cW, ACCENT_BAR_H);
+
+  // The trend, still inside the card's clip so it runs to the rounded corner.
+  // Drawn before any text, which is what makes it a backdrop rather than an
+  // element the header has to make room for.
+  if (hasChart) {
+    const tW = cW * TREND_W_RATIO;
+    drawTrendBackdrop(ctx, series, cX + cW - tW, cY + TREND_TOP, tW, TREND_H);
+  }
   ctx.restore();
 
   // Inner layout bounds
@@ -492,57 +604,46 @@ export async function generateShareImage(
   // ── Header: wordmark + snapshot time ──────────────────────────────────
   const headTop = cY + HEAD_TOP;
 
-  const markGrad = ctx.createLinearGradient(iX, headTop, iX + MARK, headTop + MARK);
-  markGrad.addColorStop(0, "#8b7cff");
-  markGrad.addColorStop(1, "#6b5ce7");
-  ctx.fillStyle = markGrad;
-  roundRect(ctx, iX, headTop, MARK, MARK, 8);
-  ctx.fill();
-
-  ctx.font = `800 15px ${FONT}`;
-  ctx.fillStyle = "#ffffff";
-  const kW = ctx.measureText("K").width;
-  ctx.fillText("K", iX + (MARK - kW) / 2, headTop + 19);
-
-  ctx.font = `800 13px ${FONT}`;
+  /*
+   * The wordmark, drawn the way the header draws it: 코스피 in the text colour,
+   * NOW in the brand violet. Two colours in one line, so it is two fills with
+   * the second offset by the width of the first.
+   */
+  const brandBaseline = headTop + 18;
+  ctx.font = `700 16px ${FONT}`;
   ctx.fillStyle = LIGHT.textPrimary;
-  fillTracked(ctx, BRAND_NAME, iX + MARK + 10, headTop + 18, 0.8);
+  const koW = fillTracked(ctx, BRAND_NAME_KO, iX, brandBaseline, 0.4);
+  ctx.fillStyle = LIGHT.brand;
+  fillTracked(ctx, BRAND_NAME_NOW, iX + koW + 5, brandBaseline, 0.4);
 
   ctx.font = `400 11px ${FONT}`;
   ctx.fillStyle = LIGHT.textMuted;
   const stamp = `${kstStamp(snapshot.eventTime)} KST 기준`;
   ctx.fillText(stamp, iR - ctx.measureText(stamp).width, headTop + 17);
 
-  let y = headTop + MARK + HEAD_GAP;
+  let y = headTop + HEAD_H + HEAD_GAP;
   hLine(ctx, iX, iR, y, LIGHT.divider);
 
-  // ── Name + ticker chip ────────────────────────────────────────────────
+  /*
+   * ── Name + company mark ───────────────────────────────────────────────
+   *
+   * The ticker chip is gone (owner decision): a six-digit code is what a
+   * trading app needs, not a reader looking at a picture in a chat, and it
+   * crowded the one line that has to be read first. The company's own mark
+   * takes that place instead — the same arrangement as the card on screen.
+   */
   y += NAME_GAP;
-  ctx.font = `800 23px ${FONT}`;
+  ctx.font = `700 23px ${FONT}`;
   ctx.fillStyle = LIGHT.textPrimary;
   ctx.fillText(snapshot.displayName, iX, y);
   const nameW = ctx.measureText(snapshot.displayName).width;
 
-  ctx.font = `500 11px ${MONO}`;
-  const tickerW = ctx.measureText(snapshot.koreanTicker).width;
-  const chipW = tickerW + 16;
-  chip(
-    ctx,
-    iX + nameW + 10,
-    y - 13,
-    chipW,
-    19,
-    6,
-    "rgba(15,23,42,0.045)",
-    "rgba(15,23,42,0.07)",
-  );
-  ctx.fillStyle = LIGHT.textTertiary;
-  ctx.fillText(snapshot.koreanTicker, iX + nameW + 18, y - 0.5);
-
-  // Recent trend, right-aligned against the name — the card's arrangement, so a
-  // reader who saw the screen recognises the picture.
-  if (hasChart) {
-    drawSparkline(ctx, series, iR - SPARK_W, y - 26, SPARK_W, SPARK_H);
+  if (logo) {
+    // Heights in the shared table are tuned for the card, where the name runs
+    // 20-24px; it is 23px here, so the card's own sizes carry over directly.
+    const h = logo.mark.heightMd * IMAGE_MARK_SCALE;
+    const w = (logo.image.width / logo.image.height) * h;
+    ctx.drawImage(logo.image, iX + nameW + 12, y - h + 2, w, h);
   }
 
   /*
@@ -558,21 +659,21 @@ export async function generateShareImage(
    * does not come out of the image for any reason.
    */
   y += EYEBROW_GAP;
-  ctx.font = `500 11px ${FONT}`;
+  ctx.font = `400 11px ${FONT}`;
   ctx.fillStyle = LIGHT.textMuted;
   ctx.fillText("예상가", iX, y);
 
   // ── Estimated price ───────────────────────────────────────────────────
   y += PRICE_GAP;
   const price = krwParts(snapshot.estimatedPrice);
-  ctx.font = `800 52px ${FONT}`;
+  ctx.font = `600 44px ${FONT}`;
   ctx.fillStyle = LIGHT.textPrimary;
   ctx.fillText(price.number, iX, y);
   const priceW = ctx.measureText(price.number).width;
 
-  ctx.font = `600 20px ${FONT}`;
+  ctx.font = `500 17px ${FONT}`;
   ctx.fillStyle = LIGHT.textTertiary;
-  ctx.fillText(price.unit, iX + priceW + 6, y);
+  ctx.fillText(price.unit, iX + priceW + 5, y);
 
   // ── Change: symbol, amount and percentage on one line under the price ─
   // Drawn as text rather than a filled badge, matching the card. All three
@@ -581,15 +682,15 @@ export async function generateShareImage(
   const changeStr = `${dirSymbol} ${formatChangeAmount(snapshot.changeAmount)}`;
   const pctStr = formatPercent(snapshot.changeRate);
 
-  ctx.font = `800 22px ${FONT}`;
+  ctx.font = `600 19px ${FONT}`;
   ctx.fillStyle = dirColor;
   ctx.fillText(changeStr, iX, y);
   const changeW = ctx.measureText(changeStr).width;
 
-  ctx.font = `600 17px ${FONT}`;
+  ctx.font = `500 15px ${FONT}`;
   ctx.fillStyle = dirColor;
   ctx.globalAlpha = 0.75;
-  ctx.fillText(pctStr, iX + changeW + 10, y);
+  ctx.fillText(pctStr, iX + changeW + 9, y);
   ctx.globalAlpha = 1;
 
   // ── The anchor the estimate was measured from ─────────────────────────
@@ -631,7 +732,7 @@ export async function generateShareImage(
   // Domain, centred at the foot — this is what a reader types in after seeing
   // the image somewhere else, so it sits last and stands alone.
   y += DOMAIN_GAP;
-  ctx.font = `700 13px ${FONT}`;
+  ctx.font = `600 13px ${FONT}`;
   const domain = "kospinow.com";
   const domainW = trackedWidth(ctx, domain, 0.4);
   const pillW = domainW + 30;

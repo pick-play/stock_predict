@@ -129,14 +129,26 @@ describe("DashboardPage chart placement", () => {
     expect(panel.parentElement).toBe(cardFor("삼성전자").parentElement);
   });
 
-  // Desktop is unchanged: last, and across both columns.
-  it("returns to source order and full width at md", async () => {
+  /*
+   * A row is one card on a phone and two from md up, so the chart carries an
+   * order for each. 삼성전자 opens row 0 either way; what changes is that the
+   * desktop panel spans the pair rather than sitting under a single card.
+   */
+  it("lands under its own row and spans both columns at md", async () => {
     const user = userEvent.setup();
     render(<DashboardPage />);
     await user.click(screen.getAllByRole("button", { name: "차트 보기" })[0]);
 
     const panel = document.getElementById(PANEL_ID)!;
-    expect(panel.className).toContain("md:order-none");
+    expect(panel.className).toContain("md:order-2");
     expect(panel.className).toContain("md:col-span-2");
+  });
+
+  it("keeps a phone row per card and a desktop row per pair", () => {
+    render(<DashboardPage />);
+    // Second card: row 1 of 7 on a phone, still row 0 of 4 beside 삼성전자.
+    expect(cardFor("SK하이닉스").className).toContain("order-3");
+    expect(cardFor("SK하이닉스").className).toContain("md:order-1");
+    expect(cardFor("삼성전자").className).toContain("md:order-1");
   });
 });

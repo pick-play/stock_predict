@@ -24,13 +24,15 @@ import type {
   StockId,
 } from "../types/market";
 import { getSeoulDate } from "./koreaMarket";
+import { STOCK_IDS } from "../config/symbols";
 
 export interface ResolvedAnchor {
   kind: AnchorKind;
   marketDate: string;
   /** UTC ms of the instant the futures reference price must be read at. */
   anchorTimeMs: number;
-  krxPrice: Record<StockId, number>;
+  /** Only the stocks this anchor actually priced; callers check per stock. */
+  krxPrice: Partial<Record<StockId, number>>;
 }
 
 /** Today's date in Seoul as "YYYY-MM-DD". */
@@ -44,15 +46,27 @@ function toResolved(anchor: BaselineAnchor, kind: AnchorKind): ResolvedAnchor | 
   const anchorTimeMs = new Date(anchor.anchorTimeUtc).getTime();
   if (!Number.isFinite(anchorTimeMs)) return null;
 
-  const samsung = anchor.stocks.samsung?.krxPrice;
-  const skHynix = anchor.stocks.skHynix?.krxPrice;
-  if (!(samsung > 0) || !(skHynix > 0)) return null;
+  /*
+   * One missing price must cost one card, not the page.
+   *
+   * This used to demand a positive price for both stocks and return null
+   * otherwise — tolerable at two, ruinous at seven, where a single ticker whose
+   * daily bar had not settled would blank every estimate on the site. The
+   * anchor is now whatever prices it does carry, and only an anchor that prices
+   * nothing at all is unusable.
+   */
+  const krxPrice: Partial<Record<StockId, number>> = {};
+  for (const id of STOCK_IDS) {
+    const price = anchor.stocks[id]?.krxPrice;
+    if (typeof price === "number" && price > 0) krxPrice[id] = price;
+  }
+  if (Object.keys(krxPrice).length === 0) return null;
 
   return {
     kind,
     marketDate: anchor.marketDate,
     anchorTimeMs,
-    krxPrice: { samsung, skHynix },
+    krxPrice,
   };
 }
 

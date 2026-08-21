@@ -81,14 +81,19 @@
 
     <meta
       name="description"
-      content="코스피 NOW(코스피나우) — 야간선물(야선) 해외 선물가격의 변동으로 삼성전자·SK하이닉스의 야간·주말 참고 예상가격을 보여줍니다. 실제 체결가가 아닌 참고정보입니다."
+      content="코스피 NOW(코스피나우, KOSPI NOW) — 국내장이 닫힌 야간·주말에 해외 선물가격의 변동으로 삼성전자·SK하이닉스 등 국내 주요 7종목의 예상가를 실시간으로 보여줍니다. 실제 체결가가 아닌 참고정보입니다."
     />
     <!-- Naver still reads a keywords meta, unlike Google. Kept to terms the site
          genuinely serves; padding it with 주식추천 or 실시간주가 would be both
-         useless and a claim §1 forbids. -->
+         useless and a claim §1 forbids.
+
+         This is also where the seven listings live. The description is
+         truncated in results at roughly the length of its first sentence, so
+         naming every stock there would spend the visible half on a list —
+         these carry the per-stock queries instead. -->
     <meta
       name="keywords"
-      content="코스피나우, 코스피 NOW, KOSPI NOW, kospinow, 코스피 나우, 야간선물, 야선, 코스피 야간, 삼성전자 야간가, SK하이닉스 야간가, 해외선물, 야간 시세"
+      content="코스피나우, 코스피 NOW, KOSPI NOW, kospinow, 코스피 나우, 야간선물, 야선, 코스피 야간, 코스피 야간 시세, 야간 주식 시세, 주말 주식 시세, 삼성전자 야간가, SK하이닉스 야간가, 현대차 야간가, 삼성전기 야간가, LG전자 야간가, 한미반도체 야간가, NAVER 야간가, 해외선물, 야간 시세"
     />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="코스피 NOW" />
@@ -96,7 +101,7 @@
     <meta property="og:title" content="코스피 NOW | 야간선물·야선 기반 삼성전자·SK하이닉스 야간 시세" />
     <meta
       property="og:description"
-      content="코스피 NOW(코스피나우) — 야간선물(야선) 해외 선물가격의 변동으로 삼성전자·SK하이닉스의 야간·주말 참고 예상가격을 보여줍니다. 실제 체결가가 아닌 참고정보입니다."
+      content="코스피 NOW(코스피나우, KOSPI NOW) — 국내장이 닫힌 야간·주말에 해외 선물가격의 변동으로 삼성전자·SK하이닉스 등 국내 주요 7종목의 예상가를 실시간으로 보여줍니다. 실제 체결가가 아닌 참고정보입니다."
     />
     <!-- Social crawlers need an absolute URL; Vite only rewrites link/script paths. -->
     <meta
@@ -106,7 +111,16 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="KOSPINOW — 장이 닫혀도 시장은 움직입니다" />
+    <meta property="og:locale" content="ko_KR" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="코스피 NOW | 야간선물·야선 기반 삼성전자·SK하이닉스 야간 시세"
+    />
+    <meta
+      name="twitter:description"
+      content="국내장이 닫힌 야간·주말에 해외 선물가격의 변동으로 국내 주요 7종목의 예상가를 보여줍니다. 실제 체결가가 아닌 참고정보입니다."
+    />
     <meta
       name="twitter:image"
       content="https://kospinow.com/og-image.jpg"
@@ -130,7 +144,16 @@
         "alternateName": ["코스피나우", "KOSPI NOW", "kospinow", "코스피 나우"],
         "url": "https://kospinow.com/",
         "inLanguage": "ko",
-        "description": "야간선물 해외 선물가격의 변동으로 삼성전자·SK하이닉스의 야간·주말 참고 예상가격을 보여주는 참고 서비스입니다. 실제 체결가격이 아닙니다."
+        "description": "국내장이 닫힌 야간·주말에 해외 선물가격의 변동으로 삼성전자, SK하이닉스, 현대차, 삼성전기, LG전자, 한미반도체, NAVER의 참고 예상가격을 보여주는 서비스입니다. 실제 체결가격이 아닙니다.",
+        "about": [
+          { "@type": "Corporation", "name": "삼성전자", "tickerSymbol": "KRX:005930" },
+          { "@type": "Corporation", "name": "SK하이닉스", "tickerSymbol": "KRX:000660" },
+          { "@type": "Corporation", "name": "현대차", "tickerSymbol": "KRX:005380" },
+          { "@type": "Corporation", "name": "삼성전기", "tickerSymbol": "KRX:009150" },
+          { "@type": "Corporation", "name": "LG전자", "tickerSymbol": "KRX:066570" },
+          { "@type": "Corporation", "name": "한미반도체", "tickerSymbol": "KRX:042700" },
+          { "@type": "Corporation", "name": "NAVER", "tickerSymbol": "KRX:035420" }
+        ]
       }
     </script>
 

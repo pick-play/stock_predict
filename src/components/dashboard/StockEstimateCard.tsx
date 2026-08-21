@@ -11,7 +11,8 @@ import {
 } from "../../lib/format";
 import { getLastKrxCloseMs, getSeoulDate } from "../../lib/koreaMarket";
 import { getDataFreshness } from "../../lib/staleData";
-import { Sparkline } from "./Sparkline";
+import { SparklineBackdrop } from "./SparklineBackdrop";
+import { StockLogo } from "./StockLogo";
 import { ShareCardButton } from "./ShareCardButton";
 import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
 import { BRAND_NAME } from "../../config/brand";
@@ -92,6 +93,8 @@ export function StockEstimateCard({
   const direction = getDirection(snapshot.changeRate);
   const dirSymbol = formatDirectionSymbol(snapshot.changeRate);
   const isNoBaseline = snapshot.status === "no-baseline";
+  /* Two points is the minimum that describes a direction; one is a dot (§12). */
+  const hasTrend = !!sparklineData && sparklineData.length >= 2;
 
   // Price flash: increment key to force animation restart without DOM flicker
   const prevPriceRef = useRef(snapshot.estimatedPrice);
@@ -189,37 +192,58 @@ export function StockEstimateCard({
         aria-hidden="true"
       />
 
-      <div className="px-5 pt-5 pb-3 md:px-6 md:pt-6 md:pb-3.5">
+      {/*
+        The trend, in the corner the thumbnail used to occupy.
+        
+        Absolute inside the article, which is already `relative` and
+        `overflow-hidden`, so it runs to the card's own edges rather than
+        stopping at the content padding. The mask dissolves its left edge into
+        the card; without it the chart ends in a vertical line next to the name.
+        Height is fixed in px rather than a percentage because the card grows
+        when 상세보기 opens, and the picture should not grow with it.
+      */}
+      {hasTrend && (
+        <SparklineBackdrop
+          data={sparklineData!}
+          className="absolute right-0 top-0 h-[7.5rem] w-[58%] md:h-[9rem] md:w-[54%] [mask-image:linear-gradient(to_right,transparent,black_42%)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_42%)]"
+        />
+      )}
+
+      <div className="relative px-3.5 pt-4 pb-2.5 md:px-6 md:pt-6 md:pb-3.5">
         {/* ── Header ── */}
         <div className="flex items-start justify-between gap-3 mb-2">
-          <div className="flex min-w-0 items-baseline gap-2">
+          <div className="min-w-0">
             {/* The name reads first. It was 14px, the same size as a metric
-                label, in a card whose whole subject it is. */}
-            <h2 className="truncate text-2xl md:text-3xl font-bold text-[var(--text-primary)] tracking-tight leading-none">
-              {snapshot.displayName}
-            </h2>
+                label, in a card whose whole subject it is.
+
+                The wordmark sits to its right (owner decision) and is allowed
+                to shrink or vanish before the name does: the name is the thing
+                that has to survive a narrow card. A listing with no file just
+                shows its name. */}
+            <div className="flex items-center gap-2 min-w-0">
+              <h2 className="truncate text-xl md:text-2xl font-bold text-[var(--text-primary)] tracking-tight leading-none">
+                {snapshot.displayName}
+              </h2>
+              <StockLogo koreanTicker={snapshot.koreanTicker} />
+            </div>
             {/* The ticker identifies, it does not announce: no chip, no fill. */}
-            <span className="shrink-0 text-[0.6875rem] font-mono text-[var(--text-muted)]">
+            <span className="mt-1 block text-[0.6875rem] font-mono text-[var(--text-muted)]">
               {snapshot.koreanTicker}
             </span>
           </div>
-          {/* Bigger than it was, and now the only thing on this side: the live
-              state moved down to the caption, where it qualifies the price it
-              belongs to. */}
-          {sparklineData && sparklineData.length >= 2 && (
-            <div className="flex-shrink-0">
-              <Sparkline data={sparklineData} width={104} height={36} />
-            </div>
-          )}
+          {/* The trend used to live here as an 88×30 thumbnail. It is now the
+              backdrop of the price block below — same series, several times the
+              area, and the corner it vacated lets the name and the mark have
+              the header to themselves. */}
         </div>
 
         {/* ── Price block (flash wrapper uses key to restart animation) ── */}
         <div
           key={flashKey}
-          className={`-mx-1 px-1 py-2 rounded-xl ${flashClass}`}
+          className={`relative -mx-1 px-1 py-2 rounded-xl ${flashClass}`}
         >
           {isNoBaseline ? (
-            <div className="py-1">
+            <div className="relative py-1">
               <div className="flex items-center gap-1.5 mb-2">
                 <span
                   className="w-1.5 h-1.5 rounded-full bg-[#f5b942] animate-pulse"
@@ -243,7 +267,7 @@ export function StockEstimateCard({
               </p>
             </div>
           ) : (
-            <div>
+            <div className="relative">
               {/*
                 Price and change share a baseline instead of sitting in two
                 separate blocks with a filled badge between them. They answer one
@@ -279,7 +303,13 @@ export function StockEstimateCard({
               </div>
               <p
                 className="mt-1.5 font-bold text-[var(--text-primary)] tabular-nums leading-none tracking-tight"
-                style={{ fontSize: "clamp(2.125rem, 6vw, 3.25rem)" }}
+                /*
+                 * The floor is back at 28px: a phone card is full width again,
+                 * so the widest figure the site shows — SK하이닉스 at
+                 * 1,691,000원, eleven characters — fits without the number
+                 * shrinking to make room for a neighbouring card.
+                 */
+                style={{ fontSize: "clamp(1.75rem, 7.5vw, 2.5rem)" }}
                 aria-label={`예상가격 ${formatKrw(snapshot.estimatedPrice)}`}
               >
                 {formatKrw(snapshot.estimatedPrice)}
@@ -287,12 +317,12 @@ export function StockEstimateCard({
               {/* Its own line under the price, and large enough to be the second
                   thing read. Beside the price it was a footnote to it. */}
               <p
-                className={`mt-2 flex items-baseline gap-2 text-lg md:text-xl font-bold tabular-nums leading-none ${dirColor}`}
+                className={`mt-1.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-base md:text-lg font-bold tabular-nums leading-none ${dirColor}`}
               >
                 <span>
                   {dirSymbol} {formatChangeAmount(snapshot.changeAmount)}
                 </span>
-                <span className="text-base font-semibold opacity-75">
+                <span className="text-sm md:text-base font-semibold opacity-75">
                   {formatPercent(snapshot.changeRate)}
                 </span>
               </p>

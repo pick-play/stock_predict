@@ -1,5 +1,5 @@
 /**
- * Compact live prices for the two stocks, for pages that are not the dashboard.
+ * Compact live prices for the two majors, for pages that are not the dashboard.
  *
  * The board and the chat room are where people talk about the number, so the
  * number should be in front of them without a trip back. Same hook the dashboard
@@ -21,7 +21,16 @@ import {
 import { getDataFreshness } from "../../lib/staleData";
 import type { StockId } from "../../types/market";
 
-const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
+/**
+ * Two, not all seven.
+ *
+ * This strip sits above a conversation, and its job is to keep the number in
+ * view — not to reproduce the dashboard on a page nobody came here to read
+ * prices on. Seven rows would push the first message off a phone screen. It is
+ * a deliberate subset rather than a stale copy of STOCK_IDS, which is why it is
+ * spelled out here and named for what it is.
+ */
+const MINI_CARD_IDS: StockId[] = ["samsung", "skHynix"];
 
 const DIRECTION_CLASS: Record<string, string> = {
   rise: "text-rise",
@@ -36,7 +45,7 @@ interface StockMiniCardsProps {
 export function StockMiniCards({ onNavigateDashboard }: StockMiniCardsProps) {
   const { stocks, wsStatus } = useMarketData();
 
-  const ready = STOCK_IDS.map((id) => stocks[id]).filter(
+  const ready = MINI_CARD_IDS.map((id) => stocks[id]).filter(
     (snapshot) => snapshot !== undefined && snapshot.status === "healthy"
   );
 

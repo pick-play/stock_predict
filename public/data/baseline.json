@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "timezone": "Asia/Seoul",
-  "updatedAt": "2026-08-21T07:27:22.390Z",
+  "updatedAt": "2026-08-21T16:15:28.196Z",
   "referencePriceMode": "mark",
   "open": {
     "marketDate": "2026-08-21",
@@ -12,6 +12,21 @@
       },
       "skHynix": {
         "krxPrice": 1675000
+      },
+      "hyundai": {
+        "krxPrice": 406500
+      },
+      "samsungEM": {
+        "krxPrice": 1345000
+      },
+      "lgElectronics": {
+        "krxPrice": 197000
+      },
+      "hanmi": {
+        "krxPrice": 219500
+      },
+      "naver": {
+        "krxPrice": 219000
       }
     }
   },
@@ -24,6 +39,21 @@
       },
       "skHynix": {
         "krxPrice": 1730000
+      },
+      "hyundai": {
+        "krxPrice": 415000
+      },
+      "samsungEM": {
+        "krxPrice": 1316000
+      },
+      "lgElectronics": {
+        "krxPrice": 194500
+      },
+      "hanmi": {
+        "krxPrice": 213500
+      },
+      "naver": {
+        "krxPrice": 222000
       }
     }
   }

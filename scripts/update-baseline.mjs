@@ -42,6 +42,31 @@ const SYMBOLS = {
     koreanTicker: "000660",
     yahooSymbol: "000660.KS",
   },
+  hyundai: {
+    displayName: "현대차",
+    koreanTicker: "005380",
+    yahooSymbol: "005380.KS",
+  },
+  samsungEM: {
+    displayName: "삼성전기",
+    koreanTicker: "009150",
+    yahooSymbol: "009150.KS",
+  },
+  lgElectronics: {
+    displayName: "LG전자",
+    koreanTicker: "066570",
+    yahooSymbol: "066570.KS",
+  },
+  hanmi: {
+    displayName: "한미반도체",
+    koreanTicker: "042700",
+    yahooSymbol: "042700.KS",
+  },
+  naver: {
+    displayName: "NAVER",
+    koreanTicker: "035420",
+    yahooSymbol: "035420.KS",
+  },
 };
 
 const STOCK_IDS = Object.keys(SYMBOLS);
@@ -156,11 +181,37 @@ async function fetchYahooDaily(yahooSymbol) {
   const i = timestamps.length - 1;
   // KRX daily bars are stamped at the session open (00:00 UTC = 09:00 KST),
   // so the UTC date of the timestamp is the trading date.
-  return {
-    tradingDate: new Date(timestamps[i] * 1000).toISOString().slice(0, 10),
-    open: opens[i],
-    close: closes[i],
-  };
+  const tradingDate = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
+
+  /*
+   * Yahoo sometimes serves the newest daily bar with a null close even after
+   * the session has settled — every KRX symbol answered that way on the evening
+   * of 2026-08-22, hours after Friday's 15:30 close. Left alone that reads as
+   * "미확정" and the stock is skipped, which is how a manual re-run of a failed
+   * collection would quietly return nothing.
+   *
+   * meta carries the settled figure with its own timestamp, so it is usable
+   * only under proof: same trading date, and stamped at or after the 15:30 KST
+   * close. A meta price from a live session is a mid-session quote, not a
+   * close, and must never be written as one.
+   */
+  let close = closes[i];
+  if (close == null) {
+    const metaPrice = result.meta?.regularMarketPrice;
+    const metaTimeMs = (result.meta?.regularMarketTime ?? 0) * 1000;
+    const closeAnchorMs = Date.parse(anchorTimeUtc(tradingDate, "close"));
+    const metaDate = new Date(metaTimeMs).toISOString().slice(0, 10);
+    if (
+      typeof metaPrice === "number" &&
+      metaPrice > 0 &&
+      metaDate === tradingDate &&
+      metaTimeMs >= closeAnchorMs
+    ) {
+      close = metaPrice;
+    }
+  }
+
+  return { tradingDate, open: opens[i], close };
 }
 
 // ─── 파일 I/O ─────────────────────────────────────────────────────────────────
@@ -181,12 +232,14 @@ function migrateV1(existing) {
   const legacy = existing.stocks;
   if (!marketDate || !legacy) return null;
 
+  // Migrate whatever the legacy file priced. It predates most of the listings,
+  // so insisting on all of them would throw away the two prices it does have.
   const stocks = {};
   for (const id of STOCK_IDS) {
     const price = legacy[id]?.krxClose;
-    if (!(price > 0)) return null;
-    stocks[id] = { krxPrice: price };
+    if (price > 0) stocks[id] = { krxPrice: price };
   }
+  if (Object.keys(stocks).length === 0) return null;
   return {
     schemaVersion: 2,
     timezone: "Asia/Seoul",
@@ -210,15 +263,18 @@ function writeBaseline(baseline) {
 
 // ─── 검증 ─────────────────────────────────────────────────────────────────────
 
-function assertSanePrice(displayName, label, price) {
-  if (!(price > 0)) {
-    throw new Error(`${displayName}: ${label} (${price}) > 0 조건 미충족`);
-  }
+/**
+ * Returns why a price is unusable, or null if it is fine.
+ *
+ * Deliberately not a throw: the caller decides one stock's fate, and an
+ * exception here used to take the other six down with it.
+ */
+function priceProblem(price) {
+  if (!(price > 0)) return `${price} — 0보다 커야 함`;
   if (price < 1_000 || price > 10_000_000) {
-    throw new Error(
-      `${displayName}: ${label} ${price} 범위 이탈 (1,000 ~ 10,000,000)`
-    );
+    return `${price} — 범위 이탈 (1,000 ~ 10,000,000)`;
   }
+  return null;
 }
 
 // ─── 메인 ────────────────────────────────────────────────────────────────────
@@ -258,10 +314,21 @@ async function main() {
 
   const existing = migrateV1(loadBaseline());
   if (existing?.[session]?.marketDate === targetDateKST) {
+    // "Already today's" is no longer the same as "complete": a stock can be
+    // absent because its bar had not settled on the earlier run. Re-running is
+    // how it gets a second chance, so only a full anchor ends the run here.
+    const stored = existing[session].stocks ?? {};
+    const missing = STOCK_IDS.filter((id) => !(stored[id]?.krxPrice > 0));
+    if (missing.length === 0) {
+      console.log(
+        `[update-baseline] ${session} 앵커가 이미 ${targetDateKST} 기준으로 최신. 스킵.`
+      );
+      return;
+    }
     console.log(
-      `[update-baseline] ${session} 앵커가 이미 ${targetDateKST} 기준으로 최신. 스킵.`
+      `[update-baseline] ${session} 앵커는 ${targetDateKST} 기준이지만 ` +
+        `${missing.length}종목 누락 (${missing.join(", ")}). 재수집 시도.`
     );
-    return;
   }
 
   console.log("[update-baseline] Yahoo Finance에서 KRX 시가·종가 조회 중...");
@@ -273,32 +340,51 @@ async function main() {
     )
   );
 
+  /*
+   * Every rejection below is per stock, on purpose.
+   *
+   * All three of these checks used to abort or skip the entire run: a rejected
+   * fetch threw, a bar that had not settled returned early, and a trading-date
+   * mismatch between stocks threw. With two tickers that was rare; with seven
+   * it is roughly three and a half times as likely, and the cost is the whole
+   * day's anchor for every stock. Storing six of seven is worth far more than
+   * storing none, so a bad stock is dropped here and the run continues — the
+   * date check is now per stock, which also makes a cross-stock mismatch
+   * impossible by construction rather than fatal.
+   */
   const collected = {};
+  const skipped = [];
   for (let i = 0; i < STOCK_IDS.length; i++) {
     const stockId = STOCK_IDS[i];
     const config = SYMBOLS[stockId];
     const result = results[i];
 
     if (result.status === "rejected") {
-      throw new Error(
-        `Yahoo Finance 조회 실패 for ${config.yahooSymbol}: ${result.reason.message}`
-      );
+      skipped.push(`${config.displayName}: 조회 실패 (${result.reason.message})`);
+      continue;
     }
 
     const { tradingDate, open, close } = result.value;
     if (tradingDate !== targetDateKST) {
-      console.log(
-        `[update-baseline] Yahoo 최신 거래일 ${tradingDate} ≠ 오늘 ${targetDateKST}.` +
-          ` 공휴일이거나 데이터 미확정. 스킵. 정상 종료.`
+      skipped.push(
+        `${config.displayName}: Yahoo 최신 거래일 ${tradingDate} ≠ ${targetDateKST} (미확정 또는 거래 없음)`
       );
-      return;
+      continue;
     }
-    collected[stockId] = { tradingDate, open, close };
+    collected[stockId] = { open, close };
   }
 
-  const uniqueDates = [...new Set(STOCK_IDS.map((id) => collected[id].tradingDate))];
-  if (uniqueDates.length > 1) {
-    throw new Error(`종목 간 거래일 불일치: ${uniqueDates.join(", ")}`);
+  for (const reason of skipped) {
+    console.warn(`[update-baseline] 스킵 — ${reason}`);
+  }
+
+  // No stock settled today: a holiday, or Yahoo is behind. Keep the old file.
+  if (Object.keys(collected).length === 0) {
+    console.log(
+      `[update-baseline] ${targetDateKST} 기준으로 확정된 종목이 없음. ` +
+        `공휴일이거나 데이터 미확정. 기존 baseline 유지. 정상 종료.`
+    );
+    return;
   }
 
   // The close run also refreshes the opening anchor: by then the day's bar is
@@ -318,15 +404,38 @@ async function main() {
   next.referencePriceMode = next.referencePriceMode ?? REFERENCE_PRICE_MODE;
 
   for (const kind of sessionsToWrite) {
+    const label = kind === "open" ? "시가" : "종가";
     const stocks = {};
     for (const stockId of STOCK_IDS) {
       const config = SYMBOLS[stockId];
-      const price = kind === "open" ? collected[stockId].open : collected[stockId].close;
-      assertSanePrice(config.displayName, kind === "open" ? "시가" : "종가", price);
+      const price = collected[stockId]?.[kind];
+      const problem = collected[stockId]
+        ? priceProblem(price)
+        : "오늘 데이터 없음";
+
+      if (problem) {
+        // Carry the previous anchor's price rather than dropping the stock: a
+        // day-old reference still prices the card, an absent one blanks it.
+        const previous = existing?.[kind]?.stocks?.[stockId]?.krxPrice;
+        if (previous > 0) {
+          stocks[stockId] = { krxPrice: previous };
+          console.warn(
+            `[update-baseline] ${config.displayName} ${label} 사용 불가 (${problem}) — ` +
+              `직전 값 ${previous.toLocaleString("ko-KR")}원 유지`
+          );
+        } else {
+          console.warn(
+            `[update-baseline] ${config.displayName} ${label} 사용 불가 (${problem}) — ` +
+              `직전 값도 없어 이번 앵커에서 제외`
+          );
+        }
+        continue;
+      }
+
       stocks[stockId] = { krxPrice: price };
       console.log(
         `[update-baseline] ${config.displayName} (${config.koreanTicker}) ` +
-          `${kind === "open" ? "시가" : "종가"}: ${price.toLocaleString("ko-KR")}원`
+          `${label}: ${price.toLocaleString("ko-KR")}원`
       );
     }
     next[kind] = {
@@ -340,7 +449,8 @@ async function main() {
   writeBaseline(next);
 
   console.log(
-    `[update-baseline] baseline.json 갱신 완료 (${targetDateKST}, ${sessionsToWrite.join("+")})`
+    `[update-baseline] baseline.json 갱신 완료 (${targetDateKST}, ${sessionsToWrite.join("+")}, ` +
+      `${Object.keys(collected).length}/${STOCK_IDS.length}종목 신규 수집)`
   );
 }
 

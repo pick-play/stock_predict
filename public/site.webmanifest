@@ -1,7 +1,7 @@
 {
   "name": "코스피 NOW",
   "short_name": "코스피 NOW",
-  "description": "해외 선물가격의 야간 변동을 바탕으로 한 삼성전자·SK하이닉스 참고 예상가격",
+  "description": "해외 선물가격의 야간 변동을 바탕으로 한 삼성전자·SK하이닉스 등 국내 주요 종목 참고 예상가격",
   "lang": "ko",
   "start_url": "/",
   "scope": "/",

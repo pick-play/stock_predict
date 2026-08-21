@@ -41,16 +41,18 @@ afterEach(() => {
 
 describe("fetchKlineHistory", () => {
   it("converts each candle with the anchor and rounds to the KRX tick", async () => {
-    // 110/100 = +10% → 231,000 × 1.1 = 254,100 → 500원 단위로 254,000
-    mockFetchPerSymbol({ SAMSUNGUSDT: [row(1_000, "110")] });
+    // 105/100 = +5% → 231,000 × 1.05 = 242,550 → 500원 단위로 242,500.
+    // 이 배율은 야간 가격제한폭(±8%) 안이어야 한다 — 밖이면 이 테스트가
+    // 확인하려는 반올림이 아니라 상한 클램프를 확인하게 된다.
+    mockFetchPerSymbol({ SAMSUNGUSDT: [row(1_000, "105")] });
 
     const history = await fetchKlineHistory("1h", anchors);
 
     expect(history).toHaveLength(1);
     const point = history![0].stocks.samsung!;
-    expect(point.estimatedPrice).toBe(254_000);
-    expect(point.changeRate).toBeCloseTo(0.1, 10);
-    expect(point.currentBinancePrice).toBe(110);
+    expect(point.estimatedPrice).toBe(242_500);
+    expect(point.changeRate).toBeCloseTo(0.05, 10);
+    expect(point.currentBinancePrice).toBe(105);
   });
 
   it("orders points oldest first and stamps them as ISO time", async () => {
@@ -67,20 +69,36 @@ describe("fetchKlineHistory", () => {
     ]);
   });
 
-  it("merges both stocks onto one timestamp", async () => {
+  it("merges every requested stock onto one timestamp", async () => {
     mockFetchPerSymbol({
       SAMSUNGUSDT: [row(1_000, "110")],
       SKHYNIXUSDT: [row(1_000, "90")],
+      NAVERUSDT: [row(1_000, "95")],
     });
 
     const history = await fetchKlineHistory("24h", {
       samsung: { krxPrice: 231_000, anchorFuturesPrice: 100 },
       skHynix: { krxPrice: 1_422_000, anchorFuturesPrice: 100 },
+      naver: { krxPrice: 219_500, anchorFuturesPrice: 100 },
     });
 
     expect(history).toHaveLength(1);
     expect(history![0].stocks.samsung).toBeDefined();
     expect(history![0].stocks.skHynix).toBeDefined();
+    expect(history![0].stocks.naver).toBeDefined();
+  });
+
+  // The symbol is looked up in MARKET_SYMBOLS, so a listing added to the config
+  // reaches the chart with no change here — this pins that lookup for a stock
+  // added after the original pair.
+  it("requests a newly listed stock under its configured symbol", async () => {
+    mockFetchPerSymbol({ HANMIUSDT: [row(1_000, "100")] });
+
+    const history = await fetchKlineHistory("1h", {
+      hanmi: { krxPrice: 225_500, anchorFuturesPrice: 100 },
+    });
+
+    expect(history![0].stocks.hanmi?.estimatedPrice).toBe(225_500);
   });
 
   it("keeps the stock that succeeded when the other request fails", async () => {

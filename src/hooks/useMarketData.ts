@@ -1,10 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import type {
-  ReferencePriceMode,
-  StockId,
-  StockSnapshot,
-} from "../types/market";
-import { fetchStockQuote } from "../lib/binance/client";
+import type { StockId, StockSnapshot } from "../types/market";
+import { fetchStockQuote, fetchBookQuotes } from "../lib/binance/client";
 import type { StockQuoteResult } from "../lib/binance/client";
 import { calculateEstimate } from "../lib/calculateEstimate";
 import { calculateConfidenceScore } from "../lib/confidenceScore";
@@ -12,7 +8,7 @@ import { fetchGithubLatest, fetchGithubBaseline } from "../lib/githubFallback";
 import { fetchMarkPriceAtTime } from "../lib/binance/klinesClient";
 import { resolveAnchor } from "../lib/marketSession";
 import type { ResolvedAnchor } from "../lib/marketSession";
-import { MARKET_SYMBOLS } from "../config/symbols";
+import { MARKET_SYMBOLS, STOCK_IDS } from "../config/symbols";
 import { useMinuteRefresh } from "./useMinuteRefresh";
 import { connectBinanceFuturesStream } from "../lib/binance/websocketAdapter";
 import type { WsConnectionStatus } from "../lib/binance/websocketAdapter";
@@ -45,12 +41,32 @@ const INITIAL_STATE: MarketDataState = {
   wsStatus: "connecting",
 };
 
-const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
-
-const DISPLAY: Record<StockId, { displayName: string; koreanTicker: string }> = {
-  samsung: { displayName: "삼성전자", koreanTicker: "005930" },
-  skHynix: { displayName: "SK하이닉스", koreanTicker: "000660" },
-};
+/**
+ * The later of two ISO timestamps, tolerating nulls and unparseable input.
+ *
+ * A quote's eventTime is what the card measures staleness from, and it must
+ * never move backwards. Two of the listed symbols are quoted thinly enough that
+ * their bookTicker timestamps demonstrably do: NAVERUSDT's sat ten minutes old
+ * without advancing across a 46-second sample, and HANMIUSDT's went backwards
+ * between consecutive reads. Their *prices* were fine — nobody was quoting into
+ * the book, that is all — but a card that announces 업데이트 중단 over a healthy
+ * price teaches its reader to stop believing the indicator.
+ *
+ * The mark price is the feed that keeps ticking (426–1322 ms old on those same
+ * two symbols while their books were frozen), and the once-a-minute refresh
+ * already dates its quotes from premiumIndex.time. So the rule is: take the
+ * newest timestamp anyone has seen for this symbol, which lets a live book
+ * advance freshness second by second while the minute refresh guarantees a
+ * floor of ~60s for a symbol whose book has gone quiet.
+ */
+function laterIso(a: string | null | undefined, b: string): string {
+  if (!a) return b;
+  const ta = new Date(a).getTime();
+  const tb = new Date(b).getTime();
+  if (!Number.isFinite(ta)) return b;
+  if (!Number.isFinite(tb)) return a;
+  return tb > ta ? b : a;
+}
 
 export function useMarketData(): MarketDataState {
   const [state, setState] = useState<MarketDataState>(INITIAL_STATE);
@@ -66,13 +82,6 @@ export function useMarketData(): MarketDataState {
   // the book streams live, so live ticks are quoted as mid + this offset to
   // stay on the same scale as the anchor, which is a mark price.
   const markMidOffsetRef = useRef<Partial<Record<StockId, number>>>({});
-
-  /**
-   * Which price the baseline says to quote from, kept where the polling feed can
-   * read it. The REST refresh below learns it from baseline.json; a poll that
-   * guessed differently would price against a different scale than the anchor.
-   */
-  const referenceModeRef = useRef<ReferencePriceMode>("mark");
 
   const refresh = useCallback(async () => {
     const baseline = await fetchGithubBaseline();
@@ -100,7 +109,6 @@ export function useMarketData(): MarketDataState {
     });
 
     const mode = baseline?.referencePriceMode ?? "mark";
-    referenceModeRef.current = mode;
     const quoteSettled = await Promise.allSettled(
       STOCK_IDS.map((id) => fetchStockQuote(id, mode))
     );
@@ -142,14 +150,19 @@ export function useMarketData(): MarketDataState {
       const ask = wsQuote?.askPrice ?? result.quote.askPrice;
 
       const base = {
-        displayName: DISPLAY[stockId].displayName,
-        koreanTicker: DISPLAY[stockId].koreanTicker,
+        displayName: MARKET_SYMBOLS[stockId].displayName,
+        koreanTicker: MARKET_SYMBOLS[stockId].koreanTicker,
         binanceSymbol: result.quote.symbol,
         currentBinancePrice: result.referencePrice,
         referencePriceMode: mode,
         bidPrice: bid,
         askPrice: ask,
-        eventTime: result.quote.eventTime,
+        // Dated by premiumIndex.time (see normalizeFuturesTicker), the one field
+        // in this payload that keeps ticking on a thinly quoted symbol.
+        eventTime: laterIso(
+          currentStocksRef.current[stockId]?.eventTime,
+          result.quote.eventTime
+        ),
       };
 
       // Without both halves of the anchor there is no honest estimate to show.
@@ -281,8 +294,11 @@ export function useMarketData(): MarketDataState {
    *
    * A phone polls REST instead. That stream costs 103.8 frames a second — about
    * 78 MB an hour and a hundred JSON parses a second — and a modem fed that never
-   * idles, which is what made the page warm to hold. Two 153-byte reads every
-   * four seconds carry the same number to a reader who is checking a price.
+   * idles, which is what made the page warm to hold. One read every four seconds
+   * carries the same number to a reader who is checking a price.
+   *
+   * That poll is a single all-symbols bookTicker request, not one per stock, so
+   * its cost does not grow when a stock is added. See fetchBookQuotes.
    *
    * Both routes end in the same place: a NormalizedQuote in latestWsQuotesRef,
    * flushed and repriced by the one timer below. Only the delivery differs, so
@@ -295,20 +311,16 @@ export function useMarketData(): MarketDataState {
     let disconnect: () => void;
 
     if (polled) {
-      const mode = referenceModeRef.current;
-
       const poll = async () => {
         // Hidden tab: nothing to update and every request keeps the radio awake.
         if (document.visibilityState !== "visible") return;
 
-        const settled = await Promise.allSettled(
-          STOCK_IDS.map((id) => fetchStockQuote(id, mode))
-        );
+        // One request for every listed stock, not one each.
+        const { quotes } = await fetchBookQuotes(STOCK_IDS);
 
         let anySucceeded = false;
-        for (const result of settled) {
-          if (result.status !== "fulfilled") continue;
-          const quote = result.value.quote;
+        for (const id of STOCK_IDS) {
+          const quote = quotes[id];
           if (!quote) continue;
           latestWsQuotesRef.current[quote.symbol] = quote;
           anySucceeded = true;
@@ -398,7 +410,9 @@ export function useMarketData(): MarketDataState {
             bidPrice: bid,
             askPrice: ask,
             spreadPercent,
-            eventTime: quote!.eventTime,
+            // Never let a stale or rewound book timestamp age the card past what
+            // the mark price already proved. See laterIso.
+            eventTime: laterIso(existing.eventTime, quote!.eventTime),
           };
 
           // Reprice from the live book when the anchor is known. Without it the

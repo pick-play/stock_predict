@@ -110,9 +110,14 @@ describe("resolveAnchor", () => {
     expect(resolveAnchor(makeBaseline({ open: null, close: null }))).toBeNull();
   });
 
-  it("rejects an anchor with a non-positive price", () => {
+  /*
+   * A missing or broken price costs one card, not the page. The rule used to be
+   * all-or-nothing across the two listed stocks; at seven that meant a single
+   * unsettled daily bar blanked every estimate on the site.
+   */
+  it("drops only the stock with a non-positive price", () => {
     at("2026-08-09T07:00:00.000Z");
-    const broken = makeBaseline({
+    const partial = makeBaseline({
       open: null,
       close: {
         marketDate: "2026-08-07",
@@ -120,7 +125,64 @@ describe("resolveAnchor", () => {
         stocks: { samsung: { krxPrice: 0 }, skHynix: { krxPrice: 1_422_000 } },
       },
     });
+    const anchor = resolveAnchor(partial);
+    expect(anchor?.krxPrice.samsung).toBeUndefined();
+    expect(anchor?.krxPrice.skHynix).toBe(1_422_000);
+  });
+
+  it("keeps six good stocks when the seventh is unusable", () => {
+    at("2026-08-09T07:00:00.000Z");
+    const anchor = resolveAnchor(
+      makeBaseline({
+        open: null,
+        close: {
+          marketDate: "2026-08-07",
+          anchorTimeUtc: "2026-08-07T06:30:00.000Z",
+          stocks: {
+            samsung: { krxPrice: 231_000 },
+            skHynix: { krxPrice: 1_422_000 },
+            hyundai: { krxPrice: 417_500 },
+            samsungEM: { krxPrice: 1_396_000 },
+            lgElectronics: { krxPrice: 202_500 },
+            hanmi: { krxPrice: 225_500 },
+            naver: { krxPrice: 0 },
+          },
+        },
+      })
+    );
+    expect(Object.keys(anchor!.krxPrice)).toHaveLength(6);
+    expect(anchor!.krxPrice.naver).toBeUndefined();
+    expect(anchor!.krxPrice.hanmi).toBe(225_500);
+  });
+
+  it("returns null only when no stock carries a usable price", () => {
+    at("2026-08-09T07:00:00.000Z");
+    const broken = makeBaseline({
+      open: null,
+      close: {
+        marketDate: "2026-08-07",
+        anchorTimeUtc: "2026-08-07T06:30:00.000Z",
+        stocks: { samsung: { krxPrice: 0 }, skHynix: { krxPrice: -1 } },
+      },
+    });
     expect(resolveAnchor(broken)).toBeNull();
+  });
+
+  // An empty close block must not shadow a usable open block: returning a
+  // priceless anchor here would leave every card without a reference.
+  it("falls through to the open anchor when the close prices nothing", () => {
+    at("2026-08-09T07:00:00.000Z");
+    const anchor = resolveAnchor(
+      makeBaseline({
+        close: {
+          marketDate: "2026-08-07",
+          anchorTimeUtc: "2026-08-07T06:30:00.000Z",
+          stocks: {},
+        },
+      })
+    );
+    expect(anchor?.kind).toBe("open");
+    expect(anchor?.krxPrice.samsung).toBe(240_000);
   });
 });
 

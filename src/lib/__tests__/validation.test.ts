@@ -5,6 +5,7 @@ import {
   LatestDataSchema,
   HistoryArraySchema,
 } from "../validation";
+import { STOCK_IDS } from "../../config/symbols";
 
 const NOW = new Date("2026-08-02T12:00:00.000Z");
 
@@ -145,6 +146,35 @@ describe("BaselineSchema", () => {
       })
     ).toThrow();
   });
+
+  /*
+   * The live file is fetched on every page load, so a newly listed stock must
+   * not be required: the collector only adds it after a successful run, and
+   * failing the file in the meantime puts the whole site into "기준가격 갱신
+   * 필요" over a stock nobody has asked for yet.
+   */
+  it("accepts an anchor that prices only some of the listed stocks", () => {
+    expect(() =>
+      BaselineSchema.parse({
+        ...validBaseline,
+        close: {
+          ...validBaseline.close,
+          stocks: { samsung: { krxPrice: 231_000 } },
+        },
+      })
+    ).not.toThrow();
+  });
+
+  it("accepts an anchor that prices every listed stock", () => {
+    const stocks = Object.fromEntries(
+      STOCK_IDS.map((id) => [id, { krxPrice: 100_000 }])
+    );
+    const parsed = BaselineSchema.parse({
+      ...validBaseline,
+      close: { ...validBaseline.close, stocks },
+    });
+    expect(Object.keys(parsed.close!.stocks)).toHaveLength(STOCK_IDS.length);
+  });
 });
 
 describe("LatestDataSchema — schema version check", () => {
@@ -182,6 +212,45 @@ describe("LatestDataSchema — schema version check", () => {
   it("rejects schemaVersion other than 1", () => {
     expect(() => LatestDataSchema.parse({ ...validLatest, schemaVersion: 2 })).toThrow();
     expect(() => LatestDataSchema.parse({ ...validLatest, schemaVersion: 0 })).toThrow();
+  });
+
+  // The collector writes only the stocks whose fetch succeeded, so a snapshot
+  // carrying one stock is normal data rather than a corrupt file.
+  it("accepts a snapshot carrying a single stock", () => {
+    expect(() =>
+      LatestDataSchema.parse({ ...validLatest, stocks: { samsung: minimalSnapshot } })
+    ).not.toThrow();
+  });
+
+  // Stripped instead of kept, the flag would be lost on the fallback path and a
+  // capped price would render without its caption.
+  it("keeps the night-limit flag through validation", () => {
+    const parsed = LatestDataSchema.parse({
+      ...validLatest,
+      stocks: { samsung: { ...minimalSnapshot, limited: true } },
+    });
+    expect(parsed.stocks.samsung?.limited).toBe(true);
+  });
+
+  it("accepts a snapshot written before the night-limit flag existed", () => {
+    const parsed = LatestDataSchema.parse(validLatest);
+    expect(parsed.stocks.samsung?.limited).toBeUndefined();
+  });
+
+  it("accepts a newly listed stock", () => {
+    const parsed = LatestDataSchema.parse({
+      ...validLatest,
+      stocks: {
+        ...validLatest.stocks,
+        naver: {
+          ...minimalSnapshot,
+          displayName: "NAVER",
+          koreanTicker: "035420",
+          binanceSymbol: "NAVERUSDT",
+        },
+      },
+    });
+    expect(parsed.stocks.naver?.binanceSymbol).toBe("NAVERUSDT");
   });
 
   it("rejects unknown source", () => {

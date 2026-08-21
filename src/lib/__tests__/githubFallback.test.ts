@@ -146,7 +146,8 @@ describe("fetchGithubHistory", () => {
     const result = await fetchGithubHistory();
 
     expect(result).toHaveLength(1);
-    expect(Object.keys(result![0].stocks)).toEqual(["samsung", "skHynix"]);
+    expect(result![0].stocks.samsung).toBeDefined();
+    expect(result![0].stocks.skHynix).toBeDefined();
   });
 
   it("drops an entry whose every stock is priced at zero", async () => {
@@ -171,14 +172,20 @@ describe("fetchGithubHistory", () => {
     mockJson([
       {
         timestamp: "2026-08-10T11:00:00.000Z",
-        stocks: { samsung: point(230000), skHynix: point(0) },
+        stocks: {
+          samsung: point(230000),
+          skHynix: point(0),
+          naver: point(219500),
+        },
       },
     ]);
 
     const result = await fetchGithubHistory();
 
     expect(result).toHaveLength(1);
-    expect(Object.keys(result![0].stocks)).toEqual(["samsung"]);
+    expect(result![0].stocks.samsung).toBeDefined();
+    expect(result![0].stocks.naver).toBeDefined();
+    expect(result![0].stocks.skHynix).toBeUndefined();
   });
 
   it("returns an empty array when nothing survives cleaning", async () => {

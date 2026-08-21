@@ -1,4 +1,25 @@
 import { z } from "zod";
+import { STOCK_IDS } from "../config/symbols";
+import type { StockId } from "../types/market";
+
+/**
+ * A stocks map keyed by every listed stock, with every key optional.
+ *
+ * Optional is the load-bearing part. baseline.json is fetched on every page
+ * load, and a newly listed stock only appears in it after the collector has
+ * managed a run for it. If a new key were required, adding a stock would fail
+ * the live file outright and put the whole site into "기준가격 갱신 필요" until
+ * the next successful collection — a self-inflicted outage on every listing.
+ * z.object also strips ids it does not know, so an old file with a retired
+ * stock still parses.
+ */
+function optionalStockMap<T extends z.ZodTypeAny>(value: T) {
+  return z.object(
+    Object.fromEntries(STOCK_IDS.map((id) => [id, value.optional()])) as {
+      [K in StockId]: z.ZodOptional<T>;
+    }
+  );
+}
 
 export const QuoteSchema = z
   .object({
@@ -32,10 +53,7 @@ export const QuoteSchema = z
 export const BaselineAnchorSchema = z.object({
   marketDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   anchorTimeUtc: z.string().datetime(),
-  stocks: z.object({
-    samsung: z.object({ krxPrice: z.number().positive() }),
-    skHynix: z.object({ krxPrice: z.number().positive() }),
-  }),
+  stocks: optionalStockMap(z.object({ krxPrice: z.number().positive() })),
 });
 
 /**
@@ -78,6 +96,11 @@ export const StockSnapshotSchema = z.object({
   confidenceScore: z.number().min(0).max(100),
   eventTime: z.string().datetime(),
   status: z.enum(["healthy", "stale", "error", "loading", "no-baseline"]),
+  // z.object strips unknown keys, so an undeclared `limited` would survive
+  // validation but vanish from the parsed snapshot — the fallback card would
+  // then present a capped price without the caption saying it was capped.
+  // Optional because files written before the cap existed do not carry it.
+  limited: z.boolean().optional(),
 });
 
 export const LatestDataSchema = z.object({
@@ -85,10 +108,7 @@ export const LatestDataSchema = z.object({
   generatedAt: z.string().datetime(),
   // "github-actions" is the value written by GitHub Actions scripts
   source: z.enum(["binance-rest", "binance-websocket", "github-snapshot", "github-actions"]),
-  stocks: z.object({
-    samsung: StockSnapshotSchema,
-    skHynix: StockSnapshotSchema,
-  }),
+  stocks: optionalStockMap(StockSnapshotSchema),
 });
 
 // HistoryEntry schema — used for history.json validation in the browser
@@ -101,10 +121,7 @@ const HistoryStockSchema = z.object({
 
 export const HistoryEntrySchema = z.object({
   timestamp: z.string().datetime(),
-  stocks: z.object({
-    samsung: HistoryStockSchema.optional(),
-    skHynix: HistoryStockSchema.optional(),
-  }),
+  stocks: optionalStockMap(HistoryStockSchema),
 });
 
 export const HistoryArraySchema = z.array(HistoryEntrySchema);

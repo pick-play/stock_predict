@@ -9,6 +9,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import type { HistoryEntry, StockId } from "../../types/market";
+import { MARKET_SYMBOLS, STOCK_IDS } from "../../config/symbols";
 import type { ChartRange } from "../../lib/binance/klineHistory";
 import { formatKrw, formatPercent } from "../../lib/format";
 
@@ -45,10 +46,16 @@ const RANGE_LABELS: Record<TimeRange, string> = {
   "7d": "7일",
 };
 
-const STOCK_LABELS: Record<StockId, string> = {
-  samsung: "삼성전자",
-  skHynix: "SK하이닉스",
-};
+/**
+ * Read from the symbol table rather than listed here.
+ *
+ * A hand-written map is a second place to add a stock, and it was already one
+ * short: five listings were added and this still had two, so the chart's tab
+ * strip could not name them.
+ */
+const STOCK_LABELS: Record<StockId, string> = Object.fromEntries(
+  STOCK_IDS.map((id) => [id, MARKET_SYMBOLS[id].displayName])
+) as Record<StockId, string>;
 
 export function PriceChart({
   history,

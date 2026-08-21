@@ -123,14 +123,21 @@ function validateBaseline() {
       fail(`${kind}: stocks missing`);
       continue;
     }
-    for (const id of ["samsung", "skHynix"]) {
-      const price = anchor.stocks[id]?.krxPrice;
-      if (!(price > 0)) fail(`${kind}.${id}: krxPrice must be > 0`);
+    // Whatever the collector managed to price is checked; a stock it had to
+    // skip is not an error, because demanding a fixed roster here would fail
+    // the whole file — and block the commit — over one unsettled ticker.
+    const entries = Object.entries(anchor.stocks);
+    if (entries.length === 0) {
+      fail(`${kind}: no stock carries a price`);
+      continue;
+    }
+    for (const [id, stock] of entries) {
+      if (!(stock?.krxPrice > 0)) fail(`${kind}.${id}: krxPrice must be > 0`);
     }
   }
 
-  // Both stocks live under one anchor, so their dates match by construction;
-  // the two anchors may legitimately differ (intraday open vs previous close).
+  // Every stock in an anchor shares its marketDate by construction; the two
+  // anchors may legitimately differ (intraday open vs previous close).
   ok("baseline.json validated");
 }
 

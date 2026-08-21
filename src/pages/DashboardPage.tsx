@@ -19,10 +19,9 @@ import { ErrorState } from "../components/common/ErrorState";
 import { StockCardSkeleton } from "../components/common/LoadingSkeleton";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { MobileBottomBar } from "../components/layout/MobileBottomBar";
+import { STOCK_IDS } from "../config/symbols";
 import type { StockId } from "../types/market";
 import type { ChartRange, StockAnchor } from "../lib/binance/klineHistory";
-
-const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
 
 /**
  * Both cards' buttons point at the same panel, because there is only one.
@@ -31,15 +30,54 @@ const STOCK_IDS: StockId[] = ["samsung", "skHynix"];
 const CHART_PANEL_ID = "stock-chart-panel";
 
 /**
- * Phone stacking order for the cards and the chart between them.
+ * Where the chart lands: directly under the ROW that opened it.
  *
- * Tailwind needs the class names spelled out — it scans source text, so a
- * computed `order-${n}` would never be generated. Odd numbers for the cards,
- * even for the chart slot that follows each one; both are reset to source order
- * at md, where the chart belongs at the bottom across both columns.
+ * A row is one card on a phone and two from `md` up, so every element carries
+ * two orders — the phone's and the desktop's. Cards sharing a row share an odd
+ * order (equal orders keep DOM order between them) and the chart takes the even
+ * value after it. Opening 한미반도체 therefore drops the chart under its own row
+ * rather than at the foot of a list of seven.
+ *
+ * Spelled out, because Tailwind scans source text: a computed `order-${n}`
+ * generates no CSS at all. Seven phone rows need orders 1-14, past the default
+ * 1-12 scale, so the tail uses arbitrary values — still literal text.
  */
-const CARD_ORDER = ["order-1 md:order-none", "order-3 md:order-none"];
-const CHART_ORDER = ["order-2", "order-4"];
+const PHONE_ROW_ORDER = [
+  "order-1",
+  "order-3",
+  "order-5",
+  "order-7",
+  "order-9",
+  "order-11",
+  "order-[13]",
+];
+const PHONE_CHART_ORDER = [
+  "order-2",
+  "order-4",
+  "order-6",
+  "order-8",
+  "order-10",
+  "order-12",
+  "order-[14]",
+];
+const ROW_ORDER = ["md:order-1", "md:order-3", "md:order-5", "md:order-7"];
+const CHART_ROW_ORDER = [
+  "md:order-2",
+  "md:order-4",
+  "md:order-6",
+  "md:order-8",
+];
+
+/**
+ * One per row on a phone, two from `md` up.
+ *
+ * Two columns everywhere was tried and reverted (owner decision, 2026-08-22):
+ * on a 375px screen each card was about 165px, so nothing inside could wrap —
+ * the price, the name and the buttons all shrank to fit instead of the cards
+ * flowing down the page. A phone has one column of room; the second column was
+ * taken out of the numbers.
+ */
+const CARDS_PER_ROW = 2;
 
 interface DashboardPageProps {
   onNavigateBoard?: () => void;
@@ -110,10 +148,18 @@ export function DashboardPage({
     if (s && s.krxClose > 0) krxClose[id] = s.krxClose;
   }
 
-  // Last 24 data points per stock for sparklines
+  /*
+   * The whole series behind the card's corner chart — not a tail of it.
+   *
+   * This was capped at the last 24 points, which was right for an 88×30
+   * thumbnail and wrong the moment the picture got bigger: at the default 6-hour
+   * range those 24 five-minute candles are two hours, so the card drew a coarse
+   * two-hour line in a space that reads as a chart. Handing over the full range
+   * gives the same window the chart below shows, at the resolution it was
+   * fetched with.
+   */
   const getSparklineData = (id: StockId): number[] =>
     history
-      .slice(-24)
       .map((h) => h.stocks[id]?.estimatedPrice ?? null)
       .filter((p): p is number => p !== null);
 
@@ -159,22 +205,15 @@ export function DashboardPage({
         )}
 
         {/* Stock estimate cards, and the one chart they share.
-            Staggered entry; the chart stays unmounted until a card asks for it,
-            so the Recharts chunk misses the first paint (§22).
+            The chart stays unmounted until a card asks for it, so the Recharts
+            chunk misses the first paint (§22). It is a grid child rather than a
+            sibling below the grid, which is what lets CSS order drop it under
+            the row whose button opened it — parked at the end it would sit as
+            much as three rows away from the card that asked for it.
 
-            The chart is a grid child rather than a sibling below the grid, which
-            is what lets CSS order place it. On a phone the cards stack, so a
-            chart parked after both of them opened under SK하이닉스 when the
-            삼성전자 button was the one pressed — the panel was nowhere near the
-            control that opened it. Ordering puts it directly under its own card.
-
-            Desktop keeps it last and full width (md:order-none): inside the
-            two-column row it would stretch the neighbouring card to the chart's
-            height and leave a tall empty box beside it. */}
-        {/* items-start: a card that opens 상세보기 grows, and without this the
-            other one stretches to match and reads as a half-empty box. Same
-            failure the chart caused when it lived inside a card. */}
-        <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-4">
+            items-start: a card that opens 상세보기 grows, and without this its
+            neighbour stretches to match and reads as a half-empty box. */}
+        <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 md:gap-4">
           {STOCK_IDS.map((id, index) => {
             const snapshot = stocks[id];
             if (isLoading && !snapshot) {
@@ -186,14 +225,16 @@ export function DashboardPage({
                 key={id}
                 snapshot={snapshot}
                 sparklineData={getSparklineData(id)}
-                animationDelay={`${index * 80}ms`}
+                animationDelay={`${Math.min(index, 5) * 60}ms`}
                 wsStatus={wsStatus}
                 chartOpen={chartStock === id}
                 onToggleChart={() =>
                   setChartStock((open) => (open === id ? null : id))
                 }
                 chartPanelId={CHART_PANEL_ID}
-                className={CARD_ORDER[index]}
+                className={`${PHONE_ROW_ORDER[index] ?? "order-last"} ${
+                  ROW_ORDER[Math.floor(index / CARDS_PER_ROW)] ?? "md:order-last"
+                }`}
               />
             );
           })}
@@ -201,8 +242,12 @@ export function DashboardPage({
           {chartStock && (
             <div
               id={CHART_PANEL_ID}
-              className={`animate-fade-in md:col-span-2 md:order-none ${
-                CHART_ORDER[STOCK_IDS.indexOf(chartStock)] ?? "order-last"
+              className={`animate-fade-in md:col-span-2 ${
+                PHONE_CHART_ORDER[STOCK_IDS.indexOf(chartStock)] ?? "order-last"
+              } ${
+                CHART_ROW_ORDER[
+                  Math.floor(STOCK_IDS.indexOf(chartStock) / CARDS_PER_ROW)
+                ] ?? "md:order-last"
               }`}
             >
               <LazyPriceChart

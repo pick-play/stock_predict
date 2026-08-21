@@ -99,3 +99,85 @@ describe("calculateEstimate", () => {
     expect(result.estimatedPrice % 500).toBe(0);
   });
 });
+
+/**
+ * ±8% is the night session's price limit, not a data-quality guard.
+ *
+ * A domestic after-hours order cannot print outside that band, so an estimate
+ * beyond it describes a fill that could not happen — while the overseas
+ * contract the estimate follows has no limit and can run further on news.
+ */
+describe("night session price limit", () => {
+  const krxClose = 100_000;
+
+  it("leaves an ordinary move alone", () => {
+    const r = calculateEstimate({
+      krxClose,
+      baselineBinancePrice: 100,
+      currentBinancePrice: 103,
+    });
+
+    expect(r.changeRate).toBeCloseTo(0.03, 10);
+    expect(r.estimatedPrice).toBe(103_000);
+    expect(r.limited).toBe(false);
+  });
+
+  it("holds a runaway rise at +8%", () => {
+    const r = calculateEstimate({
+      krxClose,
+      baselineBinancePrice: 100,
+      currentBinancePrice: 115, // +15% overseas
+    });
+
+    expect(r.changeRate).toBeCloseTo(0.08, 10);
+    expect(r.estimatedPrice).toBe(108_000);
+    expect(r.limited).toBe(true);
+  });
+
+  it("holds a runaway fall at -8%", () => {
+    const r = calculateEstimate({
+      krxClose,
+      baselineBinancePrice: 100,
+      currentBinancePrice: 80, // -20% overseas
+    });
+
+    expect(r.changeRate).toBeCloseTo(-0.08, 10);
+    expect(r.estimatedPrice).toBe(92_000);
+    expect(r.limited).toBe(true);
+  });
+
+  // The rate is capped before the price is derived, so every figure the card
+  // shows agrees. Clamping the price afterwards would leave changeRate and
+  // changeAmount describing a different number than estimatedPrice.
+  it("keeps the price, rate and amount consistent when capped", () => {
+    const r = calculateEstimate({
+      krxClose,
+      baselineBinancePrice: 100,
+      currentBinancePrice: 130,
+    });
+
+    expect(r.estimatedPrice).toBe(krxClose * (1 + r.changeRate));
+    expect(r.changeAmount).toBe(r.estimatedPrice - krxClose);
+  });
+
+  // What the calculation actually produced, kept so the card can say the limit
+  // was reached rather than quietly presenting the boundary as the answer.
+  it("still reports the uncapped price it computed", () => {
+    const r = calculateEstimate({
+      krxClose,
+      baselineBinancePrice: 100,
+      currentBinancePrice: 115,
+    });
+
+    expect(r.rawEstimatedPrice).toBeCloseTo(115_000, 6);
+  });
+
+  it("does not trip exactly at the boundary", () => {
+    const r = calculateEstimate({
+      krxClose,
+      baselineBinancePrice: 100,
+      currentBinancePrice: 108,
+    });
+    expect(r.limited).toBe(false);
+  });
+});

@@ -4,18 +4,31 @@ export const CLIENT_REFRESH_INTERVAL_MS = 60_000;
  * How often a phone re-reads the futures price over REST.
  *
  * Measured, not guessed: the bookTicker socket the desktop uses delivers 103.8
- * frames per second for these two symbols — 653 KB every 30 seconds, roughly
+ * frames per second for these symbols — 653 KB every 30 seconds, roughly
  * 78 MB an hour, and about a hundred JSON parses a second. Rendering is batched
  * to 1s, but the receiving is not, and a modem fed a hundred packets a second
  * never returns to idle. That is the heat.
  *
  * markPrice, ticker and aggTrade were all probed and emit nothing for TradFi
- * symbols, so there is no slower stream to switch to. Polling is the only lever:
- * two 153-byte responses every few seconds is about 0.7 MB an hour and lets the
- * radio sleep in between.
+ * symbols, so there is no slower stream to switch to. Polling is the only lever,
+ * and it lets the radio sleep in between.
  *
- * Four seconds keeps the reading current enough for an overnight reference price
- * while cutting the traffic by two orders of magnitude.
+ * The poll is a single all-symbols bookTicker request (see fetchBookQuotes), so
+ * what follows does not change when a stock is added. Measured 2026-08-22 at 15
+ * polls a minute:
+ *
+ *   requests   1 per poll          →    900 / hour
+ *   weight     5 per poll          →     75 / minute, against an IP budget of 2400
+ *   bytes      21.9 KB gzipped     →   19.7 MB / hour while the tab is visible
+ *
+ * The per-symbol form it replaced would have cost, at 7 stocks, 21 requests and
+ * 28 weight per poll — 18,900 requests an hour and 420 weight a minute, which is
+ * only five or six phones behind one shared/CGNAT address before Binance starts
+ * answering 429 for all of them. Bytes were the one axis the per-symbol form won
+ * (about 4.8 MB an hour), and that is the trade this interval controls: doubling
+ * it to 8s halves the 19.7 MB without touching request-count safety.
+ *
+ * Four seconds keeps the reading current enough for an overnight reference price.
  */
 export const MOBILE_QUOTE_POLL_INTERVAL_MS = 4_000;
 
@@ -23,6 +36,20 @@ export const STALE_WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 export const STALE_CRITICAL_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
 
 export const MAX_CHANGE_RATE = 0.3; // 30% max single-update change
+
+/**
+ * The night session's price limit, ±8%.
+ *
+ * A domestic after-hours order cannot print outside this band, so an estimate
+ * beyond it describes a fill that could not occur. The overseas contract the
+ * estimate follows has no limit of its own — it can run further on news — so
+ * without this the site would quote a price the market is not allowed to reach.
+ *
+ * Distinct from MAX_CHANGE_RATE above, which is an outlier guard against bad
+ * ticks. This one is a market rule, not a data-quality rule, and being at the
+ * boundary is a fact worth showing rather than a reading to discard.
+ */
+export const NIGHT_SESSION_LIMIT_RATE = 0.08;
 export const MIN_PRICE_RATIO = 0.5;
 export const MAX_PRICE_RATIO = 2.0;
 

@@ -1,4 +1,11 @@
-export type StockId = "samsung" | "skHynix";
+export type StockId =
+  | "samsung"
+  | "skHynix"
+  | "hyundai"
+  | "samsungEM"
+  | "lgElectronics"
+  | "hanmi"
+  | "naver";
 export type ReferencePriceMode = "mark" | "mid" | "last";
 export type DataSource = "binance-rest" | "binance-websocket" | "github-snapshot" | "github-actions";
 export type StockStatus = "healthy" | "stale" | "error" | "loading" | "no-baseline";
@@ -15,11 +22,15 @@ export type AnchorKind = "open" | "close";
 /**
  * One KRX reference point: the opening or closing price of a trading day,
  * together with the instant the matching futures price must be read at.
+ *
+ * Partial: the collector records a stock only once Yahoo has settled its daily
+ * bar, so an anchor legitimately carries a subset. Demanding every listed stock
+ * would mean one unsettled ticker invalidates the file that prices all of them.
  */
 export interface BaselineAnchor {
   marketDate: string;
   anchorTimeUtc: string;
-  stocks: Record<StockId, { krxPrice: number }>;
+  stocks: Partial<Record<StockId, { krxPrice: number }>>;
 }
 
 export interface Baseline {
@@ -49,6 +60,15 @@ export interface StockSnapshot {
   confidenceScore: number;
   eventTime: string;
   status: StockStatus;
+  /**
+   * True when the estimate was held at the night session's ±8% limit rather
+   * than following the overseas contract further. The card says so, so that a
+   * capped number is never presented as the calculation's own answer.
+   *
+   * Optional because snapshots restored from the stored fallback predate the
+   * field; requiring it would fail every one of them.
+   */
+  limited?: boolean;
   /** Which KRX reference the estimate is measured from. */
   anchorKind?: AnchorKind;
   /** Trading day that reference belongs to ("YYYY-MM-DD"). */
@@ -59,7 +79,9 @@ export interface LatestData {
   schemaVersion: number;
   generatedAt: string;
   source: DataSource;
-  stocks: Record<StockId, StockSnapshot>;
+  // Partial for the same reason as HistoryEntry: the collector writes only the
+  // stocks whose fetch succeeded, so a snapshot missing one is normal data.
+  stocks: Partial<Record<StockId, StockSnapshot>>;
 }
 
 export interface HistoryEntry {
