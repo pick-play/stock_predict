@@ -8,8 +8,22 @@
 
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { useSitePresence } from "../useSitePresence";
 import { CHAT_PRESENCE_PING_MS } from "../../lib/chat/config";
+
+/*
+ * The API base comes from an env var, and CI has no .env.
+ *
+ * Without this the hook returns early on `isChatConfigured`, every assertion
+ * below reads zero calls, and the suite passes locally while failing on the
+ * runner — which is exactly how it failed once already. Mocked at the network
+ * boundary only: the hook's own timing and visibility logic still runs.
+ */
+vi.mock("../../lib/chat/api", () => ({
+  isChatConfigured: true,
+  CHAT_API_BASE: "https://api.test",
+}));
+
+const { useSitePresence } = await import("../useSitePresence");
 
 const fetchMock = vi.fn(() => Promise.resolve(new Response("{}")));
 
