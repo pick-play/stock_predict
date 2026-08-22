@@ -167,6 +167,25 @@ export const CHAT_COUNT_ENDPOINT = "/api/chat/count";
  */
 export const CHAT_PRESENCE_TTL_MS = 150_000;
 
+/** Storage key holding the whole presence map, as one row. */
+export const CHAT_PRESENCE_STORAGE_KEY = "site-presence";
+
+/**
+ * How often the presence map is written down.
+ *
+ * A Durable Object is evicted, relocated or restarted whenever the platform
+ * likes — and every deploy does it deliberately — which used to empty the count
+ * and leave it to climb back over the following minute. Persisting it removes
+ * that sawtooth.
+ *
+ * One row for the entire map, rate-limited, so the write rate does not scale
+ * with the audience: about 2,900 writes a day at this interval however many
+ * people are here, against the ~33,000 the free plan allows (§28.3). Writing on
+ * every ping instead would be one per visitor per minute, which is the shape of
+ * cost this design exists to avoid.
+ */
+export const CHAT_PRESENCE_FLUSH_MS = 30_000;
+
 /**
  * Path the Worker calls on the room stub to delete lines.
  *

@@ -16,7 +16,9 @@
 import {
   CHAT_ADMIN_DELETE_PATH,
   CHAT_HISTORY_PATH,
+  CHAT_PRESENCE_FLUSH_MS,
   CHAT_PRESENCE_PATH,
+  CHAT_PRESENCE_STORAGE_KEY,
   CHAT_PRESENCE_TTL_MS,
   CHAT_IP_HASH_HEADER,
   CHAT_MEMBER_HANDLE_HEADER,
@@ -109,10 +111,40 @@ export class ChatRoom implements DurableObject {
    */
   private readonly sitePresence: Map<string, number>;
 
+  /** When the map was last written down, so flushes stay rate-limited. */
+  private presenceFlushedAtMs = 0;
+
   constructor(ctx: DurableObjectState) {
     this.ctx = ctx;
     this.sendHistory = new Map<string, number[]>();
     this.sitePresence = new Map<string, number>();
+
+    /*
+     * Read the map back before answering anything.
+     *
+     * Memory alone made the count saw-toothed: a Durable Object is evicted,
+     * relocated or restarted whenever the platform likes — and every deploy
+     * does it on purpose — and each time, everyone on the site vanished from
+     * the count until their next ping a minute later. The number was correct
+     * about its own state and wrong about the world.
+     *
+     * blockConcurrencyWhile is what makes this safe: no request is served until
+     * the map is back, so nothing can report an empty room while the read is in
+     * flight.
+     */
+    void ctx.blockConcurrencyWhile(async () => {
+      const stored = await ctx.storage.get<Record<string, number>>(
+        CHAT_PRESENCE_STORAGE_KEY
+      );
+      if (!stored) return;
+      const now = Date.now();
+      for (const [ipHash, lastSeen] of Object.entries(stored)) {
+        // Anything already expired is not worth carrying across a restart.
+        if (typeof lastSeen === 'number' && now - lastSeen <= CHAT_PRESENCE_TTL_MS) {
+          this.sitePresence.set(ipHash, lastSeen);
+        }
+      }
+    });
     this.store = new ChatMessageStore(this.createStorageAdapter(ctx));
 
     // Keepalives are answered from the auto-response table without waking the
@@ -135,6 +167,7 @@ export class ChatRoom implements DurableObject {
       const before = this.siteCount();
       if (ipHash !== '') this.sitePresence.set(ipHash, Date.now());
       const participants = this.siteCount();
+      await this.flushPresence();
 
       /*
        * Tell the room when the number actually moves.
@@ -357,6 +390,32 @@ export class ChatRoom implements DurableObject {
       if (readIdentity(socket)?.ipHash === ipHash) count++;
     }
     return count;
+  }
+
+  /**
+   * Writes the presence map down, at most once every CHAT_PRESENCE_FLUSH_MS.
+   *
+   * One row for the whole map, not one per visitor: this is the difference
+   * between a couple of thousand writes a day and one per person per minute,
+   * and rows written is the first resource this project runs out of (§28.3).
+   *
+   * Rate-limited rather than written on every ping, because a ping arriving
+   * from each visitor every minute would otherwise scale the write rate with
+   * the audience — the whole thing this avoids.
+   */
+  private async flushPresence(): Promise<void> {
+    const now = Date.now();
+    if (now - this.presenceFlushedAtMs < CHAT_PRESENCE_FLUSH_MS) return;
+    this.presenceFlushedAtMs = now;
+    try {
+      await this.ctx.storage.put(
+        CHAT_PRESENCE_STORAGE_KEY,
+        Object.fromEntries(this.sitePresence)
+      );
+    } catch (error) {
+      // A missed flush costs one restart's worth of accuracy, not correctness.
+      console.warn('[chat] presence flush failed', error);
+    }
   }
 
   /**
