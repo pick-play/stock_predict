@@ -132,8 +132,24 @@ export class ChatRoom implements DurableObject {
      */
     if (new URL(request.url).pathname === CHAT_PRESENCE_PATH) {
       const ipHash = request.headers.get(CHAT_IP_HASH_HEADER) ?? '';
+      const before = this.siteCount();
       if (ipHash !== '') this.sitePresence.set(ipHash, Date.now());
-      return new Response(JSON.stringify({ participants: this.siteCount() }), {
+      const participants = this.siteCount();
+
+      /*
+       * Tell the room when the number actually moves.
+       *
+       * Without this, everyone sitting in the chat kept whatever count they
+       * were handed on join: presence frames only went out when a socket opened
+       * or closed, and the number stopped being about sockets. Broadcasting on
+       * change costs nothing on a quiet site and at most one frame per ping on
+       * a busy one — far cheaper than every reader polling for it, and sooner.
+       */
+      if (participants !== before) {
+        this.broadcast({ type: 'presence', participants });
+      }
+
+      return new Response(JSON.stringify({ participants }), {
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
       });
     }

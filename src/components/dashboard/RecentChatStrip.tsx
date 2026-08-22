@@ -26,6 +26,7 @@ import { formatChatTime } from "../../lib/chat/formatChatTime";
 import { useNow } from "../../hooks/useNow";
 import { formatKoreanTimeDetailed } from "../../lib/format";
 import { useLivePreview } from "../../lib/chat/livePreview";
+import { useSiteCount } from "../../hooks/useSiteCount";
 
 interface RecentChatStripProps {
   onNavigateChat?: () => void;
@@ -41,6 +42,9 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
    * the socket is the same room, only sooner.
    */
   const live = useLivePreview();
+  // The lines are worth a 20-second poll; the headcount is not worth reloading
+  // the page for, which is what it used to take.
+  useSiteCount();
   // Relative labels for the first hour, so they need a clock that moves.
   const now = useNow(15_000);
 
@@ -83,7 +87,12 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
         messages: live.messages,
         participants: live.participants ?? polled?.participants ?? 0,
       }
-    : polled;
+    : polled && {
+        ...polled,
+        // The polled payload's own count is up to half a minute old; the count
+        // poll's is seconds.
+        participants: live.participants ?? polled.participants,
+      };
 
   // Nothing to show and nothing to promise: take up no space.
   if (!data || data.messages.length === 0) return null;

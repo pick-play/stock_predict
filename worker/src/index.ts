@@ -30,6 +30,7 @@ import {
   handleChatRoom,
   handleChatRecent,
   handleChatPresence,
+  handleChatCount,
   handleChatAdminDelete,
 } from './routes/chat';
 import type { Env } from './types';
@@ -190,6 +191,11 @@ export default {
      */
     if (method === 'POST' && path === '/api/chat/presence') {
       return handleChatPresence(request, env);
+    }
+
+    // GET /api/chat/count — the site headcount alone, cached, a few bytes
+    if (method === 'GET' && path === '/api/chat/count') {
+      return handleChatCount(request, env);
     }
 
     // GET /api/chat/recent — read-only transcript preview for the dashboard

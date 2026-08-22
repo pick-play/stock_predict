@@ -8,7 +8,7 @@
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const room = vi.hoisted(() => ({
   mounts: 0,
@@ -42,9 +42,55 @@ vi.mock("../../common/StockMiniCards", () => ({
 
 const { ChatLauncher } = await import("../ChatPopup");
 
+/**
+ * jsdom has no matchMedia, and the launcher branches on it.
+ *
+ * `wide` is a desktop window, where the panel floats over the dashboard;
+ * anything else is the phone path, which opens the full page instead — readers
+ * had the sheet closing under them mid-message when a phone keyboard resized
+ * the viewport out from under a fixed element.
+ */
+function setViewport(wide: boolean) {
+  vi.stubGlobal(
+    "matchMedia",
+    (query: string) =>
+      ({
+        matches: wide && query.includes("min-width"),
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }) as unknown as MediaQueryList
+  );
+}
+
+const open = () =>
+  fireEvent.click(screen.getByRole("button", { name: "실시간 채팅 열기" }));
+
 describe("ChatLauncher", () => {
   beforeEach(() => {
     room.mounts = 0;
+    setViewport(true);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /*
+   * The phone never gets the panel. A keyboard resizes the viewport under a
+   * fixed element and moves focus as it opens, and the full page has none of
+   * that geometry to lose.
+   */
+  it("sends a phone to the full page instead of opening a panel", () => {
+    setViewport(false);
+    const onExpand = vi.fn();
+    render(<ChatLauncher onExpand={onExpand} />);
+
+    open();
+
+    expect(onExpand).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(room.mounts).toBe(0);
   });
 
   it("joins no room until the button is pressed", () => {
@@ -57,7 +103,7 @@ describe("ChatLauncher", () => {
   it("opens the room on press", () => {
     render(<ChatLauncher />);
 
-    fireEvent.click(screen.getByRole("button", { name: "실시간 채팅 열기" }));
+    open();
 
     expect(room.mounts).toBeGreaterThan(0);
     expect(screen.getByRole("dialog", { name: "실시간 채팅" })).toBeInTheDocument();
@@ -66,7 +112,7 @@ describe("ChatLauncher", () => {
 
   it("leaves the room when closed, rather than holding the socket open", () => {
     render(<ChatLauncher />);
-    fireEvent.click(screen.getByRole("button", { name: "실시간 채팅 열기" }));
+    open();
 
     fireEvent.click(screen.getByRole("button", { name: "채팅 닫기" }));
 
@@ -76,7 +122,7 @@ describe("ChatLauncher", () => {
 
   it("closes on Escape", () => {
     render(<ChatLauncher />);
-    fireEvent.click(screen.getByRole("button", { name: "실시간 채팅 열기" }));
+    open();
 
     fireEvent.keyDown(document, { key: "Escape" });
 
@@ -91,7 +137,7 @@ describe("ChatLauncher", () => {
    */
   it("brings the prices along, since the sheet covers them", () => {
     render(<ChatLauncher />);
-    fireEvent.click(screen.getByRole("button", { name: "실시간 채팅 열기" }));
+    open();
 
     const cards = screen.getByTestId("mini-cards");
     expect(cards).toBeInTheDocument();
@@ -101,7 +147,7 @@ describe("ChatLauncher", () => {
   // §28.3: wherever the room appears, it says what it is.
   it("carries the disclaimer", () => {
     render(<ChatLauncher />);
-    fireEvent.click(screen.getByRole("button", { name: "실시간 채팅 열기" }));
+    open();
 
     expect(screen.getByText(/투자 권유가 아닙니다/)).toBeInTheDocument();
   });

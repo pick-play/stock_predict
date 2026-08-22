@@ -40,6 +40,20 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
+/**
+ * The count on its own, from the poll rather than the socket.
+ *
+ * Kept separate from the lines because the two arrive from different places at
+ * different rates: a reader with no chat open still gets a fresh number every
+ * few seconds, and a reader with the panel open gets it pushed instantly and
+ * should not have it overwritten by a poll that is a moment behind.
+ */
+export function publishParticipants(participants: number): void {
+  if (snapshot.participants === participants) return;
+  snapshot = { ...snapshot, participants };
+  for (const listener of listeners) listener();
+}
+
 export function publishLivePreview(
   messages: ChatMessage[],
   participants: number

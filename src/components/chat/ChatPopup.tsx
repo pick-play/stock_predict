@@ -28,6 +28,7 @@ import { ChatNotReady } from "./ChatNotReady";
 import { ParticipantCount } from "./ParticipantCount";
 import type { ChatConnectionStatus } from "../../types/chat";
 import { StockMiniCards } from "../common/StockMiniCards";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { publishLivePreview } from "../../lib/chat/livePreview";
 
 interface ChatPopupProps {
@@ -171,17 +172,18 @@ export function ChatPopup({ onClose, onExpand }: ChatPopupProps) {
       </header>
 
       {/*
-        Prices, on the phone only.
+        Prices, only in the sheet layout.
         
-        The sheet covers the whole screen there, so the cards the reader came
-        from are gone and the room needs to carry them — the same reason the
-        full page does (§28.3). The desktop panel floats over a dashboard that
-        is still showing them, and two more cards inside a 34rem box would take
-        a third of the conversation for a number already on screen.
+        A phone opens the full page now rather than this panel, so the sheet is
+        reached only by a desktop window narrow enough to trigger it — and there
+        it covers the cards the reader came from, which is the same reason the
+        full page carries them (§28.3). The wide panel floats over a dashboard
+        still showing them, and two more cards inside a 34rem box would take a
+        third of the conversation for a number already on screen.
 
         Held back until the room is open, like the page does it: StockMiniCards
         starts the whole market feed, and mounting it alongside the join makes
-        entering the room feel slow on a phone.
+        entering the room feel slow.
       */}
       {isConnected && (
         <div className="md:hidden">
@@ -229,12 +231,28 @@ export function ChatPopup({ onClose, onExpand }: ChatPopupProps) {
 export function ChatLauncher({ onExpand }: { onExpand?: () => void }) {
   const [open, setOpen] = useState(false);
 
+  /*
+   * A phone gets the page, not the panel.
+   *
+   * Readers reported the sheet closing on them mid-message. A phone keyboard
+   * resizes the viewport under a fixed element and moves focus around as it
+   * opens, and a panel living outside the page's own scroll container is the
+   * fragile place to be standing when that happens — the full page has none of
+   * that geometry to lose.
+   *
+   * The breakpoint is the same 768px the panel's own styling uses, so the
+   * decision matches the layout that would have been drawn rather than
+   * guessing from the input device: a narrow desktop window is the same shape
+   * of problem as a phone.
+   */
+  const canFloat = useMediaQuery("(min-width: 768px)");
+
   return (
     <>
       {!open && (
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => (canFloat ? setOpen(true) : onExpand?.())}
           aria-label="실시간 채팅 열기"
           /*
            * Above the phone's market tape and its home indicator; the install
@@ -253,7 +271,7 @@ export function ChatLauncher({ onExpand }: { onExpand?: () => void }) {
         </button>
       )}
 
-      {open && (
+      {open && canFloat && (
         <ChatPopup onClose={() => setOpen(false)} onExpand={onExpand} />
       )}
     </>
