@@ -15,11 +15,11 @@ import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import type { StockSnapshot } from "../../../types/market";
 
-const backdropRenders = vi.hoisted(() => ({ count: 0 }));
+const sparklineRenders = vi.hoisted(() => ({ count: 0 }));
 
-vi.mock("../SparklineBackdrop", () => ({
-  SparklineBackdrop: () => {
-    backdropRenders.count += 1;
+vi.mock("../Sparkline", () => ({
+  Sparkline: () => {
+    sparklineRenders.count += 1;
     return null;
   },
 }));
@@ -66,25 +66,25 @@ function card(snapshot: StockSnapshot) {
 
 describe("StockEstimateCard memoisation", () => {
   it("does not re-render when nothing about this card changed", () => {
-    backdropRenders.count = 0;
+    sparklineRenders.count = 0;
     const { rerender } = render(card(SNAPSHOT));
-    expect(backdropRenders.count).toBe(1);
+    expect(sparklineRenders.count).toBe(1);
 
     // What a flush looks like for a card whose own numbers held still.
     rerender(card(SNAPSHOT));
     rerender(card(SNAPSHOT));
 
-    expect(backdropRenders.count).toBe(1);
+    expect(sparklineRenders.count).toBe(1);
   });
 
   it("still re-renders when its own snapshot moves", () => {
-    backdropRenders.count = 0;
+    sparklineRenders.count = 0;
     const { rerender } = render(card(SNAPSHOT));
 
     rerender(card({ ...SNAPSHOT, estimatedPrice: 209000 }));
 
     // More than once, not exactly twice: a moved price also restarts the flash
     // animation, which is a second render by design.
-    expect(backdropRenders.count).toBeGreaterThan(1);
+    expect(sparklineRenders.count).toBeGreaterThan(1);
   });
 });

@@ -11,7 +11,7 @@ import {
 } from "../../lib/format";
 import { getLastKrxCloseMs, getSeoulDate } from "../../lib/koreaMarket";
 import { getDataFreshness } from "../../lib/staleData";
-import { SparklineBackdrop } from "./SparklineBackdrop";
+import { Sparkline } from "./Sparkline";
 import { StockLogo } from "./StockLogo";
 import { ShareCardButton } from "./ShareCardButton";
 import type { WsConnectionStatus } from "../../lib/binance/websocketAdapter";
@@ -202,24 +202,7 @@ function StockEstimateCardImpl({
         aria-hidden="true"
       />
 
-      {/*
-        The trend, in the corner the thumbnail used to occupy.
-        
-        Absolute inside the article, which is already `relative` and
-        `overflow-hidden`, so it runs to the card's own edges rather than
-        stopping at the content padding. The mask dissolves its left edge into
-        the card; without it the chart ends in a vertical line next to the name.
-        Height is fixed in px rather than a percentage because the card grows
-        when 상세보기 opens, and the picture should not grow with it.
-      */}
-      {hasTrend && (
-        <SparklineBackdrop
-          data={sparklineData!}
-          className="absolute right-0 top-0 h-[7.5rem] w-[58%] md:h-[9rem] md:w-[54%] [mask-image:linear-gradient(to_right,transparent,black_42%)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_42%)]"
-        />
-      )}
-
-      <div className="relative px-3.5 pt-4 pb-2.5 md:px-6 md:pt-6 md:pb-3.5">
+      <div className="px-3.5 pt-4 pb-2.5 md:px-6 md:pt-6 md:pb-3.5">
         {/* ── Header ── */}
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="min-w-0">
@@ -241,19 +224,28 @@ function StockEstimateCardImpl({
               {snapshot.koreanTicker}
             </span>
           </div>
-          {/* The trend used to live here as an 88×30 thumbnail. It is now the
-              backdrop of the price block below — same series, several times the
-              area, and the corner it vacated lets the name and the mark have
-              the header to themselves. */}
+          {/* The shape of the last hours, tinted by the change printed below
+              it. A full-width picture behind the price was tried and reverted
+              (owner decision) — this is small enough to be read as a hint at
+              the header's edge rather than as a chart the card is about. */}
+          {hasTrend && (
+            <span className="shrink-0">
+              <Sparkline
+                data={sparklineData!}
+                changeRate={snapshot.changeRate}
+                className="h-9 w-[108px] md:h-11 md:w-[132px]"
+              />
+            </span>
+          )}
         </div>
 
         {/* ── Price block (flash wrapper uses key to restart animation) ── */}
         <div
           key={flashKey}
-          className={`relative -mx-1 px-1 py-2 rounded-xl ${flashClass}`}
+          className={`-mx-1 px-1 py-2 rounded-xl ${flashClass}`}
         >
           {isNoBaseline ? (
-            <div className="relative py-1">
+            <div className="py-1">
               <div className="flex items-center gap-1.5 mb-2">
                 <span
                   className="w-1.5 h-1.5 rounded-full bg-[#f5b942] animate-pulse"
@@ -277,7 +269,7 @@ function StockEstimateCardImpl({
               </p>
             </div>
           ) : (
-            <div className="relative">
+            <div>
               {/*
                 Price and change share a baseline instead of sitting in two
                 separate blocks with a filled badge between them. They answer one

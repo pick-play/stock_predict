@@ -103,20 +103,14 @@ const PRICE_GAP = 47; // caption baseline → price baseline
 const CHANGE_GAP = 27; // price baseline → change baseline
 const ANCHOR_GAP = 20; // divider → anchor row baseline
 /**
- * The trend's box: the card's upper right, under the wordmark.
+ * The trend thumbnail, right-aligned in the name row.
  *
- * It starts where the brand row ends and stops where the price begins, so it
- * costs no height and overlaps no text of its own. Anchoring it to the card's
- * very top instead put the curve through 코스피 NOW, which is the one line on
- * the image that says whose picture this is.
- *
- * Derived from the rhythm constants rather than typed as a number: the gaps
- * above it have already been retuned once, and a hand-written offset would drift
- * out of step silently.
+ * Inside that row, so it costs no height and the card's total does not depend
+ * on it — which is why nothing below has to move when a stock has too few
+ * points to draw.
  */
-const TREND_W_RATIO = 0.56;
-const TREND_TOP = HEAD_TOP + HEAD_H;
-const TREND_H = HEAD_GAP + NAME_GAP + EYEBROW_GAP + 20;
+const SPARK_W = 136;
+const SPARK_H = 48;
 const SPARK_MIN_POINTS = 2;
 
 const FOOT_GAP = 22; // change baseline → divider
@@ -309,64 +303,56 @@ function krwParts(value: number): { number: string; unit: string } {
  * shape is the only thing this adds.
  */
 /**
- * The recent trend, drawn large in the card's top-right corner.
+ * The recent trend, beside the company name.
  *
- * The card on screen does exactly this, and for the same reason: the name sits
- * top-left and the price bottom-left, so the upper right is the one region that
- * carries no text of its own. A thumbnail beside the name was as small as a
- * chart can be and still be one.
- *
- * Left edge is faded into the card rather than masked — a canvas has no
- * mask-image, but the card behind it is a flat fill, so painting that same
- * colour over the chart in a horizontal gradient dissolves it just as well.
+ * A large picture behind the card was tried and reverted along with the card's
+ * own (owner decision, 2026-08-22). What matters more than the size is that the
+ * two agree: whatever the card draws, the image someone saves has to look like
+ * the thing they were just looking at.
  */
-function drawTrendBackdrop(
+function drawSparkline(
   ctx: CanvasRenderingContext2D,
   series: number[],
   x: number,
   y: number,
   w: number,
   h: number,
+  changeRate: number,
 ): void {
   /*
-   * The colour comes from the series, first point to last — the same rule the
-   * on-screen chart uses.
+   * Coloured by the card's overnight change, the number printed beside it.
    *
-   * It used to be handed the card's direction, which is the estimate against
-   * its anchor: a different question over a different window. Whenever the last
-   * few hours ran opposite to the day, the shared picture came out the other
-   * colour from the one the sender had just been looking at.
+   * This was the series' own first-to-last direction for a while, on the
+   * argument that a picture should agree with itself. It was changed back by
+   * owner decision: the two questions are asked over different windows and when
+   * they disagree — the last six hours running against the move since the
+   * domestic close — the card showed a red figure over a blue line. The screen
+   * and this canvas must answer the same way, whichever way that is.
    */
-  const firstValue = series[0];
-  const lastValue = series[series.length - 1];
   const color =
-    lastValue > firstValue
+    changeRate > 0
       ? COLORS.rise
-      : lastValue < firstValue
+      : changeRate < 0
         ? COLORS.fall
         : LIGHT.textTertiary;
 
   const min = Math.min(...series);
   const max = Math.max(...series);
   const range = max - min;
-
-  // Margins only, not headroom: nothing is written in this box, so the curve
-  // may use nearly all of it without a flat series looking like a border.
-  const top = y + h * 0.12;
-  const bottom = y + h * 0.9;
+  const padY = 8;
 
   const toX = (i: number) => x + (i / (series.length - 1)) * w;
   const toY = (v: number) =>
-    range === 0 ? (top + bottom) / 2 : bottom - ((v - min) / range) * (bottom - top);
+    range === 0
+      ? y + h / 2
+      : y + h - padY - ((v - min) / range) * (h - padY * 2);
 
   const points = series.map((v, i) => ({ x: toX(i), y: toY(v) }));
 
-  // Fill fades downward from the line, the way an area chart's glow does, so it
-  // thins out toward the price instead of banding across it.
-  const fill = ctx.createLinearGradient(0, top, 0, y + h);
-  fill.addColorStop(0, withAlpha(color, 0.2));
-  fill.addColorStop(0.6, withAlpha(color, 0.07));
-  fill.addColorStop(1, withAlpha(color, 0));
+  // Filled area first, so the line sits on top of its own shading.
+  const fill = ctx.createLinearGradient(0, y, 0, y + h);
+  fill.addColorStop(0, withAlpha(color, 0.18));
+  fill.addColorStop(1, withAlpha(color, 0.02));
 
   ctx.beginPath();
   ctx.moveTo(points[0].x, y + h);
@@ -379,20 +365,23 @@ function drawTrendBackdrop(
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
   for (const p of points.slice(1)) ctx.lineTo(p.x, p.y);
-  ctx.strokeStyle = withAlpha(color, 0.5);
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // No end dot. At this contrast a 3.5px disc reads as a blemish on the card,
-  // not as "the latest point" — and the price beside it already says that.
-
-  const fade = ctx.createLinearGradient(x, 0, x + w * 0.55, 0);
-  fade.addColorStop(0, LIGHT.surface);
-  fade.addColorStop(1, withAlpha(LIGHT.surface, 0));
-  ctx.fillStyle = fade;
-  ctx.fillRect(x, y, w * 0.55, h);
+  // The latest point, marked so the reader knows which end is now.
+  const last = points[points.length - 1];
+  ctx.beginPath();
+  ctx.arc(last.x, last.y, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(last.x, last.y, 3.5, 0, Math.PI * 2);
+  ctx.strokeStyle = LIGHT.surface;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
 }
 
 /**
@@ -588,13 +577,6 @@ export async function generateShareImage(
   ctx.fillStyle = bar;
   ctx.fillRect(cX, cY, cW, ACCENT_BAR_H);
 
-  // The trend, still inside the card's clip so it runs to the rounded corner.
-  // Drawn before any text, which is what makes it a backdrop rather than an
-  // element the header has to make room for.
-  if (hasChart) {
-    const tW = cW * TREND_W_RATIO;
-    drawTrendBackdrop(ctx, series, cX + cW - tW, cY + TREND_TOP, tW, TREND_H);
-  }
   ctx.restore();
 
   // Inner layout bounds
@@ -637,6 +619,20 @@ export async function generateShareImage(
   ctx.fillStyle = LIGHT.textPrimary;
   ctx.fillText(snapshot.displayName, iX, y);
   const nameW = ctx.measureText(snapshot.displayName).width;
+
+  // Recent trend, right-aligned against the name — the card's arrangement, so a
+  // reader who saw the screen recognises the picture.
+  if (hasChart) {
+    drawSparkline(
+      ctx,
+      series,
+      iR - SPARK_W,
+      y - 30,
+      SPARK_W,
+      SPARK_H,
+      snapshot.changeRate,
+    );
+  }
 
   if (logo) {
     // Heights in the shared table are tuned for the card, where the name runs

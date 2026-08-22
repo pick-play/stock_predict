@@ -102,14 +102,15 @@ export function DashboardPage({
     useMarketData();
 
   /**
-   * 6시간 by default (owner decision, 2026-08-21).
+   * 24시간 by default (owner decision, 2026-08-22).
    *
-   * The chart opens from a card showing tonight's estimate, and 24h answered a
-   * question nobody asked there — it spans the domestic session the site tells
-   * readers to ignore. Six hours covers an evening's worth of overseas trading,
-   * which is the window the estimate actually moves in.
+   * This was six hours for a day, on the argument that a full day drags in the
+   * domestic session the site tells readers to ignore. It does — and a reader
+   * opening a chart still wants to see where the day started, not the tail of
+   * an evening. The regular-hours stretch is context for the overnight move,
+   * not a distraction from it.
    */
-  const [chartRange, setChartRange] = useState<ChartRange>("6h");
+  const [chartRange, setChartRange] = useState<ChartRange>("24h");
   /**
    * Which card's chart is open, or null.
    *
