@@ -24,16 +24,30 @@ const FOLLOW_THRESHOLD_PX = 64;
  * to the full viewport would push the composer below the fold by exactly that
  * strip's height — a number this component has no business knowing.
  */
-const TRANSCRIPT_CLASS =
-  "flex h-[56dvh] flex-col overflow-y-auto overflow-x-hidden px-4 py-3 md:h-[60dvh] md:px-6";
+const TRANSCRIPT_BASE =
+  "flex flex-col overflow-y-auto overflow-x-hidden px-4 py-3 md:px-6";
+
+/**
+ * The page's height. Kept separate from the rest so a caller can replace it
+ * without fighting Tailwind: two `h-` classes in one string do not override
+ * each other by order — whichever the stylesheet defines last wins, which is
+ * not something a call site can see.
+ */
+const TRANSCRIPT_HEIGHT = "h-[56dvh] md:h-[60dvh]";
 
 interface ChatMessageListProps {
   messages: ChatMessage[];
   /** Own handle, used to tint matching lines. Null until the server assigns one. */
   ownHandle: string | null;
+  /** Replaces the page's fixed height — the popup fills its panel instead. */
+  heightClass?: string;
 }
 
-export function ChatMessageList({ messages, ownHandle }: ChatMessageListProps) {
+export function ChatMessageList({
+  messages,
+  ownHandle,
+  heightClass = TRANSCRIPT_HEIGHT,
+}: ChatMessageListProps) {
   // The labels are relative for the first hour, so they have to be recomputed as
   // time passes — a line that says 방금 must not still say it ten minutes later.
   const now = useNow(15_000);
@@ -72,7 +86,7 @@ export function ChatMessageList({ messages, ownHandle }: ChatMessageListProps) {
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className={TRANSCRIPT_CLASS}
+      className={`${TRANSCRIPT_BASE} ${heightClass}`}
       role="log"
       aria-live="polite"
       aria-relevant="additions"

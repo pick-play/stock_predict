@@ -14,6 +14,7 @@ import { MarketIndexGrid } from "../components/dashboard/MarketIndexGrid";
 import { EconomicCalendar } from "../components/dashboard/EconomicCalendar";
 import { Disclaimer } from "../components/common/Disclaimer";
 import { RecentChatStrip } from "../components/dashboard/RecentChatStrip";
+import { ChatLauncher } from "../components/chat/ChatPopup";
 import { CommunityHotList } from "../components/dashboard/CommunityHotList";
 import { ErrorState } from "../components/common/ErrorState";
 import { StockCardSkeleton } from "../components/common/LoadingSkeleton";
@@ -214,9 +215,6 @@ export function DashboardPage({
       <main className="px-4 md:px-6 pt-3.5 md:pt-4 pb-24 md:pb-10 space-y-4">
         <HeroSummary />
 
-        {/* Chat leads the page by owner decision, on its own at full width. */}
-        <RecentChatStrip onNavigateChat={onNavigateChat} />
-
         {/* Error banners */}
         {error && !hasAnyData && (
           <div className="animate-slide-fade-in">
@@ -292,6 +290,16 @@ export function DashboardPage({
           )}
         </div>
 
+        {/*
+          The room, under the cards rather than above them.
+
+          It led the page until 2026-08-22; on a phone that put a conversation
+          where the prices should be. It stays directly under the listings — the
+          launcher offers the room from anywhere now, so this is a preview of
+          what is being said, not the way in.
+        */}
+        <RecentChatStrip onNavigateChat={onNavigateChat} />
+
         {/* Release schedule, then the week's hot community posts under it. Both
             below the chart, because the chart belongs to the cards whose button
             opens it and nothing should sit between a control and what it
@@ -307,7 +315,9 @@ export function DashboardPage({
         <Disclaimer />
       </main>
 
-      {/* Phones only, and only where nothing else owns the bottom-right. */}
+      {/* Both live in the bottom-right corner; the install button stacks above
+          the launcher, which is the one people press. */}
+      <ChatLauncher onExpand={onNavigateChat} />
       <InstallButton />
 
       {authModalOpen && (

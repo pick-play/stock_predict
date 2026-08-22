@@ -50,8 +50,15 @@ declare global {
   }
 }
 
-/** Clears the bottom market tape (2.5rem) plus the phone's home indicator. */
-const BOTTOM_OFFSET = "calc(2.5rem + env(safe-area-inset-bottom) + 0.75rem)";
+/**
+ * Clears the bottom market tape (2.5rem), the phone's home indicator, and the
+ * chat launcher that now sits in this corner (3rem plus its own gap).
+ *
+ * Both are `fixed right-4`; without the extra step they land on top of each
+ * other. The chat button is the one people press, so it keeps the corner.
+ */
+const BOTTOM_OFFSET =
+  "calc(2.5rem + env(safe-area-inset-bottom) + 0.75rem + 3.75rem)";
 
 export function InstallButton() {
   const [platform, setPlatform] = useState<InstallPlatform>(null);
