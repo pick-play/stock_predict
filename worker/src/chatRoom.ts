@@ -16,6 +16,8 @@
 import {
   CHAT_ADMIN_DELETE_PATH,
   CHAT_HISTORY_PATH,
+  CHAT_PRESENCE_PATH,
+  CHAT_PRESENCE_TTL_MS,
   CHAT_IP_HASH_HEADER,
   CHAT_MEMBER_HANDLE_HEADER,
   CHAT_PING_FRAME,
@@ -96,9 +98,21 @@ export class ChatRoom implements DurableObject {
    */
   private readonly sendHistory: Map<string, number[]>;
 
+  /**
+   * Site presence: IP hash → when it last said it was here.
+   *
+   * In memory, deliberately, and for a stronger reason than sendHistory: this
+   * would otherwise be a storage write per visitor per minute, and rows written
+   * is the first resource this project runs out of on the free plan. Losing the
+   * map to hibernation costs nothing — a room only hibernates once nobody has
+   * pinged it, and the next ping rebuilds the entry that matters.
+   */
+  private readonly sitePresence: Map<string, number>;
+
   constructor(ctx: DurableObjectState) {
     this.ctx = ctx;
     this.sendHistory = new Map<string, number[]>();
+    this.sitePresence = new Map<string, number>();
     this.store = new ChatMessageStore(this.createStorageAdapter(ctx));
 
     // Keepalives are answered from the auto-response table without waking the
@@ -109,6 +123,21 @@ export class ChatRoom implements DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
+    /*
+     * A visitor somewhere on the site saying they are still here.
+     *
+     * Cheapest thing the room does: one map write and a count. It opens no
+     * socket and reads no history, so a dashboard reader who never enters the
+     * room costs one request a minute and nothing else.
+     */
+    if (new URL(request.url).pathname === CHAT_PRESENCE_PATH) {
+      const ipHash = request.headers.get(CHAT_IP_HASH_HEADER) ?? '';
+      if (ipHash !== '') this.sitePresence.set(ipHash, Date.now());
+      return new Response(JSON.stringify({ participants: this.siteCount() }), {
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      });
+    }
+
     // Read-only transcript for the dashboard preview. Kept on the same object
     // because it is the only holder of the window, but it opens no socket and
     // takes no identity — nothing here can write.
@@ -126,7 +155,7 @@ export class ChatRoom implements DurableObject {
         : CHAT_PREVIEW_LIMIT;
       const messages = await this.store.history(limit);
       return new Response(
-        JSON.stringify({ messages, participants: this.participantCount() }),
+        JSON.stringify({ messages, participants: this.siteCount() }),
         { headers: { 'Content-Type': 'application/json; charset=utf-8' } }
       );
     }
@@ -189,13 +218,13 @@ export class ChatRoom implements DurableObject {
     this.send(server, {
       type: 'hello',
       handle,
-      participants: this.participantCount(),
+      participants: this.siteCount(),
       messages,
     });
 
     // The joiner already learned the count from `hello`; everyone else needs it.
     this.broadcast(
-      { type: 'presence', participants: this.participantCount() },
+      { type: 'presence', participants: this.siteCount() },
       server
     );
 
@@ -281,7 +310,7 @@ export class ChatRoom implements DurableObject {
     }
 
     this.broadcast(
-      { type: 'presence', participants: this.participantCount(socket) },
+      { type: 'presence', participants: this.siteCount(socket) },
       socket
     );
   }
@@ -289,7 +318,7 @@ export class ChatRoom implements DurableObject {
   async webSocketError(socket: WebSocket, error: unknown): Promise<void> {
     console.warn('[chat] socket error', error);
     this.broadcast(
-      { type: 'presence', participants: this.participantCount(socket) },
+      { type: 'presence', participants: this.siteCount(socket) },
       socket
     );
   }
@@ -315,18 +344,42 @@ export class ChatRoom implements DurableObject {
   }
 
   /**
-   * Live participant count.
+   * How many people are on the site, not how many are in the room.
+   *
+   * Owner decision, 2026-08-22. The socket count was honest and useless: most
+   * readers never open the chat, so a room showing "2명" beside a live
+   * conversation described the room's emptiness rather than the site's traffic.
+   *
+   * The two sources are unioned by IP hash, because a person in the room is
+   * also a person on the site and must not be counted twice. That hash is also
+   * why this is a floor and not a headcount: a household or an office behind
+   * one address is one entry, and the UI says 접속 rather than claiming people.
    *
    * getWebSockets() can still return a socket that is closing, so the one being
    * torn down is excluded explicitly rather than trusted to have left the set —
    * and so is any other socket already closing or closed, which is how a phone
    * that dropped without a close frame used to keep inflating the count.
    */
-  private participantCount(exclude?: WebSocket): number {
-    return this.ctx
-      .getWebSockets()
-      .filter((socket) => socket !== exclude && !isClosingOrClosed(socket))
-      .length;
+  private siteCount(exclude?: WebSocket): number {
+    const now = Date.now();
+    const here = new Set<string>();
+
+    for (const [ipHash, lastSeen] of this.sitePresence) {
+      // Pruned on read: there is no timer here, and a map that only grows would
+      // hold every address the room has ever seen until it hibernates.
+      if (now - lastSeen > CHAT_PRESENCE_TTL_MS) this.sitePresence.delete(ipHash);
+      else here.add(ipHash);
+    }
+
+    for (const socket of this.ctx.getWebSockets()) {
+      if (socket === exclude || isClosingOrClosed(socket)) continue;
+      const identity = readIdentity(socket);
+      // A socket whose attachment cannot be read still represents somebody;
+      // counting it under its own key is better than dropping it.
+      here.add(identity?.ipHash ?? `socket:${here.size}`);
+    }
+
+    return here.size;
   }
 
   /**

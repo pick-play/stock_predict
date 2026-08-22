@@ -45,29 +45,48 @@ const CHART_PANEL_ID = "stock-chart-panel";
  */
 const PHONE_ROW_ORDER = [
   "order-1",
-  "order-3",
-  "order-5",
-  "order-7",
-  "order-9",
-  "order-11",
-  "order-[13]",
+  "order-[11]",
+  "order-[21]",
+  "order-[31]",
+  "order-[41]",
+  "order-[51]",
+  "order-[61]",
 ];
 const PHONE_CHART_ORDER = [
   "order-2",
-  "order-4",
-  "order-6",
-  "order-8",
-  "order-10",
-  "order-12",
-  "order-[14]",
+  "order-[12]",
+  "order-[22]",
+  "order-[32]",
+  "order-[42]",
+  "order-[52]",
+  "order-[62]",
 ];
-const ROW_ORDER = ["md:order-1", "md:order-3", "md:order-5", "md:order-7"];
+const ROW_ORDER = [
+  "md:order-1",
+  "md:order-[11]",
+  "md:order-[21]",
+  "md:order-[31]",
+];
 const CHART_ROW_ORDER = [
   "md:order-2",
-  "md:order-4",
-  "md:order-6",
-  "md:order-8",
+  "md:order-[12]",
+  "md:order-[22]",
+  "md:order-[32]",
 ];
+
+/**
+ * The chat strip's slot: under SK하이닉스, not under the last listing.
+ *
+ * Owner decision, 2026-08-22. The two majors are what most readers came for, so
+ * the room sits directly under them rather than below all seven — near enough
+ * to be seen, far enough that a conversation is not the first thing on the
+ * page.
+ *
+ * A row is one card on a phone and two on a desktop, so "after the first row"
+ * is a different position on each: after 하이닉스 and its chart slot (12) on a
+ * phone, after the first pair's chart slot (2) on a desktop.
+ */
+const STRIP_ORDER = "order-[15] md:order-[5]";
 
 /**
  * One per row on a phone, two from `md` up.
@@ -267,6 +286,17 @@ export function DashboardPage({
             );
           })}
 
+          {/*
+            The room, in the grid so CSS order can put it under the first row.
+            
+            It led the page until 2026-08-22; on a phone that put a conversation
+            where the prices should be. The launcher in the corner is the way in
+            now, so this is a preview of what is being said.
+          */}
+          <div className={`md:col-span-2 ${STRIP_ORDER}`}>
+            <RecentChatStrip onNavigateChat={onNavigateChat} />
+          </div>
+
           {chartStock && (
             <div
               id={CHART_PANEL_ID}
@@ -289,16 +319,6 @@ export function DashboardPage({
             </div>
           )}
         </div>
-
-        {/*
-          The room, under the cards rather than above them.
-
-          It led the page until 2026-08-22; on a phone that put a conversation
-          where the prices should be. It stays directly under the listings — the
-          launcher offers the room from anywhere now, so this is a preview of
-          what is being said, not the way in.
-        */}
-        <RecentChatStrip onNavigateChat={onNavigateChat} />
 
         {/* Release schedule, then the week's hot community posts under it. Both
             below the chart, because the chart belongs to the cards whose button

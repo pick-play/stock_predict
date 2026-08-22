@@ -53,13 +53,18 @@ describe("HeroSummary", () => {
     expect(alert.textContent).toContain("실제 체결가");
   });
 
-  it("notes thin weekend liquidity", () => {
+  /*
+   * The weekend liquidity note is gone (owner decision, 2026-08-22): true,
+   * permanent, and two days out of seven of a banner pushing the prices down a
+   * phone screen. §21's disclaimer carries the caveat every hour of the week.
+   */
+  it("says nothing at the weekend", () => {
     market.isWeekend.mockReturnValue(true);
     render(<HeroSummary />);
-    expect(screen.getByRole("alert").textContent).toContain("변동성");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("prefers the trading-hours notice over the weekend one", () => {
+  it("still speaks during the session, weekend or not", () => {
     market.isWeekend.mockReturnValue(true);
     session.trading = true;
     render(<HeroSummary />);

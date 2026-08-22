@@ -25,13 +25,22 @@ import {
 import { formatChatTime } from "../../lib/chat/formatChatTime";
 import { useNow } from "../../hooks/useNow";
 import { formatKoreanTimeDetailed } from "../../lib/format";
+import { useLivePreview } from "../../lib/chat/livePreview";
 
 interface RecentChatStripProps {
   onNavigateChat?: () => void;
 }
 
 export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
-  const [data, setData] = useState<RecentChat | null>(null);
+  const [polled, setPolled] = useState<RecentChat | null>(null);
+  /*
+   * The popup publishes what its socket receives, and that always wins.
+   *
+   * Polling plus the Worker's preview cache means this strip can be up to half
+   * a minute behind a panel open right on top of it. While that panel is there
+   * the socket is the same room, only sooner.
+   */
+  const live = useLivePreview();
   // Relative labels for the first hour, so they need a clock that moves.
   const now = useNow(15_000);
 
@@ -47,7 +56,7 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
       const next = await fetchRecentChat(controller.signal);
       // Keep the previous lines on a failed refresh rather than blanking a strip
       // that was correct a moment ago.
-      if (!cancelled && next) setData(next);
+      if (!cancelled && next) setPolled(next);
     };
 
     void load();
@@ -68,6 +77,13 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
+
+  const data: RecentChat | null = live.messages.length
+    ? {
+        messages: live.messages,
+        participants: live.participants ?? polled?.participants ?? 0,
+      }
+    : polled;
 
   // Nothing to show and nothing to promise: take up no space.
   if (!data || data.messages.length === 0) return null;

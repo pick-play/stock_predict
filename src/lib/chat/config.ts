@@ -107,6 +107,37 @@ export const CHAT_MAX_SOCKETS_PER_IP = 25;
 export const CHAT_HISTORY_PATH = "/history";
 
 /**
+ * Internal path for a presence ping. Worker → room, never public.
+ *
+ * The count the room reports is site-wide as of 2026-08-22 (owner decision):
+ * how many people are on kospinow.com, not how many have the chat open. Most
+ * readers never enter the room, and "3명 접속" next to a conversation nobody is
+ * in reads as a dead site rather than as an accurate socket count.
+ */
+export const CHAT_PRESENCE_PATH = "/presence";
+
+/** Public route the browser pings. */
+export const CHAT_PRESENCE_ENDPOINT = "/api/chat/presence";
+
+/**
+ * How often a tab announces itself.
+ *
+ * Every ping is one Durable Object request, so this is the whole cost of the
+ * feature: one per visitor per minute, and none at all from a tab nobody is
+ * looking at. Shortening it multiplies that directly.
+ */
+export const CHAT_PRESENCE_PING_MS = 60_000;
+
+/**
+ * How long a ping counts for.
+ *
+ * Comfortably longer than the interval, so a visitor does not flicker out of
+ * the count because one ping was slow. Short enough that someone who closed
+ * the tab is gone within about two minutes.
+ */
+export const CHAT_PRESENCE_TTL_MS = 150_000;
+
+/**
  * Path the Worker calls on the room stub to delete lines.
  *
  * The room does no authorisation of its own here: the Durable Object namespace

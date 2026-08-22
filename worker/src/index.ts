@@ -29,6 +29,7 @@ import {
   handleChatTicket,
   handleChatRoom,
   handleChatRecent,
+  handleChatPresence,
   handleChatAdminDelete,
 } from './routes/chat';
 import type { Env } from './types';
@@ -179,6 +180,16 @@ export default {
     // POST /api/chat/admin/delete — moderator removes chat lines
     if (method === 'POST' && path === '/api/chat/admin/delete') {
       return handleChatAdminDelete(request, env);
+    }
+
+    /*
+     * POST /api/chat/presence — "somebody is on the site".
+     *
+     * POST rather than GET because it changes what the room reports, and a GET
+     * that mutates is the kind of thing a prefetcher fires on its own.
+     */
+    if (method === 'POST' && path === '/api/chat/presence') {
+      return handleChatPresence(request, env);
     }
 
     // GET /api/chat/recent — read-only transcript preview for the dashboard

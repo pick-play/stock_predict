@@ -41,6 +41,11 @@ vi.mock("../../hooks/useMarketData", () => ({
     stocks: {
       samsung: snapshot("삼성전자", "005930"),
       skHynix: snapshot("SK하이닉스", "000660"),
+      hyundai: snapshot("현대차", "005380"),
+      samsungEM: snapshot("삼성전기", "009150"),
+      lgElectronics: snapshot("LG전자", "066570"),
+      hanmi: snapshot("한미반도체", "042700"),
+      naver: snapshot("NAVER", "035420"),
     },
     history: [],
     isLoading: false,
@@ -94,7 +99,7 @@ describe("DashboardPage chart placement", () => {
   it("stacks the cards in source order on a phone", () => {
     render(<DashboardPage />);
     expect(cardFor("삼성전자").className).toContain("order-1");
-    expect(cardFor("SK하이닉스").className).toContain("order-3");
+    expect(cardFor("SK하이닉스").className).toContain("order-[11]");
   });
 
   it("puts the chart right under 삼성전자 when that card opens it", async () => {
@@ -106,7 +111,7 @@ describe("DashboardPage chart placement", () => {
 
     const panel = document.getElementById(PANEL_ID);
     expect(panel).toBeTruthy();
-    // Between 삼성전자 (1) and SK하이닉스 (3).
+    // Between 삼성전자 (1) and SK하이닉스 (11).
     expect(panel!.className).toContain("order-2");
   });
 
@@ -117,7 +122,7 @@ describe("DashboardPage chart placement", () => {
     const buttons = screen.getAllByRole("button", { name: "차트 보기" });
     await user.click(buttons[1]);
 
-    expect(document.getElementById(PANEL_ID)!.className).toContain("order-4");
+    expect(document.getElementById(PANEL_ID)!.className).toContain("order-[12]");
   });
 
   it("shares the grid with the cards, so the order applies at all", async () => {
@@ -147,8 +152,27 @@ describe("DashboardPage chart placement", () => {
   it("keeps a phone row per card and a desktop row per pair", () => {
     render(<DashboardPage />);
     // Second card: row 1 of 7 on a phone, still row 0 of 4 beside 삼성전자.
-    expect(cardFor("SK하이닉스").className).toContain("order-3");
+    expect(cardFor("SK하이닉스").className).toContain("order-[11]");
     expect(cardFor("SK하이닉스").className).toContain("md:order-1");
     expect(cardFor("삼성전자").className).toContain("md:order-1");
+  });
+
+  /*
+   * The orders step by ten so something can be slotted between two rows. The
+   * chat strip is that something: it belongs under SK하이닉스, which is after
+   * 하이닉스's own chart slot on a phone and after the first pair's on a
+   * desktop — two different positions for one element.
+   */
+  it("puts the chat strip between the first row and the second", () => {
+    render(<DashboardPage />);
+
+    const strip = document.querySelector('[class~="order-[15]"]');
+    expect(strip).toBeTruthy();
+    expect(strip!.className).toContain("md:order-[5]");
+
+    // Phone: after 하이닉스 (11) and its chart slot (12), before 현대차 (21).
+    expect(cardFor("현대차").className).toContain("order-[21]");
+    // Desktop: after the first pair's chart slot (2), before the next row (11).
+    expect(cardFor("현대차").className).toContain("md:order-[11]");
   });
 });

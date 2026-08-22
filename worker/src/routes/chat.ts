@@ -7,6 +7,7 @@ import { requireAuth } from '../lib/session';
 import {
   CHAT_ADMIN_DELETE_PATH,
   CHAT_HISTORY_PATH,
+  CHAT_PRESENCE_PATH,
   CHAT_IP_HASH_HEADER,
   CHAT_MEMBER_HANDLE_HEADER,
   CHAT_PREVIEW_TTL_MS,
@@ -183,6 +184,45 @@ let previewCache: { payload: unknown; storedAtMs: number } | null = null;
  *
  * No ticket and no captcha — the room is public to read, matching the board.
  */
+/**
+ * Records that somebody is on the site, and answers with how many are.
+ *
+ * Called once a minute by every visible tab, from every page — which is why it
+ * does as little as possible: hash the address, hand it to the room, return a
+ * number. No ticket, no session, no body.
+ *
+ * It does wake the room, unlike the cached preview beside it. That is the cost
+ * of the feature and it was taken knowingly: hibernation still holds overnight,
+ * when nobody is on the site to ping.
+ */
+export async function handleChatPresence(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  const namespace = getChatRoomNamespace(env);
+  if (!namespace) return unavailable(request, env);
+
+  const ip = request.headers.get('CF-Connecting-IP') ?? '';
+  const ipHash = await hashIp(ip, env.IP_SALT);
+
+  const headers = new Headers();
+  headers.set(CHAT_IP_HASH_HEADER, ipHash);
+
+  const stub = namespace.get(namespace.idFromName(CHAT_ROOM_NAME));
+  try {
+    const upstream = await stub.fetch(
+      `https://chat-room.internal${CHAT_PRESENCE_PATH}`,
+      { headers }
+    );
+    if (!upstream.ok) throw new Error(`room responded ${upstream.status}`);
+    return jsonResponse(await upstream.json(), 200, request, env);
+  } catch (error) {
+    console.warn('[chat] presence ping failed', error);
+    // A count nobody can read is not worth an error state on the page.
+    return jsonResponse({ participants: 0 }, 200, request, env);
+  }
+}
+
 export async function handleChatRecent(
   request: Request,
   env: Env

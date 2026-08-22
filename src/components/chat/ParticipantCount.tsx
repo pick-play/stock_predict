@@ -1,9 +1,13 @@
 /**
- * Live participant count.
+ * How many people are on the site.
  *
- * The number comes from the room's socket set, so it is the count of open
- * connections, not of people — one visitor with two tabs counts twice. The label
- * says "접속" rather than "명" alone to avoid overstating what it measures.
+ * Site-wide as of 2026-08-22 (owner decision), not the room's socket count: most
+ * readers never open the chat, so a room reporting its own sockets described how
+ * empty the room was rather than how busy the site is.
+ *
+ * Still not a headcount. The server counts distinct IP hashes, so a household or
+ * an office behind one address is one — the label says 접속 rather than claiming
+ * people, and the room's own §28.3 caution about not overstating this holds.
  *
  * State is never colour-only (§19): the dot is paired with the word "실시간" or
  * "대기", so the meaning survives without colour perception.
@@ -19,7 +23,7 @@ export function ParticipantCount({
   isLive,
 }: ParticipantCountProps) {
   const label = isLive
-    ? `현재 ${participants}명 접속 중`
+    ? `사이트 접속 ${participants}명`
     : "접속자 수 확인 중";
 
   return (

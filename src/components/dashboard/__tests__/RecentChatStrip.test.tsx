@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { RecentChat } from "../../../lib/chat/recentApi";
 import { CHAT_PREVIEW_ROWS } from "../../../lib/chat/config";
@@ -121,5 +121,52 @@ describe("RecentChatStrip", () => {
       expect(row.className).toContain("flex");
       expect(row.className).not.toContain("hidden");
     });
+  });
+
+  /*
+   * Two views of one room, on the same screen.
+   *
+   * This strip polls every 20 seconds behind a 10-second server cache, so a
+   * line sent in the popup could sit half a minute behind a panel open right on
+   * top of it. When the popup publishes what its socket receives, that wins.
+   */
+  it("prefers the popup's live lines over its own polled copy", async () => {
+    const { publishLivePreview, resetLivePreview } = await import(
+      "../../../lib/chat/livePreview"
+    );
+    mockFetch.result = {
+      messages: [
+        {
+          id: "1",
+          body: "폴링으로 받은 오래된 줄",
+          handle: "느긋한 수달",
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      participants: 2,
+    };
+
+    render(<RecentChatStrip />);
+    expect(await screen.findByText("폴링으로 받은 오래된 줄")).toBeInTheDocument();
+
+    act(() => {
+      publishLivePreview(
+        [
+          {
+            id: "2",
+            body: "소켓으로 방금 온 줄",
+            handle: "빠른 수달",
+            createdAt: new Date().toISOString(),
+            isMember: false,
+          },
+        ],
+        5
+      );
+    });
+
+    expect(screen.getByText("소켓으로 방금 온 줄")).toBeInTheDocument();
+    expect(screen.queryByText("폴링으로 받은 오래된 줄")).toBeNull();
+
+    resetLivePreview();
   });
 });

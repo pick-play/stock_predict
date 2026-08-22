@@ -28,6 +28,7 @@ import { ChatNotReady } from "./ChatNotReady";
 import { ParticipantCount } from "./ParticipantCount";
 import type { ChatConnectionStatus } from "../../types/chat";
 import { StockMiniCards } from "../common/StockMiniCards";
+import { publishLivePreview } from "../../lib/chat/livePreview";
 
 interface ChatPopupProps {
   onClose: () => void;
@@ -59,6 +60,17 @@ export function ChatPopup({ onClose, onExpand }: ChatPopupProps) {
   const room = useChatRoom({ authToken: auth.token });
   const isConnected = room.status === "open";
   const panelRef = useRef<HTMLDivElement>(null);
+
+  /*
+   * Hand the socket's lines to the strip behind the panel.
+   *
+   * Both show the same room, and the strip is on a 20-second poll behind a
+   * 10-second server cache — so a line sent here could take half a minute to
+   * appear a few hundred pixels above, which reads as one of them being broken.
+   */
+  useEffect(() => {
+    publishLivePreview(room.messages, room.participants);
+  }, [room.messages, room.participants]);
 
   /*
    * Escape closes, and focus goes back where it came from.
