@@ -1,16 +1,9 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-21T07:54:32.211Z",
-  "windowStart": "2026-08-14",
-  "windowEnd": "2026-09-21",
+  "updatedAt": "2026-08-22T07:42:54.161Z",
+  "windowStart": "2026-08-15",
+  "windowEnd": "2026-09-22",
   "releases": [
-    {
-      "id": "retail",
-      "label": "소매판매",
-      "source": "Census",
-      "date": "2026-08-14",
-      "releaseAtUtc": "2026-08-14T12:30:00.000Z"
-    },
     {
       "id": "pce",
       "label": "개인소비지출 (PCE)",
