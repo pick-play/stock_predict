@@ -25,6 +25,7 @@ import {
   CHAT_PRESENCE_PING_MS,
 } from "../lib/chat/config";
 import { CHAT_API_BASE, isChatConfigured } from "../lib/chat/api";
+import { isPresenceDue, notePresenceSent } from "../lib/chat/presenceClock";
 
 export function useSitePresence() {
   useEffect(() => {
@@ -35,6 +36,10 @@ export function useSitePresence() {
 
     const ping = () => {
       if (cancelled || document.visibilityState !== "visible") return;
+      // The dashboard's preview poll announces presence as a flag on a request
+      // it was making anyway. Where that is running, this has nothing to do.
+      if (!isPresenceDue(CHAT_PRESENCE_PING_MS)) return;
+      notePresenceSent();
       controller?.abort();
       controller = new AbortController();
       void fetch(`${CHAT_API_BASE}${CHAT_PRESENCE_ENDPOINT}`, {

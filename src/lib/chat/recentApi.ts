@@ -8,6 +8,8 @@
 
 import { z } from "zod";
 import { CHAT_API_BASE, isChatConfigured } from "./api";
+import { CHAT_PRESENCE_PING_MS } from "./config";
+import { isPresenceDue, notePresenceSent } from "./presenceClock";
 
 const RecentChatSchema = z.object({
   messages: z.array(
@@ -33,10 +35,26 @@ export async function fetchRecentChat(
 ): Promise<RecentChat | null> {
   if (!isChatConfigured) return null;
 
+  /*
+   * Presence rides along rather than costing a request of its own.
+   *
+   * This poll is already happening; adding a flag to it is free, where a
+   * separate ping is 60 requests per visitor-hour against a daily budget for
+   * the whole site. The flag is set only when one is actually due, so a faster
+   * preview poll does not turn into a faster presence rate.
+   */
+  const withPresence = isPresenceDue(CHAT_PRESENCE_PING_MS);
+  const url = withPresence
+    ? `${CHAT_API_BASE}/api/chat/recent?presence=1`
+    : `${CHAT_API_BASE}/api/chat/recent`;
+
   try {
-    const res = await fetch(`${CHAT_API_BASE}/api/chat/recent`, { signal });
+    const res = await fetch(url, { signal, method: withPresence ? "POST" : "GET" });
     if (!res.ok) return null;
     const parsed = RecentChatSchema.safeParse(await res.json());
+    // Only once the server has actually answered: a failed request announced
+    // nothing, and pretending otherwise drops this tab out of the count.
+    if (parsed.success && withPresence) notePresenceSent();
     return parsed.success ? parsed.data : null;
   } catch (err) {
     if (!(err instanceof DOMException && err.name === "AbortError")) {

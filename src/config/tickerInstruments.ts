@@ -50,8 +50,15 @@ export const TICKER_INSTRUMENTS: readonly TickerInstrument[] = [
   { id: "ust10y", label: "미 10년물", decimals: 3, unit: "%", source: "yahoo" },
 ] as const;
 
-/** How often the tape re-reads the Worker. The Worker itself caches for 15s. */
-export const TICKER_REFRESH_INTERVAL_MS = 30_000;
+/**
+ * How often the tape re-reads the quotes it does not get over a socket.
+ *
+ * Was 30s until 2026-08-24. Indices, gold, oil and a bond yield do not move
+ * fast enough for fifteen seconds to be visible, and the site shares one daily
+ * request budget across every endpoint — 80 requests per visitor-hour here
+ * instead of 120. Bitcoin is on a Binance socket and is unaffected by this.
+ */
+export const TICKER_REFRESH_INTERVAL_MS = 45_000;
 
 /**
  * Age at which a Yahoo-sourced quote stops being treated as current.

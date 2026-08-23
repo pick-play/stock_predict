@@ -3,6 +3,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { RecentChat } from "../../../lib/chat/recentApi";
 import { CHAT_PREVIEW_ROWS } from "../../../lib/chat/config";
+import { resetPresenceClock } from "../../../lib/chat/presenceClock";
 
 const mockFetch = vi.hoisted(() => ({
   result: null as RecentChat | null,
@@ -32,6 +33,7 @@ function payload(count = 2): RecentChat {
 
 describe("RecentChatStrip", () => {
   beforeEach(() => {
+    resetPresenceClock();
     mockFetch.result = null;
   });
 

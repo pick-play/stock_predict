@@ -235,14 +235,54 @@ export async function handleChatRecent(
    * room right now, and a ten-second-old copy is how you delete the wrong line.
    * Everyone else gets the cached strip, which is what keeps the room asleep.
    */
-  const askedLimit = new URL(request.url).searchParams.get('limit');
+  const url = new URL(request.url);
+  const askedLimit = url.searchParams.get('limit');
   if (askedLimit !== null && isAdmin(request, env)) {
     return chatHistory(request, env, namespace, askedLimit);
   }
 
+  /*
+   * "…and while you are answering, I am here."
+   *
+   * The dashboard polls this anyway, so presence rides along instead of costing
+   * a request of its own — 60 per visitor-hour saved against a budget that is
+   * shared by every endpoint the site has, and that a dedicated poll exhausted
+   * once already. The room still sees one announcement per visitor per minute:
+   * the client only sets the flag when one is due.
+   */
+  let freshCount: number | null = null;
+  if (url.searchParams.get('presence') === '1') {
+    const ip = request.headers.get('CF-Connecting-IP') ?? '';
+    const ipHash = await hashIp(ip, env.IP_SALT);
+    const headers = new Headers();
+    headers.set(CHAT_IP_HASH_HEADER, ipHash);
+    try {
+      const stub = namespace.get(namespace.idFromName(CHAT_ROOM_NAME));
+      const res = await stub.fetch(
+        `https://chat-room.internal${CHAT_PRESENCE_PATH}`,
+        { headers }
+      );
+      if (res.ok) {
+        const payload = (await res.json()) as { participants?: unknown };
+        if (typeof payload.participants === 'number') {
+          freshCount = payload.participants;
+        }
+      }
+    } catch (error) {
+      // Missing one announcement costs this visitor a minute of being counted.
+      console.warn('[chat] presence on preview failed', error);
+    }
+  }
+
+  /** The cached lines, with the count replaced when we just read a fresh one. */
+  const withCount = (payload: unknown): unknown =>
+    freshCount === null
+      ? payload
+      : { ...(payload as Record<string, unknown>), participants: freshCount };
+
   const cachedAge = previewCache ? Date.now() - previewCache.storedAtMs : -1;
   if (previewCache && cachedAge >= 0 && cachedAge < CHAT_PREVIEW_TTL_MS) {
-    return jsonResponse(previewCache.payload, 200, request, env);
+    return jsonResponse(withCount(previewCache.payload), 200, request, env);
   }
 
   const stub = namespace.get(namespace.idFromName(CHAT_ROOM_NAME));
@@ -256,13 +296,13 @@ export async function handleChatRecent(
     }
     const payload: unknown = await upstream.json();
     previewCache = { payload, storedAtMs: Date.now() };
-    return jsonResponse(payload, 200, request, env);
+    return jsonResponse(withCount(payload), 200, request, env);
   } catch (error) {
     console.warn('[chat] preview read failed', error);
     // A stale preview beats an empty strip, and every line carries its own
     // timestamp, so a reader can still see how old the conversation is.
     if (previewCache) {
-      return jsonResponse(previewCache.payload, 200, request, env);
+      return jsonResponse(withCount(previewCache.payload), 200, request, env);
     }
     return errorResponse(
       'room-unavailable',

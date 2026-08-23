@@ -202,5 +202,16 @@ export const CHAT_PREVIEW_TTL_MS = 10_000;
  */
 export const CHAT_PREVIEW_ROWS = 4;
 
-/** How often the dashboard strip re-reads the preview. */
-export const CHAT_PREVIEW_REFRESH_MS = 20_000;
+/**
+ * How often the dashboard strip re-reads the preview.
+ *
+ * Was 20s until 2026-08-24. The whole site shares one Workers Free budget of
+ * 100,000 requests a day, and this is the single largest consumer in it — 120
+ * requests per visitor-hour at 30s, where 20s was 180. Ten seconds of latency
+ * on a preview of a conversation buys back a third of the site's busiest poll.
+ *
+ * It also carries the presence flag now, so it is the one request that has to
+ * keep beating CHAT_PRESENCE_TTL_MS. At 30s a flag every third poll is 90s,
+ * comfortably inside the 150s expiry.
+ */
+export const CHAT_PREVIEW_REFRESH_MS = 30_000;

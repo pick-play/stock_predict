@@ -192,8 +192,14 @@ export default {
       return handleChatPresence(request, env);
     }
 
-    // GET /api/chat/recent — read-only transcript preview for the dashboard
-    if (method === 'GET' && path === '/api/chat/recent') {
+    /*
+     * /api/chat/recent — the dashboard's transcript preview.
+     *
+     * POST as well as GET, because the same call carries "I am here" when one
+     * is due: it changes what the room reports, and a GET that mutates is
+     * something a prefetcher fires on its own.
+     */
+    if ((method === 'GET' || method === 'POST') && path === '/api/chat/recent') {
       return handleChatRecent(request, env);
     }
 
