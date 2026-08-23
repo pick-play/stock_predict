@@ -14,7 +14,7 @@ import { MarketIndexGrid } from "../components/dashboard/MarketIndexGrid";
 import { EconomicCalendar } from "../components/dashboard/EconomicCalendar";
 import { Disclaimer } from "../components/common/Disclaimer";
 import { RecentChatStrip } from "../components/dashboard/RecentChatStrip";
-import { ChatLauncher } from "../components/chat/ChatPopup";
+import { ChatLauncher } from "../components/chat/ChatLauncher";
 import { CommunityHotList } from "../components/dashboard/CommunityHotList";
 import { ErrorState } from "../components/common/ErrorState";
 import { StockCardSkeleton } from "../components/common/LoadingSkeleton";

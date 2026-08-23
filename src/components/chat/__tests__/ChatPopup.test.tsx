@@ -40,7 +40,7 @@ vi.mock("../../common/StockMiniCards", () => ({
   StockMiniCards: () => <div data-testid="mini-cards" />,
 }));
 
-const { ChatLauncher } = await import("../ChatPopup");
+const { ChatLauncher } = await import("../ChatLauncher");
 
 /**
  * jsdom has no matchMedia, and the launcher branches on it.
@@ -63,8 +63,11 @@ function setViewport(wide: boolean) {
   );
 }
 
-const open = () =>
+const open = async () => {
   fireEvent.click(screen.getByRole("button", { name: "실시간 채팅 열기" }));
+  // The panel's code is lazy-loaded on first open, so it appears a tick later.
+  await screen.findByRole("dialog", { name: "실시간 채팅" });
+};
 
 describe("ChatLauncher", () => {
   beforeEach(() => {
@@ -86,7 +89,8 @@ describe("ChatLauncher", () => {
     const onExpand = vi.fn();
     render(<ChatLauncher onExpand={onExpand} />);
 
-    open();
+    // Not open(): no dialog will ever appear on this path.
+    fireEvent.click(screen.getByRole("button", { name: "실시간 채팅 열기" }));
 
     expect(onExpand).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -100,19 +104,18 @@ describe("ChatLauncher", () => {
     expect(screen.getByRole("button", { name: "실시간 채팅 열기" })).toBeInTheDocument();
   });
 
-  it("opens the room on press", () => {
+  it("opens the room on press", async () => {
     render(<ChatLauncher />);
 
-    open();
+    await open();
 
     expect(room.mounts).toBeGreaterThan(0);
-    expect(screen.getByRole("dialog", { name: "실시간 채팅" })).toBeInTheDocument();
     expect(screen.getByRole("textbox")).toBeInTheDocument();
   });
 
-  it("leaves the room when closed, rather than holding the socket open", () => {
+  it("leaves the room when closed, rather than holding the socket open", async () => {
     render(<ChatLauncher />);
-    open();
+    await open();
 
     fireEvent.click(screen.getByRole("button", { name: "채팅 닫기" }));
 
@@ -120,9 +123,9 @@ describe("ChatLauncher", () => {
     expect(screen.getByRole("button", { name: "실시간 채팅 열기" })).toBeInTheDocument();
   });
 
-  it("closes on Escape", () => {
+  it("closes on Escape", async () => {
     render(<ChatLauncher />);
-    open();
+    await open();
 
     fireEvent.keyDown(document, { key: "Escape" });
 
@@ -135,9 +138,9 @@ describe("ChatLauncher", () => {
    * floats over a dashboard still showing them, which is why the wrapper is
    * md:hidden rather than the cards being dropped altogether.
    */
-  it("brings the prices along, since the sheet covers them", () => {
+  it("brings the prices along, since the sheet covers them", async () => {
     render(<ChatLauncher />);
-    open();
+    await open();
 
     const cards = screen.getByTestId("mini-cards");
     expect(cards).toBeInTheDocument();
@@ -145,9 +148,9 @@ describe("ChatLauncher", () => {
   });
 
   // §28.3: wherever the room appears, it says what it is.
-  it("carries the disclaimer", () => {
+  it("carries the disclaimer", async () => {
     render(<ChatLauncher />);
-    open();
+    await open();
 
     expect(screen.getByText(/투자 권유가 아닙니다/)).toBeInTheDocument();
   });

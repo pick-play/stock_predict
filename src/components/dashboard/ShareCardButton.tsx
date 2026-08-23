@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ImageDown, Loader2 } from "lucide-react";
 import type { StockSnapshot } from "../../types/market";
-import { generateShareImage } from "../../lib/shareCard";
 import { SharePreviewModal } from "./SharePreviewModal";
 
 interface ShareCardButtonProps {
@@ -91,6 +90,15 @@ export function ShareCardButton({
     setBtnState("generating");
 
     try {
+      /*
+       * The canvas code arrives when it is first asked for.
+       *
+       * shareCard is the whole drawing routine — palette, rhythm constants,
+       * text wrapping, the chart — and nothing on the page needs any of it
+       * until this click. The user is already watching a "생성 중" state here,
+       * so the one-time fetch hides inside the wait that exists anyway.
+       */
+      const { generateShareImage } = await import("../../lib/shareCard");
       const blob = await generateShareImage(snapshot, {
         sparkline: sparklineData,
       });
