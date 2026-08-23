@@ -7,7 +7,6 @@ import { requireAuth } from '../lib/session';
 import {
   CHAT_ADMIN_DELETE_PATH,
   CHAT_HISTORY_PATH,
-  CHAT_COUNT_TTL_MS,
   CHAT_PRESENCE_PATH,
   CHAT_IP_HASH_HEADER,
   CHAT_MEMBER_HANDLE_HEADER,
@@ -186,55 +185,6 @@ let previewCache: { payload: unknown; storedAtMs: number } | null = null;
  * No ticket and no captcha — the room is public to read, matching the board.
  */
 /**
- * The count alone, cached.
- *
- * Every visible tab asks for this every few seconds, so the shape matters:
- * a couple of dozen bytes, and a cache shared by every caller. The room is read
- * at most once per CHAT_COUNT_TTL_MS no matter how many people are watching,
- * which is what stops a responsive number from turning into a per-visitor load
- * on the Durable Object.
- *
- * The room's presence path is a pure read when no IP hash is attached, so this
- * takes nothing and changes nothing.
- */
-let countCache: { participants: number; storedAtMs: number } | null = null;
-
-export async function handleChatCount(
-  request: Request,
-  env: Env
-): Promise<Response> {
-  const namespace = getChatRoomNamespace(env);
-  if (!namespace) return unavailable(request, env);
-
-  const age = countCache ? Date.now() - countCache.storedAtMs : -1;
-  if (countCache && age >= 0 && age < CHAT_COUNT_TTL_MS) {
-    return jsonResponse({ participants: countCache.participants }, 200, request, env);
-  }
-
-  const stub = namespace.get(namespace.idFromName(CHAT_ROOM_NAME));
-  try {
-    const upstream = await stub.fetch(
-      `https://chat-room.internal${CHAT_PRESENCE_PATH}`
-    );
-    if (!upstream.ok) throw new Error(`room responded ${upstream.status}`);
-    const payload = (await upstream.json()) as { participants?: unknown };
-    const participants =
-      typeof payload.participants === 'number' ? payload.participants : 0;
-    countCache = { participants, storedAtMs: Date.now() };
-    return jsonResponse({ participants }, 200, request, env);
-  } catch (error) {
-    console.warn('[chat] count read failed', error);
-    // A stale number beats a number that vanishes; the strip hides it at zero.
-    return jsonResponse(
-      { participants: countCache?.participants ?? 0 },
-      200,
-      request,
-      env
-    );
-  }
-}
-
-/**
  * Records that somebody is on the site, and answers with how many are.
  *
  * Called once a minute by every visible tab, from every page — which is why it
@@ -265,11 +215,7 @@ export async function handleChatPresence(
       { headers }
     );
     if (!upstream.ok) throw new Error(`room responded ${upstream.status}`);
-    const payload = (await upstream.json()) as { participants?: unknown };
-    if (typeof payload.participants === 'number') {
-      countCache = { participants: payload.participants, storedAtMs: Date.now() };
-    }
-    return jsonResponse(payload, 200, request, env);
+    return jsonResponse(await upstream.json(), 200, request, env);
   } catch (error) {
     console.warn('[chat] presence ping failed', error);
     // A count nobody can read is not worth an error state on the page.

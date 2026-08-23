@@ -128,35 +128,24 @@ export const CHAT_PRESENCE_ENDPOINT = "/api/chat/presence";
  */
 export const CHAT_PRESENCE_PING_MS = 60_000;
 
-/**
- * How often a page with no socket re-reads the count (owner decision: 5s).
+/*
+ * There was a five-second count poll here, and it took the site down.
  *
- * Separate from the ping, because the two do different jobs: the ping says "I
- * am here" and only has to beat the expiry, while this is how quickly the
- * number on screen follows somebody else arriving. A count that only moved on
- * reload read as broken.
+ * It cost 720 requests per visible tab per hour against a Workers Free plan
+ * that allows 100,000 a day for the whole site — roughly two thirds of every
+ * request the site made, and it cut the site's capacity from about 277
+ * visitor-hours a day to 92. On 2026-08-23 the limit was reached and every API
+ * call, not only the chat's, answered 429 for the rest of the day.
  *
- * A reader in the chat needs none of this — the room pushes the number over the
- * socket the moment it changes.
+ * The count now rides the preview poll that was already running, which has
+ * carried `participants` all along, and anyone actually in the room gets it
+ * pushed over their socket the moment it changes. Nothing polls for it.
  *
- * Cost, plainly: twelve small Worker requests a minute per visible tab. Room
- * reads do not scale with it, because the Worker answers from a cache shared by
- * everyone (CHAT_COUNT_TTL_MS), so the Durable Object sees at most one read per
- * cache period however many people are watching.
+ * **Do not add a dedicated poll for a number.** The cache in front of the room
+ * protects the Durable Object, which is what made this look affordable — but
+ * the binding limit is the Worker's own request count, and no amount of caching
+ * reduces that.
  */
-export const CHAT_PRESENCE_POLL_MS = 5_000;
-
-/**
- * How long the Worker holds a count before asking the room again.
- *
- * Matched to the poll above: caching longer than the poll interval would serve
- * the same number twice and make the faster poll pure waste, and caching
- * shorter would ask the room for a number nobody has requested yet.
- */
-export const CHAT_COUNT_TTL_MS = 5_000;
-
-/** Public route for the count alone — no messages, a few bytes. */
-export const CHAT_COUNT_ENDPOINT = "/api/chat/count";
 
 /**
  * How long a ping counts for.
