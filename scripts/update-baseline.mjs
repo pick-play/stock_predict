@@ -77,6 +77,26 @@ const KRX_OPEN_UTC_MINUTE = 0;
 const KRX_CLOSE_UTC_HOUR = 6; // 15:30 KST
 const KRX_CLOSE_UTC_MINUTE = 30;
 
+/*
+ * The futures side of the close anchor is sampled three minutes AFTER the
+ * close, not at it.
+ *
+ * The close itself never moves — 15:30, printed by the closing auction — but
+ * the Binance contract does not know that number the instant it exists.
+ * Measured over 2026-08-21/24/25, both majors show a consistent one-direction
+ * jump in the 06:31-06:32 UTC candles as the contract absorbs the settled
+ * close (0.4% on SK하이닉스 on the 25th), and are stable from 06:33. Anchoring
+ * at 06:30:00 exactly meant that settlement jump was carried all night as a
+ * phantom overnight move: the card said -0.4% at 15:35 when nothing had
+ * happened yet.
+ *
+ * Three minutes covers the observed lag (owner saw the close print up to two
+ * minutes late) without absorbing much genuine post-close drift. This offset
+ * applies to the SAMPLING instant only — marketDate, display labels and the
+ * meta-close validation all stay on the true 15:30 close.
+ */
+const CLOSE_ANCHOR_SETTLE_MINUTES = 3;
+
 // Earliest KST time each session may run (Yahoo needs a few minutes to settle).
 const OPEN_SESSION_READY = { hour: 9, minute: 15 };
 const CLOSE_SESSION_READY = { hour: 15, minute: 31 };
@@ -113,14 +133,34 @@ function isAtOrAfter({ hour, minute }) {
   return now.hour > hour || (now.hour === hour && now.minute >= minute);
 }
 
-/** Anchor instant for a session, as an ISO UTC string. */
+/**
+ * Anchor instant for a session, as an ISO UTC string.
+ *
+ * For the close this is the settled sampling instant (15:33 KST), which is what
+ * the browser hands to markPriceKlines — see CLOSE_ANCHOR_SETTLE_MINUTES. The
+ * exchange-time helpers below stay on the true 15:30.
+ */
 function anchorTimeUtc(kstDateStr, session) {
   const [year, month, day] = kstDateStr.split("-").map(Number);
   const [h, m] =
     session === "open"
       ? [KRX_OPEN_UTC_HOUR, KRX_OPEN_UTC_MINUTE]
-      : [KRX_CLOSE_UTC_HOUR, KRX_CLOSE_UTC_MINUTE];
+      : [KRX_CLOSE_UTC_HOUR, KRX_CLOSE_UTC_MINUTE + CLOSE_ANCHOR_SETTLE_MINUTES];
   return new Date(Date.UTC(year, month - 1, day, h, m, 0, 0)).toISOString();
+}
+
+/** The true close instant (15:30 KST), for checks about the close itself. */
+function closeInstantUtcMs(kstDateStr) {
+  const [year, month, day] = kstDateStr.split("-").map(Number);
+  return Date.UTC(
+    year,
+    month - 1,
+    day,
+    KRX_CLOSE_UTC_HOUR,
+    KRX_CLOSE_UTC_MINUTE,
+    0,
+    0
+  );
 }
 
 // ─── API 호출 ─────────────────────────────────────────────────────────────────
@@ -199,7 +239,7 @@ async function fetchYahooDaily(yahooSymbol) {
   if (close == null) {
     const metaPrice = result.meta?.regularMarketPrice;
     const metaTimeMs = (result.meta?.regularMarketTime ?? 0) * 1000;
-    const closeAnchorMs = Date.parse(anchorTimeUtc(tradingDate, "close"));
+    const closeAnchorMs = closeInstantUtcMs(tradingDate);
     const metaDate = new Date(metaTimeMs).toISOString().slice(0, 10);
     if (
       typeof metaPrice === "number" &&
