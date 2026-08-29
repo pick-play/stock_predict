@@ -116,6 +116,30 @@ function weekdayKST() {
   }).format(new Date());
 }
 
+/**
+ * The most recent weekday, as a KST date string.
+ *
+ * The run used to hard-skip weekends, which assumed runs happen when they are
+ * scheduled. On 2026-08-28 GitHub's scheduler delivered all three of Friday's
+ * slots nine to twelve hours late — after midnight KST — and the weekend guard
+ * threw every one of them away, so Friday's close was never recorded and the
+ * weekend's cards measured from Thursday.
+ *
+ * So the script now decides by DATA, not by arrival time: whenever it runs, it
+ * converges on the latest weekday's settled bar. A weekend run targets Friday,
+ * a delayed run targets the day it was meant for, and a run whose work is
+ * already done exits in the "이미 최신" branch below.
+ */
+function lastTradingDayKST() {
+  const [y, m, d] = todayKST().split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  // getUTCDay() of a bare calendar date is that date's weekday.
+  while (date.getUTCDay() === 0 || date.getUTCDay() === 6) {
+    date.setUTCDate(date.getUTCDate() - 1);
+  }
+  return date.toISOString().slice(0, 10);
+}
+
 function currentKSTTime() {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Seoul",
@@ -332,25 +356,28 @@ async function main() {
   const session = parseSession();
   console.log(`[update-baseline] 시작 (session=${session})...`);
 
-  const weekday = weekdayKST();
-  if (weekday === "Sat" || weekday === "Sun") {
-    console.log(`[update-baseline] 주말 휴장 스킵 (${weekday} KST). 정상 종료.`);
-    return;
+  const targetDateKST = lastTradingDayKST();
+
+  /*
+   * The ready gate only means anything when the target is today: it exists so
+   * a same-day run does not read a bar that has not settled yet. A weekend or
+   * past-midnight run is asking about a day that finished hours ago, and
+   * gating those on the current wall clock is how Friday went missing.
+   */
+  if (targetDateKST === todayKST()) {
+    const readyAt = session === "open" ? OPEN_SESSION_READY : CLOSE_SESSION_READY;
+    if (!isAtOrAfter(readyAt)) {
+      const { hour, minute } = currentKSTTime();
+      console.log(
+        `[update-baseline] ${session} 세션 시각 이전 스킵 ` +
+          `(현재 ${hour}:${String(minute).padStart(2, "0")} KST, 기준 ` +
+          `${readyAt.hour}:${String(readyAt.minute).padStart(2, "0")}). 정상 종료.`
+      );
+      return;
+    }
   }
 
-  const readyAt = session === "open" ? OPEN_SESSION_READY : CLOSE_SESSION_READY;
-  if (!isAtOrAfter(readyAt)) {
-    const { hour, minute } = currentKSTTime();
-    console.log(
-      `[update-baseline] ${session} 세션 시각 이전 스킵 ` +
-        `(현재 ${hour}:${String(minute).padStart(2, "0")} KST, 기준 ` +
-        `${readyAt.hour}:${String(readyAt.minute).padStart(2, "0")}). 정상 종료.`
-    );
-    return;
-  }
-
-  const targetDateKST = todayKST();
-  console.log(`[update-baseline] 대상 거래일: ${targetDateKST}`);
+  console.log(`[update-baseline] 대상 거래일: ${targetDateKST} (오늘: ${todayKST()})`);
 
   const existing = migrateV1(loadBaseline());
   if (existing?.[session]?.marketDate === targetDateKST) {
@@ -394,12 +421,14 @@ async function main() {
    */
   const collected = {};
   const skipped = [];
+  let fetchFailures = 0;
   for (let i = 0; i < STOCK_IDS.length; i++) {
     const stockId = STOCK_IDS[i];
     const config = SYMBOLS[stockId];
     const result = results[i];
 
     if (result.status === "rejected") {
+      fetchFailures++;
       skipped.push(`${config.displayName}: 조회 실패 (${result.reason.message})`);
       continue;
     }
@@ -418,8 +447,24 @@ async function main() {
     console.warn(`[update-baseline] 스킵 — ${reason}`);
   }
 
-  // No stock settled today: a holiday, or Yahoo is behind. Keep the old file.
   if (Object.keys(collected).length === 0) {
+    /*
+     * Nothing collected. WHY decides the exit code.
+     *
+     * Every fetch failing is an outage — Yahoo, the network, a block — and it
+     * used to exit 0, which reads as a green check in the Actions list while
+     * the site quietly serves yesterday's close. A red run is what makes
+     * GitHub send the owner an email. Date mismatches stay a quiet exit: on a
+     * Korean holiday the latest bar legitimately belongs to a previous day,
+     * and §28 forbids pretending we can tell holidays apart from failures by
+     * calendar.
+     */
+    if (fetchFailures === STOCK_IDS.length) {
+      console.error(
+        `[update-baseline] 전 종목 조회 실패. 기존 baseline 유지. 실패로 종료.`
+      );
+      process.exit(1);
+    }
     console.log(
       `[update-baseline] ${targetDateKST} 기준으로 확정된 종목이 없음. ` +
         `공휴일이거나 데이터 미확정. 기존 baseline 유지. 정상 종료.`
