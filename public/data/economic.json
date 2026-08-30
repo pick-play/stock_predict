@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-22T07:42:54.161Z",
-  "windowStart": "2026-08-15",
-  "windowEnd": "2026-09-22",
+  "updatedAt": "2026-08-30T12:49:50.059Z",
+  "windowStart": "2026-08-23",
+  "windowEnd": "2026-09-30",
   "releases": [
     {
       "id": "pce",
@@ -45,6 +45,20 @@
       "source": "Census",
       "date": "2026-09-16",
       "releaseAtUtc": "2026-09-16T12:30:00.000Z"
+    },
+    {
+      "id": "pce",
+      "label": "개인소비지출 (PCE)",
+      "source": "BEA",
+      "date": "2026-09-30",
+      "releaseAtUtc": "2026-09-30T12:30:00.000Z"
+    },
+    {
+      "id": "gdp",
+      "label": "GDP",
+      "source": "BEA",
+      "date": "2026-09-30",
+      "releaseAtUtc": "2026-09-30T12:30:00.000Z"
     }
   ]
 }
