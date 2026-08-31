@@ -55,6 +55,8 @@ export function Disclaimer({ short = false }: DisclaimerProps) {
             <a className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline-offset-2 hover:underline" href="/about/">서비스 소개</a>
             <a className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline-offset-2 hover:underline" href="/guide/">이용 가이드</a>
             <a className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline-offset-2 hover:underline" href="/faq/">자주 묻는 질문</a>
+            <a className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline-offset-2 hover:underline" href="/stocks/">종목 소개</a>
+            <a className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline-offset-2 hover:underline" href="/glossary/">용어 설명</a>
             <a className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline-offset-2 hover:underline" href="/privacy/">개인정보처리방침</a>
             <a className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline-offset-2 hover:underline" href="/terms/">이용약관</a>
           </nav>

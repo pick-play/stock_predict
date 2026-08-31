@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>코스피와 코스피200의 차이 | 코스피 NOW</title>
+    <meta
+      name="description"
+      content="코스피는 유가증권시장 전체를 대표하는 지수, 코스피200은 그중 200개 종목으로 만든 파생상품용 지수입니다. 지수와 개별 종목의 움직임이 어떻게 다른지 예시로 설명합니다."
+    />
+    <link rel="canonical" href="https://kospinow.com/glossary/kospi-kospi200/" />
+
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#080b10" />
+
+    <!-- Standalone like 404.html: no app bundle, no analytics, no ads. -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f0f4f8;
+        --surface: #ffffff;
+        --border: rgba(15, 23, 42, 0.1);
+        --text: #0f172a;
+        --muted: #64748b;
+        --accent: #6b5ce7;
+        --accent-soft: rgba(139, 124, 255, 0.1);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #080b10;
+          --surface: #0d1118;
+          --border: rgba(255, 255, 255, 0.09);
+          --text: #f4f7fb;
+          --muted: #8a95a8;
+          --accent: #a99cff;
+          --accent-soft: rgba(139, 124, 255, 0.14);
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --bg: #080b10;
+        --surface: #0d1118;
+        --border: rgba(255, 255, 255, 0.09);
+        --text: #f4f7fb;
+        --muted: #8a95a8;
+        --accent: #a99cff;
+        --accent-soft: rgba(139, 124, 255, 0.14);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap { max-width: 46rem; margin: 0 auto; padding: 24px 20px 56px; }
+
+      header.site {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 4px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 28px;
+      }
+      header.site a.brand { text-decoration: none; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+      header.site a.brand span { color: var(--accent); }
+      header.site a.back { text-decoration: none; font-size: 13px; font-weight: 600; color: var(--muted); padding: 8px 0; }
+      header.site a.back:hover { color: var(--text); }
+
+      h1 { font-size: 25px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; margin: 0 0 6px; }
+      p.updated { font-size: 13px; color: var(--muted); margin: 0 0 28px; }
+      h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin: 34px 0 10px; }
+      p, li { font-size: 15px; line-height: 1.75; }
+      p { margin: 0 0 14px; }
+      ul, ol { margin: 0 0 14px; padding-left: 22px; }
+      li { margin-bottom: 6px; }
+      a { color: var(--accent); }
+      strong { font-weight: 700; }
+
+      .formula {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; margin: 0 0 14px; font-size: 14.5px; line-height: 1.8;
+        font-variant-numeric: tabular-nums; overflow-x: auto;
+      }
+
+      .note {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; font-size: 13px; line-height: 1.7; color: var(--muted); margin: 22px 0;
+      }
+
+      table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0 0 14px; }
+      th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; line-height: 1.5; }
+      th { background: var(--accent-soft); font-weight: 600; }
+      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+      footer.site { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+      footer.site nav { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; }
+      footer.site nav a { color: var(--muted); text-decoration: none; }
+      footer.site nav a:hover { color: var(--text); }
+      footer.site p { font-size: 12px; line-height: 1.6; margin: 0; }
+    </style>
+
+    <script>
+      /* Honour a saved theme before first paint, exactly as index.html does. */
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem("kospinow:theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light" : "dark";
+        } else {
+          document.documentElement.dataset.theme = t;
+        }
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", t === "light" ? "#f0f4f8" : "#080b10");
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="site">
+        <a class="brand" href="/">코스피 <span>NOW</span></a>
+        <a class="back" href="/">← 시세 보러 가기</a>
+      </header>
+
+      <main>
+        <h1>코스피와 코스피200</h1>
+        <p class="updated">시장 전체의 평균과, 파생상품을 위한 대표 선수단</p>
+
+        <h2>정의</h2>
+        <p>
+          <strong>코스피(KOSPI)</strong>는 한국거래소 유가증권시장에 상장된
+          종목 전체의 시가총액을 바탕으로 계산하는 지수입니다. 1980년 1월 4일의
+          시장 전체 시가총액을 100으로 놓고, 지금 시장이 그때보다 몇 배가
+          되었는지를 나타냅니다. "오늘 코스피가 1% 올랐다"는 말은 어느 한 종목이
+          아니라 <strong>시장 전체의 가치가 평균적으로 1% 커졌다</strong>는
+          뜻입니다. 학급 전체의 평균 점수 같은 개념입니다.
+        </p>
+        <p>
+          <strong>코스피200</strong>은 그 시장에서 시가총액과 유동성, 업종
+          대표성을 기준으로 뽑은 <strong>200개 종목으로 만든 지수</strong>입니다.
+          전 종목이 아니라 대표 선수단만으로 계산하는 이유는 실용성입니다 —
+          선물·옵션 같은 파생상품의 기초지수로 쓰려면, 소수의 대형 종목으로
+          시장을 충분히 대표하면서도 관리와 복제가 쉬운 지수가 필요하기
+          때문입니다. 한국거래소의 코스피200 선물·옵션, 코스피200을 추종하는
+          수많은 ETF, 그리고 <a href="/glossary/night-futures/">야간선물</a>이
+          모두 이 지수를 기초로 합니다. 200개 종목은 대형주 중심이므로 코스피200은
+          시장 전체 시가총액의 큰 부분을 대표하며, 그래서 코스피와 코스피200은
+          대체로 비슷한 방향으로 움직입니다.
+        </p>
+
+        <h2>왜 알아야 하나</h2>
+        <p>
+          밤 시간대의 시장 이야기는 대부분 <strong>지수 단위</strong>로
+          오갑니다. "야선이 1% 빠졌다"는 말은 코스피200 관련 야간 파생상품이
+          1% 내렸다는 뜻이지, 삼성전자가 1% 내렸다는 뜻이 아닙니다. 지수와
+          개별 종목을 구분하지 못하면 밤사이의 정보를 자기 종목에 그대로
+          덮어씌우는 실수를 하게 됩니다.
+        </p>
+        <p>
+          코스피 NOW는 이름에 "코스피"가 들어가지만, 화면이 보여주는 것은
+          <strong>지수가 아니라 개별 종목의 참고 예상가</strong>입니다. 삼성전자,
+          SK하이닉스 등 각 종목에 연계된 해외 파생상품 가격의 변동률을 종목별로
+          따로 재서, 각 종목의 종가에 각각 적용합니다. 시장 전체가 오르는 밤에도
+          어떤 종목의 연계 가격은 내릴 수 있고, 화면의 카드들이 서로 다른 색을
+          띠는 것은 그래서 자연스러운 일입니다. 이 사이트에 코스피200 야간선물
+          지수 자체는 실려 있지 않습니다.
+        </p>
+        <p>
+          그래도 지수를 아는 것은 종목을 읽는 데 도움이 됩니다. 개별 종목의
+          밤사이 변동에는 "시장 전체가 움직인 몫"과 "그 종목만의 몫"이 섞여
+          있습니다. 야간의 지수 분위기를 배경으로 깔고 종목의 참고 예상가를
+          보면, 지금의 등락이 시장 탓인지 종목 고유의 재료 탓인지 가늠하는
+          출발점이 됩니다.
+        </p>
+
+        <h2>구체 예시</h2>
+        <p>
+          지수와 개별 종목이 어떻게 따로 움직이는지, 단순화한 세 종목짜리
+          시장으로 봅시다. 지수는 시가총액 가중이므로 덩치 큰 종목의 영향이
+          큽니다.
+        </p>
+        <div class="formula">
+          종목 A (시가총액 300조) : +2.0% → 지수 기여 큼<br />
+          종목 B (시가총액 100조) : −1.0%<br />
+          종목 C (시가총액 50조) : −3.0%<br />
+          가중 평균 = (300×2.0 − 100×1.0 − 50×3.0) ÷ 450 ≈ <strong>+0.78%</strong>
+        </div>
+        <p>
+          세 종목 중 둘이 내렸는데도 지수는 올랐습니다. 덩치가 가장 큰 A가
+          올랐기 때문입니다. 거꾸로 말하면, "지수가 올랐다"는 사실만으로는 B와
+          C가 어떻게 됐는지 알 수 없습니다. 실제 코스피에서도 반도체 대형주
+          몇 종목의 움직임이 지수 방향을 좌우하는 날이 많아서, 지수와 내 종목의
+          등락이 어긋나는 일은 흔합니다.
+        </p>
+        <p>
+          밤 시간대에도 같은 논리가 적용됩니다. 야간선물(지수)이 보합인 밤에도
+          특정 종목에 큰 뉴스가 있으면 그 종목의 해외 연계 가격만 크게 움직일
+          수 있습니다. 그래서 지수를 보는 것과 종목별 참고 예상가를 보는 것은
+          서로 다른 질문에 답하는 일입니다 — 전자는 "시장 전체의 기울기",
+          후자는 "이 종목의 기울기"입니다.
+        </p>
+        <p>
+          참고로 코스닥 시장에는 별도의 코스닥 지수가 있고, 코스피와 코스피200
+          외에도 업종별·규모별 지수가 여럿 있습니다. 뉴스에서 어떤 지수를
+          말하는지, 그 지수에 내가 보는 종목이 포함되는지를 구분하는 습관이
+          지수 기사를 읽는 기본기입니다.
+        </p>
+
+        <h2>흔한 오해</h2>
+        <ul>
+          <li>
+            <strong>"코스피200은 시가총액 상위 200개를 자동으로 뽑은 것이다?"</strong>
+            — 시가총액이 중요한 기준이지만 그것만은 아닙니다. 유동성(거래가
+            충분히 활발한지)과 업종 대표성도 함께 보며, 구성 종목은 정기적으로
+            심사를 거쳐 바뀝니다. 지수에 새로 들어가거나 빠지는 일이 그 종목의
+            수급에 영향을 주기도 합니다.
+          </li>
+          <li>
+            <strong>"지수가 오르면 내 종목도 올라 있다?"</strong> — 위의 예시가
+            보여주듯 지수는 가중 평균일 뿐입니다. 지수 상승은 시장 전체의
+            분위기를 말해 줄 뿐, 개별 종목의 방향을 확인해 주지 않습니다.
+            종목의 상황은 종목 단위의 정보로 확인해야 합니다.
+          </li>
+        </ul>
+
+        <h2>함께 보면 좋은 글</h2>
+        <ul>
+          <li><a href="/glossary/night-futures/">야간선물(야선)이란?</a> — 코스피200을 기초로 한 밤의 파생상품</li>
+          <li><a href="/glossary/futures-vs-spot/">선물과 현물의 차이</a> — 지수 선물이라는 상품의 구조</li>
+          <li><a href="/glossary/close-open-price/">종가·시가·기준가</a> — 종목 단위 등락률의 출발점</li>
+          <li><a href="/stocks/">종목 소개</a> — 이 사이트가 다루는 개별 종목들</li>
+          <li><a href="/guide/">이용 가이드</a> — 종목별 참고 예상가의 계산 방식</li>
+        </ul>
+
+        <div class="note">
+          본 서비스의 예상가격은 해외 선물가격의 변동을 바탕으로 계산한 참고정보이며,
+          한국거래소의 실제 체결가격이나 다음 거래일 시가를 의미하지 않습니다. 본
+          정보는 투자 권유 또는 매매 추천이 아닙니다.
+        </div>
+      </main>
+
+      <footer class="site">
+        <nav>
+          <a href="/">홈</a>
+          <a href="/about/">서비스 소개</a>
+          <a href="/guide/">이용 가이드</a>
+          <a href="/faq/">자주 묻는 질문</a>
+          <a href="/stocks/">종목 소개</a>
+          <a href="/glossary/">용어 설명</a>
+          <a href="/privacy/">개인정보처리방침</a>
+          <a href="/terms/">이용약관</a>
+        </nav>
+        <p>코스피 NOW (코스피나우, KOSPI NOW) · kospinow.com · 문의 kospinow@gmail.com</p>
+      </footer>
+    </div>
+  </body>
+</html>

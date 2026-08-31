@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NAVER (035420) 야간 예상가·종목 소개 | 코스피 NOW</title>
+    <meta
+      name="description"
+      content="NAVER(035420)의 야간 예상가를 확인하고, 검색·커머스·핀테크·웹툰·클라우드로 이어지는 사업 구조와 가격에 영향을 주는 요인을 정리했습니다."
+    />
+    <link rel="canonical" href="https://kospinow.com/stocks/naver/" />
+
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#080b10" />
+
+    <!-- Standalone like 404.html: no app bundle, no analytics, no ads. -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f0f4f8;
+        --surface: #ffffff;
+        --border: rgba(15, 23, 42, 0.1);
+        --text: #0f172a;
+        --muted: #64748b;
+        --accent: #6b5ce7;
+        --accent-soft: rgba(139, 124, 255, 0.1);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #080b10;
+          --surface: #0d1118;
+          --border: rgba(255, 255, 255, 0.09);
+          --text: #f4f7fb;
+          --muted: #8a95a8;
+          --accent: #a99cff;
+          --accent-soft: rgba(139, 124, 255, 0.14);
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --bg: #080b10;
+        --surface: #0d1118;
+        --border: rgba(255, 255, 255, 0.09);
+        --text: #f4f7fb;
+        --muted: #8a95a8;
+        --accent: #a99cff;
+        --accent-soft: rgba(139, 124, 255, 0.14);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap { max-width: 46rem; margin: 0 auto; padding: 24px 20px 56px; }
+
+      header.site {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 4px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 28px;
+      }
+      header.site a.brand { text-decoration: none; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+      header.site a.brand span { color: var(--accent); }
+      header.site a.back { text-decoration: none; font-size: 13px; font-weight: 600; color: var(--muted); padding: 8px 0; }
+      header.site a.back:hover { color: var(--text); }
+
+      h1 { font-size: 25px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; margin: 0 0 6px; }
+      p.updated { font-size: 13px; color: var(--muted); margin: 0 0 28px; }
+      h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin: 34px 0 10px; }
+      p, li { font-size: 15px; line-height: 1.75; }
+      p { margin: 0 0 14px; }
+      ul, ol { margin: 0 0 14px; padding-left: 22px; }
+      li { margin-bottom: 6px; }
+      a { color: var(--accent); }
+      strong { font-weight: 700; }
+
+      .formula {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; margin: 0 0 14px; font-size: 14.5px; line-height: 1.8;
+        font-variant-numeric: tabular-nums; overflow-x: auto;
+      }
+
+      .note {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; font-size: 13px; line-height: 1.7; color: var(--muted); margin: 22px 0;
+      }
+
+      table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0 0 14px; }
+      th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; line-height: 1.5; }
+      th { background: var(--accent-soft); font-weight: 600; }
+      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+      footer.site { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+      footer.site nav { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; }
+      footer.site nav a { color: var(--muted); text-decoration: none; }
+      footer.site nav a:hover { color: var(--text); }
+      footer.site p { font-size: 12px; line-height: 1.6; margin: 0; }
+    </style>
+
+    <script>
+      /* Honour a saved theme before first paint, exactly as index.html does. */
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem("kospinow:theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light" : "dark";
+        } else {
+          document.documentElement.dataset.theme = t;
+        }
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", t === "light" ? "#f0f4f8" : "#080b10");
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="site">
+        <a class="brand" href="/">코스피 <span>NOW</span></a>
+        <a class="back" href="/">← 시세 보러 가기</a>
+      </header>
+
+      <main>
+        <h1>NAVER (035420) — 야간 예상가와 종목 소개</h1>
+        <p class="updated">국내 대표 인터넷 기업의 사업 구조와, 밤사이 형성되는 참고 가격</p>
+
+        <p>
+          NAVER는 유가증권시장에 상장된 종목코드 <strong>035420</strong>의 인터넷
+          기업으로, 검색에서 출발해 커머스·핀테크·콘텐츠·클라우드까지 사업을 넓혀 온
+          한국의 대표 플랫폼 회사입니다. 국내 정규장은 오후 3시 30분에 닫히지만,
+          NAVER와 연계된 상품이 해외 파생상품 시장에 상장되어 있어 밤사이에도 가격이
+          형성됩니다. 코스피 NOW는 그 해외 선물가격의 변동률을 최근 국내 종가에 적용해
+          저녁·새벽·주말에도 참고할 수 있는 야간 예상가를 보여줍니다.
+        </p>
+        <p>
+          <a href="/">지금 야간 예상가 확인하기 →</a>
+        </p>
+
+        <h2>어떤 회사인가</h2>
+        <p>
+          NAVER의 출발점이자 여전히 중심에 있는 사업은 <strong>검색 플랫폼</strong>입니다.
+          네이버 검색은 한국에서 가장 널리 쓰이는 검색 서비스이고, 검색과 함께 뉴스,
+          블로그, 카페, 지도 같은 서비스들이 하나의 포털 생태계를 이룹니다. 이 트래픽
+          위에서 <strong>광고 사업</strong>이 돌아갑니다. 검색 결과에 붙는 검색광고와
+          여러 지면의 디스플레이 광고가 회사의 전통적인 수익 기반입니다.
+        </p>
+        <p>
+          두 번째 축은 <strong>커머스</strong>입니다. 네이버 쇼핑을 중심으로 수많은
+          판매자가 입점하는 오픈마켓 생태계를 운영하며, 검색에서 쇼핑으로 이어지는
+          동선이 강점으로 꼽힙니다. 여기에 결제·송금·금융 서비스를 아우르는
+          <strong>핀테크(네이버페이)</strong>가 커머스와 맞물려 돌아갑니다. 쇼핑에서
+          결제로, 결제에서 멤버십으로 이어지는 순환 구조가 이 회사의 플랫폼 전략을
+          보여주는 대표적인 예입니다.
+        </p>
+        <p>
+          세 번째 축은 <strong>콘텐츠</strong>입니다. 네이버웹툰은 한국을 넘어 글로벌
+          시장에서 서비스되는 웹툰 플랫폼으로 성장했고, 웹소설·영상화 등 지식재산(IP)
+          사업으로 확장되고 있습니다. 마지막으로 <strong>클라우드와 AI</strong>가
+          있습니다. NAVER는 기업용 클라우드 서비스를 운영하면서 자체 초대규모 AI 모델을
+          개발해 검색, 광고, 클라우드 상품 등 기존 사업에 접목하는 전략을 추진하고
+          있습니다. 국내에서 자체 AI 모델을 보유한 몇 안 되는 회사라는 점이 자주
+          언급됩니다.
+        </p>
+
+        <h2>가격을 움직이는 것들</h2>
+        <p>
+          어느 방향으로 움직일지는 미리 알 수 없지만, NAVER 주가를 볼 때 시장
+          참여자들이 지켜보는 변수는 대체로 다음과 같습니다.
+        </p>
+        <ul>
+          <li>
+            <strong>광고 경기</strong> — 광고는 경기에 민감한 산업입니다. 기업들이
+            마케팅 지출을 늘리는지 줄이는지에 따라 검색·디스플레이 광고 수익의 흐름이
+            달라지고, 이는 플랫폼 기업 전반의 실적 배경이 됩니다.
+          </li>
+          <li>
+            <strong>커머스 성장</strong> — 온라인 쇼핑 시장의 성장 속도, 거래액 흐름,
+            그리고 국내외 이커머스 사업자들과의 경쟁 강도가 커머스 사업을 보는 시각에
+            영향을 줍니다.
+          </li>
+          <li>
+            <strong>AI 경쟁</strong> — 검색은 AI로 인해 가장 크게 흔들리는 영역 중
+            하나입니다. 글로벌 빅테크의 AI 검색·챗봇이 검색 시장의 판도를 바꿀 수
+            있다는 논의와, NAVER 자체 AI 전략의 진행 상황이 모두 이 종목을 둘러싼
+            중요한 관전 포인트입니다.
+          </li>
+          <li>
+            <strong>금리와 성장주 밸류에이션</strong> — 플랫폼 기업의 가치는 미래
+            성장에 대한 기대를 크게 반영하므로, 금리 수준과 방향에 따라 성장주 전반의
+            평가가 달라지는 흐름에서 자유롭지 않습니다. 미국의 통화정책 관련 소식이
+            성장주 투자심리를 통해 영향을 주곤 합니다.
+          </li>
+          <li>
+            <strong>콘텐츠·글로벌 사업</strong> — 웹툰을 비롯한 글로벌 콘텐츠 사업의
+            성과와 확장 소식도 회사의 성장 스토리를 구성하는 요인입니다.
+          </li>
+        </ul>
+
+        <h2>왜 이 종목의 야간 가격이 의미 있나</h2>
+        <p>
+          NAVER는 반도체나 자동차 같은 수출 제조업이 아니라 내수 비중이 큰 플랫폼
+          기업입니다. 그런데도 밤사이 가격을 볼 이유가 있습니다. NAVER 같은 성장주의
+          투자심리는 <strong>미국 기술주 흐름과 자주 연결</strong>되기 때문입니다.
+          미국 빅테크의 실적 발표, AI 관련 뉴스, 금리에 대한 연방준비제도의 신호는
+          모두 한국의 밤 시간대에 나오고, 성장주 전반을 바라보는 시각에 영향을 줍니다.
+        </p>
+        <p>
+          NAVER 연계 상품은 해외 파생상품 시장에서 24시간 거래되므로, 이런 밤사이
+          재료에 시장이 어떻게 반응하고 있는지가 그 가격에 먼저 나타납니다. 야간
+          예상가는 그 움직임을 국내 주가의 눈금으로 번역한 참고치입니다. 다음 날
+          시가를 맞히는 값은 아니지만, 미국 시장이 크게 움직인 날 "국내 성장주에는
+          어느 정도로 반영되고 있나"를 가늠하는 단서가 됩니다.
+        </p>
+        <p>
+          또 NAVER는 유가증권시장에서 시가총액 상위권에 오랫동안 자리해 온 종목이라,
+          이 종목을 바라보는 시각이 국내 성장주와 플랫폼 업종 전반의 분위기를 읽는
+          창이 되기도 합니다. 반도체·자동차 같은 제조 대형주와는 다른 결로 움직이는
+          경우가 많아서, 코스피 NOW가 다루는 다른 종목들의 야간 흐름과 나란히 놓고
+          보면 그날 시장이 어떤 업종에 반응하고 있는지 입체적으로 볼 수 있습니다.
+        </p>
+
+        <h2>야간 예상가 읽는 법</h2>
+        <p>
+          기준은 항상 가장 최근 거래일의 한국거래소 종가입니다. 국내장 마감 시점의
+          해외 선물가격과 지금의 해외 선물가격을 비교해 변동률을 구하고, 같은 비율을
+          종가에 적용합니다. 해외 가격을 환율로 단순 환산하지 않고
+          <strong>상대 변동률</strong>만 가져오므로, 상품 구조나 환율 수준과 무관하게
+          "얼마나 움직였나"가 반영됩니다.
+        </p>
+        <div class="formula">
+          예상가격 = 최근 국내 종가 × (1 + 야간 변동률)<br />
+          야간 변동률 = 현재 해외 선물가격 ÷ 국내장 마감 시점의 해외 선물가격 − 1
+        </div>
+        <p>
+          계산 결과는 한국거래소 호가단위에 맞춰 반올림해 실제로 존재할 수 있는
+          가격으로 표시합니다. 이 값은 참고치일 뿐이며, 다음 거래일의 실제 시가는
+          장전 동시호가에서 국내 수급으로 결정됩니다. 공식과 예시, 호가단위 표는
+          <a href="/guide/">이용 가이드</a>에 자세히 정리되어 있습니다.
+        </p>
+        <p>
+          숫자와 함께 데이터의 상태도 확인하세요. 각 카드에는 마지막 정상 갱신 시각과
+          데이터 신뢰도가 표시되며, 원본 데이터가 오래되면 "갱신 지연"이나 "업데이트
+          중단"으로 상태를 알립니다. 해외 연계 상품의 유동성은 국내 정규장보다 적어서,
+          특히 주말과 새벽에는 적은 거래로도 가격이 흔들릴 수 있습니다. 짧은 순간의
+          급등락보다는 일정 시간 유지되는 흐름을 보는 것이 참고 지표로서의 쓰임에
+          맞습니다.
+        </p>
+
+        <h2>자주 묻는 질문</h2>
+        <p><strong>Q. NAVER는 내수 기업인데 야간 가격을 볼 필요가 있나요?</strong></p>
+        <p>
+          NAVER의 매출 기반이 국내 중심인 것은 맞지만, 주가는 실적만이 아니라
+          투자심리도 반영합니다. 성장주로 분류되는 NAVER는 미국 기술주 흐름이나 금리
+          관련 소식에 시장의 시각이 함께 움직이는 경우가 있어서, 밤사이 해외 시장의
+          분위기가 연계 상품 가격에 반영되곤 합니다. 야간 예상가는 그 반영 정도를
+          확인하는 참고 지표입니다.
+        </p>
+        <p><strong>Q. 밤에 보이는 가격은 실제 체결가인가요?</strong></p>
+        <p>
+          아닙니다. 한국거래소의 체결가격이 아니라, 해외 선물가격의 변동률을 최근 국내
+          종가에 적용해 계산한 참고용 예상가입니다. 국내 정규장이 열려 있는 시간에는
+          실제 체결가격을 먼저 확인하세요.
+        </p>
+        <p><strong>Q. 야간 예상가가 다음 날 시가와 다르면 계산이 틀린 건가요?</strong></p>
+        <p>
+          아닙니다. 예상가는 "해외 시장이 밤사이 지금까지 반영한 만큼"을 보여주는
+          값이고, 실제 시가는 장전 동시호가에서 국내 수급으로 새로 결정됩니다. 밤사이
+          반영되지 않은 국내 고유 재료, 환율 변화, 해외 연계 상품의 유동성 차이 등으로
+          두 값은 얼마든지 달라질 수 있습니다.
+        </p>
+
+        <h2>다른 종목 보기</h2>
+        <p>
+          코스피 NOW가 다루는 전체 종목은 <a href="/stocks/">종목 소개</a>에서 볼 수
+          있습니다. 다른 종목 페이지로 바로 이동하려면 아래 링크를 이용하세요.
+        </p>
+        <ul>
+          <li><a href="/stocks/samsung/">삼성전자 (005930)</a></li>
+          <li><a href="/stocks/sk-hynix/">SK하이닉스 (000660)</a></li>
+          <li><a href="/stocks/hyundai/">현대차 (005380)</a></li>
+          <li><a href="/stocks/samsung-em/">삼성전기 (009150)</a></li>
+          <li><a href="/stocks/lg-electronics/">LG전자 (066570)</a></li>
+          <li><a href="/stocks/hanmi/">한미반도체 (042700)</a></li>
+        </ul>
+
+        <div class="note">
+          본 서비스의 예상가격은 해외 선물가격의 변동을 바탕으로 계산한 참고정보이며,
+          한국거래소의 실제 체결가격이나 다음 거래일 시가를 의미하지 않습니다. 본
+          정보는 투자 권유 또는 매매 추천이 아닙니다.
+        </div>
+      </main>
+
+      <footer class="site">
+        <nav>
+          <a href="/">홈</a>
+          <a href="/about/">서비스 소개</a>
+          <a href="/guide/">이용 가이드</a>
+          <a href="/faq/">자주 묻는 질문</a>
+          <a href="/stocks/">종목 소개</a>
+          <a href="/glossary/">용어 설명</a>
+          <a href="/privacy/">개인정보처리방침</a>
+          <a href="/terms/">이용약관</a>
+        </nav>
+        <p>코스피 NOW (코스피나우, KOSPI NOW) · kospinow.com · 문의 kospinow@gmail.com</p>
+      </footer>
+    </div>
+  </body>
+</html>

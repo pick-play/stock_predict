@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>호가단위란? | 코스피 NOW</title>
+    <meta
+      name="description"
+      content="호가단위는 주식 주문 가격이 움직일 수 있는 최소 간격입니다. 유가증권시장의 구간별 호가단위 표와 함께, 코스피 NOW 예상가가 호가단위로 반올림되는 이유를 설명합니다."
+    />
+    <link rel="canonical" href="https://kospinow.com/glossary/tick-size/" />
+
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#080b10" />
+
+    <!-- Standalone like 404.html: no app bundle, no analytics, no ads. -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f0f4f8;
+        --surface: #ffffff;
+        --border: rgba(15, 23, 42, 0.1);
+        --text: #0f172a;
+        --muted: #64748b;
+        --accent: #6b5ce7;
+        --accent-soft: rgba(139, 124, 255, 0.1);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #080b10;
+          --surface: #0d1118;
+          --border: rgba(255, 255, 255, 0.09);
+          --text: #f4f7fb;
+          --muted: #8a95a8;
+          --accent: #a99cff;
+          --accent-soft: rgba(139, 124, 255, 0.14);
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --bg: #080b10;
+        --surface: #0d1118;
+        --border: rgba(255, 255, 255, 0.09);
+        --text: #f4f7fb;
+        --muted: #8a95a8;
+        --accent: #a99cff;
+        --accent-soft: rgba(139, 124, 255, 0.14);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap { max-width: 46rem; margin: 0 auto; padding: 24px 20px 56px; }
+
+      header.site {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 4px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 28px;
+      }
+      header.site a.brand { text-decoration: none; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+      header.site a.brand span { color: var(--accent); }
+      header.site a.back { text-decoration: none; font-size: 13px; font-weight: 600; color: var(--muted); padding: 8px 0; }
+      header.site a.back:hover { color: var(--text); }
+
+      h1 { font-size: 25px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; margin: 0 0 6px; }
+      p.updated { font-size: 13px; color: var(--muted); margin: 0 0 28px; }
+      h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin: 34px 0 10px; }
+      p, li { font-size: 15px; line-height: 1.75; }
+      p { margin: 0 0 14px; }
+      ul, ol { margin: 0 0 14px; padding-left: 22px; }
+      li { margin-bottom: 6px; }
+      a { color: var(--accent); }
+      strong { font-weight: 700; }
+
+      .formula {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; margin: 0 0 14px; font-size: 14.5px; line-height: 1.8;
+        font-variant-numeric: tabular-nums; overflow-x: auto;
+      }
+
+      .note {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; font-size: 13px; line-height: 1.7; color: var(--muted); margin: 22px 0;
+      }
+
+      table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0 0 14px; }
+      th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; line-height: 1.5; }
+      th { background: var(--accent-soft); font-weight: 600; }
+      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+      footer.site { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+      footer.site nav { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; }
+      footer.site nav a { color: var(--muted); text-decoration: none; }
+      footer.site nav a:hover { color: var(--text); }
+      footer.site p { font-size: 12px; line-height: 1.6; margin: 0; }
+    </style>
+
+    <script>
+      /* Honour a saved theme before first paint, exactly as index.html does. */
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem("kospinow:theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light" : "dark";
+        } else {
+          document.documentElement.dataset.theme = t;
+        }
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", t === "light" ? "#f0f4f8" : "#080b10");
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="site">
+        <a class="brand" href="/">코스피 <span>NOW</span></a>
+        <a class="back" href="/">← 시세 보러 가기</a>
+      </header>
+
+      <main>
+        <h1>호가단위란?</h1>
+        <p class="updated">주문 가격이 움직일 수 있는 최소 간격</p>
+
+        <h2>정의</h2>
+        <p>
+          <strong>호가단위</strong>(틱, tick)는 주식 주문을 낼 때 가격이 움직일
+          수 있는 최소 간격입니다. 주식 가격은 아무 숫자나 될 수 있는 것이
+          아닙니다. 예를 들어 7만원대 주식이라면 71,300원과 71,400원 사이에
+          71,350원이라는 주문은 존재할 수 없습니다 — 이 구간의 호가단위가
+          100원이기 때문입니다.
+        </p>
+        <p>
+          비유하자면 계단과 같습니다. 경사로처럼 아무 높이에나 설 수 있는 것이
+          아니라, 정해진 계단 위에만 설 수 있습니다. 그리고 계단의 높이는 층마다
+          다릅니다 — 가격이 낮은 종목은 계단이 촘촘하고(1원, 5원), 가격이 높은
+          종목은 계단이 성깁니다(500원, 1,000원). 가격 수준에 비례해 간격을
+          맞춰야 호가창이 지나치게 잘게 쪼개지거나 지나치게 듬성해지지 않기
+          때문입니다.
+        </p>
+        <p>
+          이런 제도가 존재하는 이유는 시장의 효율입니다. 가격이 소수점 아래까지
+          아무 값이나 될 수 있다면, 매수·매도 주문이 무수히 많은 가격대에 얇게
+          흩어져 호가창을 읽기도 어렵고 체결도 느려집니다. 가격을 정해진 계단
+          위에만 세우면 주문이 몇 개의 가격대에 모여 두터워지고, 사려는 사람과
+          팔려는 사람이 만나기 쉬워집니다. 반대로 계단이 너무 성기면 사고팔
+          때마다 최소 한 계단만큼의 비용이 커지므로, 거래소는 가격 구간마다
+          간격을 다르게 정해 둔 것입니다.
+        </p>
+        <p>유가증권시장의 호가단위는 다음과 같습니다.</p>
+        <table>
+          <thead>
+            <tr><th>주가 구간</th><th class="num">호가단위</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1,000원 미만</td><td class="num">1원</td></tr>
+            <tr><td>1,000원 이상 ~ 5,000원 미만</td><td class="num">5원</td></tr>
+            <tr><td>5,000원 이상 ~ 10,000원 미만</td><td class="num">10원</td></tr>
+            <tr><td>10,000원 이상 ~ 50,000원 미만</td><td class="num">50원</td></tr>
+            <tr><td>50,000원 이상 ~ 100,000원 미만</td><td class="num">100원</td></tr>
+            <tr><td>100,000원 이상 ~ 500,000원 미만</td><td class="num">500원</td></tr>
+            <tr><td>500,000원 이상</td><td class="num">1,000원</td></tr>
+          </tbody>
+        </table>
+
+        <h2>왜 알아야 하나</h2>
+        <p>
+          코스피 NOW의 예상가격이 <strong>왜 딱 떨어지는 숫자로만 표시되는지</strong>가
+          바로 이 규칙 때문입니다. 해외 선물가격의 변동률을 국내 종가에 곱하면
+          계산 결과는 102,299.01원처럼 소수점까지 붙은 임의의 숫자가 나옵니다.
+          그런데 한국거래소에는 그런 가격이 존재할 수 없습니다. 실제 시장에서
+          체결될 수 있는 가격은 호가단위의 배수뿐입니다.
+        </p>
+        <p>
+          그래서 이 사이트는 계산된 예상가를 <strong>가장 가까운 호가단위로
+          반올림</strong>해 표시합니다. "한국거래소에 실제로 존재할 수 있는
+          가격의 모습"으로 보여주기 위해서입니다. 카드의 가격 아래 "예상가"
+          캡션이 붙는 이유이기도 합니다 — 반올림까지 마친 참고치라는 뜻입니다.
+          호가단위를 알면, 예상가가 500원이나 1,000원 단위로 툭툭 움직이는 것이
+          오류가 아니라 규칙임을 이해하게 됩니다.
+        </p>
+        <p>
+          예를 들어 삼성전자처럼 몇만 원대인 종목은 호가단위가 50원 또는
+          100원이고, 몇십만 원대인 종목은 500원 또는 1,000원입니다. 같은 0.1%의
+          변동이라도 종목의 가격대에 따라 화면에서 몇 계단을 움직이는지가
+          달라지는 셈입니다. 차트의 세로축 눈금이나 카드의 가격이 구간마다 다른
+          보폭으로 움직이는 것도 전부 이 표에서 나옵니다.
+        </p>
+
+        <h2>구체 예시</h2>
+        <p>계산 결과를 호가단위로 반올림하는 과정을 따라가 보면 이렇습니다.</p>
+        <div class="formula">
+          계산된 예상가: 102,299.01원<br />
+          이 구간(100,000원 이상 ~ 500,000원 미만)의 호가단위: 500원<br />
+          아래 호가 102,000원까지의 거리: 299.01원<br />
+          위 호가 102,500원까지의 거리: 200.99원<br />
+          → 더 가까운 <strong>102,500원</strong>으로 표시
+        </div>
+        <p>
+          정확히 중간이면 위쪽 호가로 올립니다. 호가단위가 다른 구간에서는
+          결과도 달라집니다.
+        </p>
+        <div class="formula">
+          계산 결과 72,149원 → 구간 호가단위 100원 → 72,100원<br />
+          계산 결과 72,150원 → 정확히 중간 → 위쪽인 72,200원<br />
+          계산 결과 7,124원 → 구간 호가단위 10원 → 7,120원
+        </div>
+        <p>
+          경계 근처에서는 한 가지 재미있는 일이 생깁니다. 예를 들어 99,900원대의
+          계산 결과가 반올림 후 100,000원이 되면, 그 순간부터는 500원 단위
+          구간에 들어섭니다. 이런 경계 사례까지 일관되게 처리하는 것이 반올림
+          규칙의 몫입니다.
+        </p>
+        <p>
+          거꾸로 읽는 연습도 유용합니다. 화면의 예상가가 102,500원에서
+          103,000원으로 바뀌었다면, 내부 계산값이 정확히 500원만큼 뛴 것이
+          아니라 "두 호가의 경계(102,750원)를 넘을 만큼" 움직였다는 뜻입니다.
+          반올림 표시는 최대 호가단위의 절반만큼 실제 계산값과 차이가 날 수
+          있으며, 10만원대 종목이라면 그 폭은 최대 250원 — 가격의 0.25%
+          이내입니다.
+        </p>
+
+        <h2>흔한 오해</h2>
+        <ul>
+          <li>
+            <strong>"호가단위는 모든 종목이 같다?"</strong> — 같은 시장이라도
+            가격 구간에 따라 다르고, 시장(유가증권시장·코스닥 등)이나 상품
+            종류(주식·ETF 등)에 따라서도 체계가 다를 수 있습니다. 이 사이트가
+            다루는 종목은 유가증권시장 상장 주식이므로 위 표를 따릅니다.
+          </li>
+          <li>
+            <strong>"예상가가 500원 단위로만 움직이는 건 계산이 대충이라서다?"</strong>
+            — 반대입니다. 내부 계산은 소수점까지 그대로 수행하고, 마지막 표시
+            단계에서만 호가단위로 반올림합니다. 10만원대 주식의 호가 간격이
+            500원이므로, 표시 가격이 500원 단위로 움직이는 것이 실제 시장의
+            모습과 일치하는 표현입니다.
+          </li>
+        </ul>
+
+        <h2>함께 보면 좋은 글</h2>
+        <ul>
+          <li><a href="/guide/">이용 가이드</a> — 반올림 전 단계, 예상가 계산 공식 전체</li>
+          <li><a href="/glossary/close-open-price/">종가·시가·기준가</a> — 반올림의 출발점이 되는 기준 가격</li>
+          <li><a href="/glossary/single-price-auction/">동시호가란?</a> — 호가들이 하나의 체결가로 모이는 방식</li>
+          <li><a href="/stocks/">종목 소개</a> — 이 사이트가 다루는 종목들</li>
+        </ul>
+
+        <div class="note">
+          본 서비스의 예상가격은 해외 선물가격의 변동을 바탕으로 계산한 참고정보이며,
+          한국거래소의 실제 체결가격이나 다음 거래일 시가를 의미하지 않습니다. 본
+          정보는 투자 권유 또는 매매 추천이 아닙니다.
+        </div>
+      </main>
+
+      <footer class="site">
+        <nav>
+          <a href="/">홈</a>
+          <a href="/about/">서비스 소개</a>
+          <a href="/guide/">이용 가이드</a>
+          <a href="/faq/">자주 묻는 질문</a>
+          <a href="/stocks/">종목 소개</a>
+          <a href="/glossary/">용어 설명</a>
+          <a href="/privacy/">개인정보처리방침</a>
+          <a href="/terms/">이용약관</a>
+        </nav>
+        <p>코스피 NOW (코스피나우, KOSPI NOW) · kospinow.com · 문의 kospinow@gmail.com</p>
+      </footer>
+    </div>
+  </body>
+</html>

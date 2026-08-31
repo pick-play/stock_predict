@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>야간선물(야선)이란? | 코스피 NOW</title>
+    <meta
+      name="description"
+      content="야간선물(야선)의 뜻을 쉬운 말로 설명합니다. 정규장 마감 후 밤에 거래되는 지수 파생상품이 왜 다음 날 아침의 힌트로 읽히는지, 야간선물 호가와 참고 예상가의 차이까지."
+    />
+    <link rel="canonical" href="https://kospinow.com/glossary/night-futures/" />
+
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#080b10" />
+
+    <!-- Standalone like 404.html: no app bundle, no analytics, no ads. -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f0f4f8;
+        --surface: #ffffff;
+        --border: rgba(15, 23, 42, 0.1);
+        --text: #0f172a;
+        --muted: #64748b;
+        --accent: #6b5ce7;
+        --accent-soft: rgba(139, 124, 255, 0.1);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #080b10;
+          --surface: #0d1118;
+          --border: rgba(255, 255, 255, 0.09);
+          --text: #f4f7fb;
+          --muted: #8a95a8;
+          --accent: #a99cff;
+          --accent-soft: rgba(139, 124, 255, 0.14);
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --bg: #080b10;
+        --surface: #0d1118;
+        --border: rgba(255, 255, 255, 0.09);
+        --text: #f4f7fb;
+        --muted: #8a95a8;
+        --accent: #a99cff;
+        --accent-soft: rgba(139, 124, 255, 0.14);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap { max-width: 46rem; margin: 0 auto; padding: 24px 20px 56px; }
+
+      header.site {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 4px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 28px;
+      }
+      header.site a.brand { text-decoration: none; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+      header.site a.brand span { color: var(--accent); }
+      header.site a.back { text-decoration: none; font-size: 13px; font-weight: 600; color: var(--muted); padding: 8px 0; }
+      header.site a.back:hover { color: var(--text); }
+
+      h1 { font-size: 25px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; margin: 0 0 6px; }
+      p.updated { font-size: 13px; color: var(--muted); margin: 0 0 28px; }
+      h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin: 34px 0 10px; }
+      p, li { font-size: 15px; line-height: 1.75; }
+      p { margin: 0 0 14px; }
+      ul, ol { margin: 0 0 14px; padding-left: 22px; }
+      li { margin-bottom: 6px; }
+      a { color: var(--accent); }
+      strong { font-weight: 700; }
+
+      .formula {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; margin: 0 0 14px; font-size: 14.5px; line-height: 1.8;
+        font-variant-numeric: tabular-nums; overflow-x: auto;
+      }
+
+      .note {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; font-size: 13px; line-height: 1.7; color: var(--muted); margin: 22px 0;
+      }
+
+      table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0 0 14px; }
+      th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; line-height: 1.5; }
+      th { background: var(--accent-soft); font-weight: 600; }
+      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+      footer.site { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+      footer.site nav { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; }
+      footer.site nav a { color: var(--muted); text-decoration: none; }
+      footer.site nav a:hover { color: var(--text); }
+      footer.site p { font-size: 12px; line-height: 1.6; margin: 0; }
+    </style>
+
+    <script>
+      /* Honour a saved theme before first paint, exactly as index.html does. */
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem("kospinow:theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light" : "dark";
+        } else {
+          document.documentElement.dataset.theme = t;
+        }
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", t === "light" ? "#f0f4f8" : "#080b10");
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="site">
+        <a class="brand" href="/">코스피 <span>NOW</span></a>
+        <a class="back" href="/">← 시세 보러 가기</a>
+      </header>
+
+      <main>
+        <h1>야간선물(야선)이란?</h1>
+        <p class="updated">정규장이 닫힌 밤에 거래되는 지수 파생상품을 부르는 말</p>
+
+        <h2>정의</h2>
+        <p>
+          한국거래소의 정규장은 평일 09:00부터 15:30까지 열립니다. 그런데 세계의
+          시장은 그 시간에 맞춰 잠들지 않습니다. 한국의 밤은 유럽의 오후이고
+          미국의 아침이어서, 국내 주가에 영향을 줄 뉴스는 우리 장이 닫힌 뒤에도
+          계속 쏟아집니다. <strong>야간선물</strong>은 이렇게 정규장이 닫힌 밤
+          시간대에 거래되는 지수 관련 선물 등 파생상품을 통틀어 부르는 말이고,
+          투자자들 사이에서는 줄여서 <strong>"야선"</strong>이라고도 합니다.
+        </p>
+        <p>
+          코스피200 관련 파생상품의 야간 거래는 오래전부터 해외 거래소 —
+          유럽계 파생상품 거래소 — 와의 연계를 통해 이루어져 왔습니다. 낮에는
+          한국거래소에서, 밤에는 연계된 해외 시장에서 거래가 이어지는 구조입니다.
+          비유하자면 낮에 영업하는 본점이 문을 닫은 뒤, 시차가 다른 도시의
+          분점에서 같은 상품의 흥정이 계속되는 셈입니다. 다음 날 아침 본점이
+          다시 문을 열 때, 밤사이 분점에서 오간 가격은 자연스럽게 참고가 됩니다.
+        </p>
+        <p>
+          중요한 것은 야간선물이 <strong>개별 종목이 아니라 지수(코스피200)에
+          연동된 파생상품</strong>이라는 점입니다. 밤사이 "삼성전자가 얼마"라고
+          직접 말해 주는 국내 공식 시장은 없습니다. 야간선물이 말해 주는 것은
+          "시장 전체가 어느 방향으로 기울어 있는가"에 가깝습니다.
+        </p>
+
+        <h2>왜 알아야 하나</h2>
+        <p>
+          밤에 국내 주식 관련 커뮤니티를 보면 "야선이 빠지고 있다", "야선이
+          오르고 있다" 같은 말이 자주 등장합니다. 이 말의 뜻을 알아야 밤사이의
+          시장 분위기를 다루는 글들을 읽을 수 있습니다. 야간선물은 밤사이
+          해외발 재료가 한국 시장에 어떻게 반영될지를 미리 비춰 보는 거울처럼
+          쓰입니다.
+        </p>
+        <p>
+          여기서 코스피 NOW와의 관계를 분명히 해 둘 필요가 있습니다.
+          <strong>이 사이트는 야간선물 호가 자체를 보여주는 곳이 아닙니다.</strong>
+          코스피200 야간선물의 시세는 별도의 라이선스가 필요한 데이터이고, 이
+          사이트에는 실려 있지 않습니다. 코스피 NOW가 보여주는 것은 삼성전자,
+          SK하이닉스 같은 개별 종목의 해외 파생상품 시장 연계 가격이 밤사이 몇
+          퍼센트 움직였는지를 재서, 그 변동률을 국내 종가에 적용한
+          <strong>참고 예상가</strong>입니다. 지수 단위의 야간선물과 종목 단위의
+          참고 예상가 — 둘 다 "밤의 시장을 읽는 창"이지만 대상과 성격이 다릅니다.
+        </p>
+
+        <h2>구체 예시</h2>
+        <p>
+          숫자를 넣어 밤 시간대의 흐름을 따라가 보면 이렇습니다.
+        </p>
+        <div class="formula">
+          15:30 — 한국거래소 정규장 마감. 어떤 종목의 종가가 100,000원으로 확정<br />
+          23:00 — 미국 시장에서 반도체 업종에 관한 큰 뉴스 발생<br />
+          23:30 — 그 종목의 해외 연계 선물가격이 마감 시점 대비 +2.0% 상승<br />
+          같은 시각 — 지수 야간선물도 시장 전체 분위기를 반영해 움직임
+        </div>
+        <p>
+          이때 코스피 NOW의 화면은 "100,000원 × 1.02 = 102,000원"이라는 참고
+          예상가를 보여줍니다. 야간선물을 보는 사람은 "시장 전체가 오르는
+          분위기"라는 큰 그림을 읽고, 이 사이트를 보는 사람은 "그 분위기 속에서
+          이 종목의 연계 가격은 얼마나 움직였나"라는 종목 단위의 그림을
+          읽습니다. 둘은 서로를 보완하는 정보이지, 같은 정보가 아닙니다.
+          시장 전체가 오르는 밤에도 특정 종목에 악재가 있으면 그 종목의 연계
+          가격만 내릴 수 있습니다.
+        </p>
+        <p>
+          밤 시간대의 가격을 읽을 때는 <strong>유동성</strong>도 함께 봐야
+          합니다. 야간 시장의 거래량은 낮의 정규장보다 적은 것이 보통이라,
+          같은 규모의 주문에도 가격이 더 크게 출렁일 수 있습니다. 특히 주말이나
+          새벽처럼 참여자가 적은 시간대의 급등락은 "시장의 합의"라기보다 "얇은
+          시장의 일시적 흔들림"일 가능성을 늘 염두에 두는 것이 좋습니다.
+        </p>
+        <p>
+          그리고 다음 날 아침 — 실제 시가는 08:30~09:00의
+          <a href="/glossary/single-price-auction/">장전 동시호가</a>에서 국내
+          투자자들의 주문으로 결정됩니다. 야간선물도, 참고 예상가도 그 관문을
+          대신하지 못합니다.
+        </p>
+
+        <h2>흔한 오해</h2>
+        <ul>
+          <li>
+            <strong>"야간선물이 오르면 내일 무조건 오른다?"</strong> —
+            아닙니다. 야간선물은 밤사이의 정보가 반영된 하나의 참고치일 뿐,
+            다음 날 시가를 확정하는 장치가 아닙니다. 새벽에 새 뉴스가 나오거나,
+            장전 동시호가에서 국내 수급이 다른 방향으로 쏠리면 결과는 얼마든지
+            달라집니다. 방향을 보장하는 지표는 존재하지 않습니다.
+          </li>
+          <li>
+            <strong>"야간선물 = 개별 종목의 밤 시세?"</strong> — 야간선물은
+            지수 파생상품입니다. 지수가 오르는 밤에도 개별 종목의 사정은 제각각일
+            수 있습니다. 종목 단위의 밤 흐름이 궁금하다면 그 종목에 연계된 해외
+            파생상품 가격을 봐야 하고, 그것도 어디까지나 참고치입니다.
+          </li>
+        </ul>
+
+        <h2>함께 보면 좋은 글</h2>
+        <ul>
+          <li><a href="/glossary/futures-vs-spot/">선물과 현물의 차이</a> — 선물가격이 현물가격과 별개로 움직이는 이유</li>
+          <li><a href="/glossary/kospi-kospi200/">코스피와 코스피200</a> — 야간선물의 기초가 되는 지수 이해하기</li>
+          <li><a href="/glossary/single-price-auction/">동시호가란?</a> — 밤의 예상이 아침의 시가로 바뀌는 관문</li>
+          <li><a href="/guide/">이용 가이드</a> — 코스피 NOW 예상가격의 계산 공식</li>
+          <li><a href="/stocks/">종목 소개</a> — 이 사이트가 다루는 종목들</li>
+        </ul>
+
+        <div class="note">
+          본 서비스의 예상가격은 해외 선물가격의 변동을 바탕으로 계산한 참고정보이며,
+          한국거래소의 실제 체결가격이나 다음 거래일 시가를 의미하지 않습니다. 본
+          정보는 투자 권유 또는 매매 추천이 아닙니다.
+        </div>
+      </main>
+
+      <footer class="site">
+        <nav>
+          <a href="/">홈</a>
+          <a href="/about/">서비스 소개</a>
+          <a href="/guide/">이용 가이드</a>
+          <a href="/faq/">자주 묻는 질문</a>
+          <a href="/stocks/">종목 소개</a>
+          <a href="/glossary/">용어 설명</a>
+          <a href="/privacy/">개인정보처리방침</a>
+          <a href="/terms/">이용약관</a>
+        </nav>
+        <p>코스피 NOW (코스피나우, KOSPI NOW) · kospinow.com · 문의 kospinow@gmail.com</p>
+      </footer>
+    </div>
+  </body>
+</html>

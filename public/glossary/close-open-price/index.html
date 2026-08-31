@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>종가·시가·기준가란? | 코스피 NOW</title>
+    <meta
+      name="description"
+      content="종가는 하루의 마지막 가격, 시가는 첫 가격, 기준가는 등락률을 잴 때의 출발점입니다. 세 가격의 차이와 코스피 NOW가 항상 최근 종가를 기준으로 삼는 이유를 설명합니다."
+    />
+    <link rel="canonical" href="https://kospinow.com/glossary/close-open-price/" />
+
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#080b10" />
+
+    <!-- Standalone like 404.html: no app bundle, no analytics, no ads. -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f0f4f8;
+        --surface: #ffffff;
+        --border: rgba(15, 23, 42, 0.1);
+        --text: #0f172a;
+        --muted: #64748b;
+        --accent: #6b5ce7;
+        --accent-soft: rgba(139, 124, 255, 0.1);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #080b10;
+          --surface: #0d1118;
+          --border: rgba(255, 255, 255, 0.09);
+          --text: #f4f7fb;
+          --muted: #8a95a8;
+          --accent: #a99cff;
+          --accent-soft: rgba(139, 124, 255, 0.14);
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --bg: #080b10;
+        --surface: #0d1118;
+        --border: rgba(255, 255, 255, 0.09);
+        --text: #f4f7fb;
+        --muted: #8a95a8;
+        --accent: #a99cff;
+        --accent-soft: rgba(139, 124, 255, 0.14);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap { max-width: 46rem; margin: 0 auto; padding: 24px 20px 56px; }
+
+      header.site {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 4px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 28px;
+      }
+      header.site a.brand { text-decoration: none; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+      header.site a.brand span { color: var(--accent); }
+      header.site a.back { text-decoration: none; font-size: 13px; font-weight: 600; color: var(--muted); padding: 8px 0; }
+      header.site a.back:hover { color: var(--text); }
+
+      h1 { font-size: 25px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; margin: 0 0 6px; }
+      p.updated { font-size: 13px; color: var(--muted); margin: 0 0 28px; }
+      h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin: 34px 0 10px; }
+      p, li { font-size: 15px; line-height: 1.75; }
+      p { margin: 0 0 14px; }
+      ul, ol { margin: 0 0 14px; padding-left: 22px; }
+      li { margin-bottom: 6px; }
+      a { color: var(--accent); }
+      strong { font-weight: 700; }
+
+      .formula {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; margin: 0 0 14px; font-size: 14.5px; line-height: 1.8;
+        font-variant-numeric: tabular-nums; overflow-x: auto;
+      }
+
+      .note {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; font-size: 13px; line-height: 1.7; color: var(--muted); margin: 22px 0;
+      }
+
+      table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0 0 14px; }
+      th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; line-height: 1.5; }
+      th { background: var(--accent-soft); font-weight: 600; }
+      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+      footer.site { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+      footer.site nav { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; }
+      footer.site nav a { color: var(--muted); text-decoration: none; }
+      footer.site nav a:hover { color: var(--text); }
+      footer.site p { font-size: 12px; line-height: 1.6; margin: 0; }
+    </style>
+
+    <script>
+      /* Honour a saved theme before first paint, exactly as index.html does. */
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem("kospinow:theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light" : "dark";
+        } else {
+          document.documentElement.dataset.theme = t;
+        }
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", t === "light" ? "#f0f4f8" : "#080b10");
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="site">
+        <a class="brand" href="/">코스피 <span>NOW</span></a>
+        <a class="back" href="/">← 시세 보러 가기</a>
+      </header>
+
+      <main>
+        <h1>종가·시가·기준가란?</h1>
+        <p class="updated">하루의 끝 가격, 시작 가격, 그리고 등락률의 출발점</p>
+
+        <h2>정의</h2>
+        <p>
+          하루의 주가에는 이름이 붙은 지점이 몇 개 있습니다. 하루를 한 편의
+          경기라고 하면, 시가는 킥오프의 스코어, 종가는 최종 스코어입니다.
+        </p>
+        <ul>
+          <li>
+            <strong>시가(始價)</strong> — 그날의 첫 체결가격입니다. 장전
+            <a href="/glossary/single-price-auction/">동시호가</a>(08:30~09:00)에
+            모인 주문이 09:00에 하나의 가격으로 체결되면서 결정됩니다. 밤사이
+            쌓인 뉴스와 기대가 처음으로 가격에 반영되는 순간입니다.
+          </li>
+          <li>
+            <strong>종가(終價)</strong> — 그날의 마지막 체결가격입니다. 장 마감
+            동시호가(15:20~15:30)로 결정되며, 15:30에 확정된 뒤에는 다음 거래일
+            아침까지 바뀌지 않습니다. 뉴스에서 "오늘 삼성전자는 ○○원에
+            마감했습니다"라고 말하는 그 가격입니다.
+          </li>
+          <li>
+            <strong>기준가(기준가격)</strong> — 등락률을 잴 때 "무엇 대비"의
+            그 무엇, 즉 비교의 출발점이 되는 가격입니다. 정규장에서 "오늘
+            +2.3%"라고 말할 때의 기준은 보통 전일 종가입니다. 배당락이나
+            액면분할처럼 주식의 조건이 바뀌는 날에는 전일 종가를 조정한 값이
+            기준가가 되기도 합니다.
+          </li>
+        </ul>
+        <p>
+          셋 중 종가가 특별한 대접을 받는 이유는 <strong>안정성</strong>입니다.
+          시가와 장중 가격은 하루 종일 흘러가는 값이지만, 종가는 하루에 한 번
+          확정되어 다음 거래일까지 고정되는 "공식 스냅샷"입니다. 그래서 차트의
+          일봉, 등락률 계산, 각종 통계가 대부분 종가를 기준으로 만들어집니다.
+        </p>
+
+        <h2>왜 알아야 하나</h2>
+        <p>
+          코스피 NOW의 모든 등락률은 <strong>가장 최근 거래일의 한국거래소
+          종가</strong>를 기준으로 계산됩니다. 카드에 "최근 국내 종가"가 항상
+          함께 표시되는 이유가 이것입니다 — 위의 큰 예상가가 "무엇 대비 몇
+          퍼센트"인지 말해 주는 짝이기 때문입니다.
+        </p>
+        <p>
+          왜 시가나 장중 가격이 아니라 종가일까요? 야간 시세의 목적을 생각하면
+          자연스럽습니다. 밤에 알고 싶은 것은 "국내장이 닫힌 뒤 세계 시장이
+          얼마나 반영했나"입니다. 그 측정의 출발점은 국내장이 마지막으로 남긴
+          공식 가격, 즉 15:30에 확정된 종가여야 합니다. 종가는 하루에 한 번만
+          바뀌는 고정점이므로, 밤새 표시되는 등락률이 일관된 잣대를 갖게 됩니다.
+          주말이나 공휴일에는 직전 거래일(보통 금요일)의 종가가 기준이 되고,
+          이때의 등락률은 "금요일 종가 대비 지금까지"의 누적 변동을 뜻합니다.
+        </p>
+        <p>
+          기준이 종가 하나로 고정되어 있다는 사실은 화면을 읽는 방식에도
+          영향을 줍니다. 카드의 등락률은 "직전 표시값 대비"가 아니라 항상
+          "최근 종가 대비"이므로, 밤새 화면을 지켜보지 않았더라도 지금 보이는
+          숫자 하나가 마감 이후의 누적 변동 전체를 말해 줍니다. 자정에 봐도,
+          새벽에 봐도 잣대는 같습니다.
+        </p>
+
+        <h2>구체 예시</h2>
+        <p>어느 종목의 이틀을 따라가 보면 세 가격의 역할이 분명해집니다.</p>
+        <div class="formula">
+          월요일 09:00 — 시가 99,500원 (장전 동시호가로 결정)<br />
+          월요일 15:30 — 종가 100,000원 확정 (장 마감 동시호가)<br />
+          월요일 밤 — 해외 연계 선물가격이 마감 시점 대비 +2.30% 상승<br />
+          코스피 NOW 표시: 100,000원 × 1.0230 = 102,300원 (종가 기준 +2.30%)<br />
+          화요일 09:00 — 실제 시가는 장전 동시호가에서 새로 결정 (예: 101,800원)
+        </div>
+        <p>
+          화요일의 실제 시가 101,800원은 밤사이의 참고 예상가 102,300원과
+          다릅니다. 이 차이가 이상한 일이 아니라는 것 — 그것이 이 페이지의
+          핵심입니다. 예상가는 "종가 대비 해외 시장이 반영한 만큼"이고, 시가는
+          "아침 동시호가에서 국내 수급이 실제로 합의한 가격"이므로, 측정하는
+          대상 자체가 다릅니다. 화요일 정규장이 열리면 그날의 등락률 기준은
+          월요일 종가 100,000원이 되고, 코스피 NOW의 기준도 화요일 15:30에 새
+          종가가 확정되면 그 값으로 넘어갑니다.
+        </p>
+        <p>
+          한 가지 더 — 예상가와 실제 시가의 차이는 어느 쪽이 "틀렸다"는 뜻이
+          아닙니다. 밤사이 해외 시장이 반영한 정보와 아침 국내 시장이 반영한
+          정보의 집합이 다를 뿐입니다. 새벽에 나온 국내 뉴스, 밤사이의 환율
+          변화, 기관·개인의 아침 주문은 모두 동시호가 시점에야 가격에
+          들어옵니다.
+        </p>
+
+        <h2>흔한 오해</h2>
+        <ul>
+          <li>
+            <strong>"시가는 전일 종가와 같다?"</strong> — 다른 것이 보통입니다.
+            밤사이의 뉴스와 주문이 장전 동시호가에 반영되므로, 시가는 전일
+            종가보다 높게도 낮게도 형성됩니다. 전일 종가와 시가의 차이를
+            흔히 "갭"이라고 부릅니다.
+          </li>
+          <li>
+            <strong>"야간 예상가는 내일 시가다?"</strong> — 아닙니다. 예상가는
+            해외 선물가격이 지금까지 반영한 만큼을 종가에 얹은 참고치일 뿐이고,
+            실제 시가는 다음 날 08:30~09:00 동시호가에서 국내 주문으로 새로
+            결정됩니다. 새벽의 새 뉴스, 환율, 국내 수급에 따라 얼마든지 달라질
+            수 있습니다.
+          </li>
+        </ul>
+
+        <h2>함께 보면 좋은 글</h2>
+        <ul>
+          <li><a href="/glossary/single-price-auction/">동시호가란?</a> — 시가와 종가가 결정되는 방식</li>
+          <li><a href="/glossary/futures-vs-spot/">선물과 현물의 차이</a> — 종가가 멈춘 밤에 움직이는 가격의 정체</li>
+          <li><a href="/glossary/tick-size/">호가단위란?</a> — 종가 기준 예상가가 반올림되는 규칙</li>
+          <li><a href="/guide/">이용 가이드</a> — 종가를 기준으로 한 계산 공식 전체</li>
+          <li><a href="/stocks/">종목 소개</a> — 이 사이트가 다루는 종목들</li>
+        </ul>
+
+        <div class="note">
+          본 서비스의 예상가격은 해외 선물가격의 변동을 바탕으로 계산한 참고정보이며,
+          한국거래소의 실제 체결가격이나 다음 거래일 시가를 의미하지 않습니다. 본
+          정보는 투자 권유 또는 매매 추천이 아닙니다.
+        </div>
+      </main>
+
+      <footer class="site">
+        <nav>
+          <a href="/">홈</a>
+          <a href="/about/">서비스 소개</a>
+          <a href="/guide/">이용 가이드</a>
+          <a href="/faq/">자주 묻는 질문</a>
+          <a href="/stocks/">종목 소개</a>
+          <a href="/glossary/">용어 설명</a>
+          <a href="/privacy/">개인정보처리방침</a>
+          <a href="/terms/">이용약관</a>
+        </nav>
+        <p>코스피 NOW (코스피나우, KOSPI NOW) · kospinow.com · 문의 kospinow@gmail.com</p>
+      </footer>
+    </div>
+  </body>
+</html>

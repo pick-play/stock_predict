@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>한미반도체 (042700) 야간 예상가·종목 소개 | 코스피 NOW</title>
+    <meta
+      name="description"
+      content="한미반도체(042700)의 야간 예상가를 확인하고, HBM용 TC 본더로 주목받는 반도체 후공정 장비 사업과 가격에 영향을 주는 요인을 정리했습니다."
+    />
+    <link rel="canonical" href="https://kospinow.com/stocks/hanmi/" />
+
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#080b10" />
+
+    <!-- Standalone like 404.html: no app bundle, no analytics, no ads. -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f0f4f8;
+        --surface: #ffffff;
+        --border: rgba(15, 23, 42, 0.1);
+        --text: #0f172a;
+        --muted: #64748b;
+        --accent: #6b5ce7;
+        --accent-soft: rgba(139, 124, 255, 0.1);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #080b10;
+          --surface: #0d1118;
+          --border: rgba(255, 255, 255, 0.09);
+          --text: #f4f7fb;
+          --muted: #8a95a8;
+          --accent: #a99cff;
+          --accent-soft: rgba(139, 124, 255, 0.14);
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --bg: #080b10;
+        --surface: #0d1118;
+        --border: rgba(255, 255, 255, 0.09);
+        --text: #f4f7fb;
+        --muted: #8a95a8;
+        --accent: #a99cff;
+        --accent-soft: rgba(139, 124, 255, 0.14);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap { max-width: 46rem; margin: 0 auto; padding: 24px 20px 56px; }
+
+      header.site {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 4px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 28px;
+      }
+      header.site a.brand { text-decoration: none; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+      header.site a.brand span { color: var(--accent); }
+      header.site a.back { text-decoration: none; font-size: 13px; font-weight: 600; color: var(--muted); padding: 8px 0; }
+      header.site a.back:hover { color: var(--text); }
+
+      h1 { font-size: 25px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; margin: 0 0 6px; }
+      p.updated { font-size: 13px; color: var(--muted); margin: 0 0 28px; }
+      h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin: 34px 0 10px; }
+      p, li { font-size: 15px; line-height: 1.75; }
+      p { margin: 0 0 14px; }
+      ul, ol { margin: 0 0 14px; padding-left: 22px; }
+      li { margin-bottom: 6px; }
+      a { color: var(--accent); }
+      strong { font-weight: 700; }
+
+      .formula {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; margin: 0 0 14px; font-size: 14.5px; line-height: 1.8;
+        font-variant-numeric: tabular-nums; overflow-x: auto;
+      }
+
+      .note {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; font-size: 13px; line-height: 1.7; color: var(--muted); margin: 22px 0;
+      }
+
+      table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0 0 14px; }
+      th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; line-height: 1.5; }
+      th { background: var(--accent-soft); font-weight: 600; }
+      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+      footer.site { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+      footer.site nav { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; }
+      footer.site nav a { color: var(--muted); text-decoration: none; }
+      footer.site nav a:hover { color: var(--text); }
+      footer.site p { font-size: 12px; line-height: 1.6; margin: 0; }
+    </style>
+
+    <script>
+      /* Honour a saved theme before first paint, exactly as index.html does. */
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem("kospinow:theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light" : "dark";
+        } else {
+          document.documentElement.dataset.theme = t;
+        }
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", t === "light" ? "#f0f4f8" : "#080b10");
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="site">
+        <a class="brand" href="/">코스피 <span>NOW</span></a>
+        <a class="back" href="/">← 시세 보러 가기</a>
+      </header>
+
+      <main>
+        <h1>한미반도체 (042700) — 야간 예상가와 종목 소개</h1>
+        <p class="updated">AI 반도체 시대에 주목받는 장비 회사, 그리고 밤사이 형성되는 참고 가격</p>
+
+        <p>
+          한미반도체는 유가증권시장에 상장된 종목코드 <strong>042700</strong>의 반도체
+          장비 기업입니다. 삼성전자나 SK하이닉스처럼 칩을 만드는 회사가 아니라, 칩을
+          만드는 데 필요한 <strong>장비</strong>를 만들어 파는 회사입니다. 국내 정규장이
+          닫힌 뒤에도 한미반도체 연계 상품이 해외 파생상품 시장에서 거래되며 24시간
+          가격이 형성되고, 코스피 NOW는 그 해외 선물가격의 변동률을 최근 국내 종가에
+          적용해 야간 예상가를 보여줍니다.
+        </p>
+        <p>
+          <a href="/">지금 야간 예상가 확인하기 →</a>
+        </p>
+
+        <h2>어떤 회사인가</h2>
+        <p>
+          한미반도체의 본업은 <strong>반도체 후공정 장비</strong>입니다. 반도체 제조는
+          웨이퍼 위에 회로를 새기는 전공정과, 완성된 웨이퍼를 자르고 포장해 실제 칩으로
+          만드는 후공정으로 나뉘는데, 한미반도체는 오랫동안 후공정 영역에서 절단·검사
+          장비 등을 만들어 온 전문 기업입니다. 수십 년간 이 분야에 집중해 온 업력이
+          회사의 기반입니다.
+        </p>
+        <p>
+          이 회사가 최근 몇 년 사이 시장의 큰 주목을 받게 된 계기는
+          <strong>HBM(고대역폭 메모리)</strong>입니다. HBM은 AI 가속기에 들어가는
+          메모리로, D램 칩을 수직으로 여러 층 쌓아 만듭니다. 이렇게 칩을 쌓아 붙이는
+          공정에 쓰이는 핵심 장비가 <strong>TC 본더(열압착 본딩 장비)</strong>인데,
+          한미반도체는 이 장비를 공급하는 대표적인 회사로 꼽힙니다. AI 반도체 수요가
+          커지면서 HBM 생산 능력을 늘리려는 메모리 제조사들의 투자가 이어졌고, 그
+          투자에 필요한 장비를 만드는 한미반도체는 "AI 반도체 밸류체인의 장비주"로
+          분류되며 투자자들의 관심 종목이 되었습니다.
+        </p>
+        <p>
+          장비 회사라는 위치는 칩 제조사와는 다른 사업 성격을 만듭니다. 칩 제조사의
+          실적이 메모리 가격에 좌우된다면, 장비 회사의 실적은 고객사가
+          <strong>설비 투자를 얼마나 하느냐</strong>에 좌우됩니다. 고객사가 증설을
+          결정하면 장비 발주가 들어오고, 투자를 미루면 발주도 줄어듭니다. 그래서
+          한미반도체를 볼 때 시장은 반도체 가격 자체보다 제조사들의 투자 계획과 발주
+          소식에 더 주목하는 경향이 있습니다.
+        </p>
+
+        <h2>가격을 움직이는 것들</h2>
+        <p>
+          어느 방향으로 움직일지는 미리 알 수 없지만, 한미반도체 주가를 볼 때 시장
+          참여자들이 지켜보는 변수는 대체로 다음과 같습니다.
+        </p>
+        <ul>
+          <li>
+            <strong>AI 투자 사이클</strong> — 글로벌 빅테크 기업들의 AI 인프라 투자가
+            이어지는 동안에는 AI 가속기와 HBM 수요가 유지되고, 그 수요가 장비 발주로
+            이어지는 구조입니다. 반대로 AI 투자 속도에 대한 의구심이 커지면 장비주
+            전반의 투자심리가 흔들리곤 합니다.
+          </li>
+          <li>
+            <strong>고객사의 장비 발주</strong> — 장비 회사의 매출은 발주 계약 단위로
+            움직입니다. 주요 고객사의 증설 계획, 수주 공시, 공급 계약 소식이 이
+            종목을 보는 시각에 직접적인 영향을 주는 요인입니다.
+          </li>
+          <li>
+            <strong>반도체 업황</strong> — 메모리 업계의 재고와 가격 흐름, 반도체
+            경기 전반의 사이클은 고객사가 투자를 늘릴지 미룰지를 결정하는 배경이
+            됩니다.
+          </li>
+          <li>
+            <strong>경쟁 구도와 기술 변화</strong> — HBM 적층 방식이나 본딩 기술이
+            진화하면서 장비 시장의 경쟁 구도도 함께 움직입니다. 새로운 공정 방식의
+            채택 여부는 장비 회사들에 중요한 변수입니다.
+          </li>
+          <li>
+            <strong>미국 반도체주 흐름</strong> — AI 반도체 생태계의 중심에 있는 미국
+            기업들의 주가와 실적 발표는 국내 반도체 밸류체인 종목들의 투자심리에
+            영향을 주는 대표적인 야간 재료입니다.
+          </li>
+        </ul>
+
+        <h2>왜 이 종목의 야간 가격이 의미 있나</h2>
+        <p>
+          한미반도체를 움직이는 재료의 상당수는 한국의 밤에 나옵니다. 미국 증시에서
+          AI·반도체 종목들이 어떻게 움직였는지, 빅테크의 실적 발표와 AI 투자 계획이
+          어땠는지 같은 소식은 모두 미국 시장이 열려 있는 시간 — 한국 기준 밤부터
+          새벽 — 에 전해집니다. 국내 정규장은 이미 닫혀 있으므로, 이 재료에 대한 국내
+          시장의 반응은 다음 거래일 아침에야 나타납니다.
+        </p>
+        <p>
+          그 사이를 메워 주는 것이 해외 파생상품 시장에 상장된 연계 상품입니다. 이
+          상품은 24시간 거래되기 때문에, 밤사이 나온 뉴스가 가격에 어떻게 반영되고
+          있는지가 그 가격의 움직임으로 나타납니다. 야간 예상가는 그 변동률을 국내 주가 눈금으로
+          옮긴 참고치입니다. 특히 한미반도체처럼 미국 AI·반도체 흐름과의 연관이 자주
+          언급되는 종목은, 밤사이 해외 시장의 분위기를 확인하려는 수요가 큰 편입니다.
+        </p>
+        <p>
+          장비주라는 특성도 야간 가격을 볼 때 염두에 둘 만합니다. 장비 회사의 실적은
+          수주 계약 단위로 움직이기 때문에 개별 뉴스 하나가 시장의 시각을 크게 바꾸는
+          일이 있고, 그만큼 대형 칩 제조사보다 주가의 진폭이 큰 경향이 있습니다.
+          변동이 큰 종목일수록 밤사이 움직임을 미리 확인해 두는 것의 효용도 크지만,
+          동시에 예상가와 실제 시가의 차이도 커질 수 있다는 양면을 함께 기억하는 것이
+          좋습니다.
+        </p>
+
+        <h2>야간 예상가 읽는 법</h2>
+        <p>
+          기준은 항상 가장 최근 거래일의 한국거래소 종가입니다. 국내장 마감 시점의
+          해외 선물가격과 지금의 해외 선물가격을 비교해 변동률을 구하고, 그 비율을
+          종가에 적용합니다.
+        </p>
+        <div class="formula">
+          예상가격 = 최근 국내 종가 × (1 + 야간 변동률)<br />
+          야간 변동률 = 현재 해외 선물가격 ÷ 국내장 마감 시점의 해외 선물가격 − 1
+        </div>
+        <p>
+          계산 결과는 한국거래소 호가단위에 맞춰 반올림해 실제로 존재할 수 있는
+          가격으로 표시합니다. 이 값은 참고치일 뿐이며, 다음 거래일의 실제 시가는 장전
+          동시호가에서 국내 수급으로 결정됩니다. 공식과 예시, 호가단위 표는
+          <a href="/guide/">이용 가이드</a>에 자세히 정리되어 있습니다.
+        </p>
+        <p>
+          한 가지 더 기억할 점은, 예상가의 등락률이 "언제부터의 변동인가"입니다. 평일
+          저녁이라면 그날 종가 대비 몇 시간 동안의 움직임이지만, 주말이나 연휴에는
+          직전 거래일 종가 대비 누적 변동이 됩니다. 같은 ±2%라도 세 시간 동안의
+          움직임과 사흘 동안의 움직임은 의미가 다릅니다. 카드에 표시되는 기준 종가와
+          마지막 갱신 시각을 함께 확인하면 이 맥락을 놓치지 않을 수 있습니다.
+        </p>
+
+        <h2>자주 묻는 질문</h2>
+        <p><strong>Q. 한미반도체는 삼성전자 같은 초대형주가 아닌데도 야간 가격이 형성되나요?</strong></p>
+        <p>
+          네. 한미반도체 연계 상품이 해외 파생상품 시장에 상장되어 있어 24시간 가격이
+          형성됩니다. 다만 연계 상품의 유동성은 국내 정규장보다 적을 수 있고, 유동성이
+          얕을수록 적은 거래로도 가격이 흔들릴 수 있습니다. 이 사이트는 데이터의 상태를
+          신뢰도 표시로 함께 보여주므로, 숫자와 함께 데이터 상태도 확인하세요.
+        </p>
+        <p><strong>Q. 미국 반도체주가 움직이면 한미반도체 야간 예상가도 따라 움직이나요?</strong></p>
+        <p>
+          기계적으로 연동되는 것은 아닙니다. 야간 예상가는 한미반도체 연계 상품 자체의
+          가격에서 계산되며, 그 가격이 미국 반도체주 흐름에 반응하는 정도는 그날의
+          재료와 시장 상황에 따라 다릅니다. 미국 시장의 움직임은 참고 배경이지, 예상가를
+          결정하는 입력값이 아닙니다.
+        </p>
+        <p><strong>Q. 변동이 큰 종목인데 예상가가 실제와 많이 다를 수도 있나요?</strong></p>
+        <p>
+          그럴 수 있습니다. 예상가는 "밤사이 해외 시장이 지금까지 반영한 만큼"을
+          보여주는 값이지 다음 날 시가를 맞히는 값이 아닙니다. 특히 변동성이 큰 종목은
+          장전 동시호가에서 국내 수급이 몰리며 예상가와 다른 시가가 형성되는 일이
+          충분히 있을 수 있습니다.
+        </p>
+
+        <h2>다른 종목 보기</h2>
+        <p>
+          코스피 NOW가 다루는 전체 종목은 <a href="/stocks/">종목 소개</a>에서 볼 수
+          있습니다. 다른 종목 페이지로 바로 이동하려면 아래 링크를 이용하세요.
+        </p>
+        <ul>
+          <li><a href="/stocks/samsung/">삼성전자 (005930)</a></li>
+          <li><a href="/stocks/sk-hynix/">SK하이닉스 (000660)</a></li>
+          <li><a href="/stocks/hyundai/">현대차 (005380)</a></li>
+          <li><a href="/stocks/samsung-em/">삼성전기 (009150)</a></li>
+          <li><a href="/stocks/lg-electronics/">LG전자 (066570)</a></li>
+          <li><a href="/stocks/naver/">NAVER (035420)</a></li>
+        </ul>
+
+        <div class="note">
+          본 서비스의 예상가격은 해외 선물가격의 변동을 바탕으로 계산한 참고정보이며,
+          한국거래소의 실제 체결가격이나 다음 거래일 시가를 의미하지 않습니다. 본
+          정보는 투자 권유 또는 매매 추천이 아닙니다.
+        </div>
+      </main>
+
+      <footer class="site">
+        <nav>
+          <a href="/">홈</a>
+          <a href="/about/">서비스 소개</a>
+          <a href="/guide/">이용 가이드</a>
+          <a href="/faq/">자주 묻는 질문</a>
+          <a href="/stocks/">종목 소개</a>
+          <a href="/glossary/">용어 설명</a>
+          <a href="/privacy/">개인정보처리방침</a>
+          <a href="/terms/">이용약관</a>
+        </nav>
+        <p>코스피 NOW (코스피나우, KOSPI NOW) · kospinow.com · 문의 kospinow@gmail.com</p>
+      </footer>
+    </div>
+  </body>
+</html>

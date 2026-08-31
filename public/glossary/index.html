@@ -3,23 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>서비스 소개 | 코스피 NOW</title>
+    <title>용어 설명 — 야간 시세를 읽는 데 필요한 개념 | 코스피 NOW</title>
     <meta
       name="description"
-      content="코스피 NOW(코스피나우)는 국내 증시가 닫힌 야간과 주말에 해외 선물가격의 변동을 바탕으로 삼성전자·SK하이닉스 등 국내 주요 종목의 참고 예상가격을 보여주는 무료 서비스입니다."
+      content="야간선물, 선물과 현물의 차이, 동시호가, 호가단위, 종가·시가·기준가, 코스피와 코스피200까지 — 야간 시세를 읽는 데 필요한 시장 개념을 쉬운 말로 정리했습니다."
     />
-    <link rel="canonical" href="https://kospinow.com/about/" />
+    <link rel="canonical" href="https://kospinow.com/glossary/" />
 
     <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#080b10" />
 
-    <!--
-      Standalone like 404.html: no app bundle, no analytics, no ads. These info
-      pages exist so a crawler (and a person) can read the site's substance as
-      plain HTML — loading the SPA to serve static text would defeat that.
-    -->
+    <!-- Standalone like 404.html: no app bundle, no analytics, no ads. -->
     <style>
       :root {
         color-scheme: light dark;
@@ -86,6 +82,12 @@
       a { color: var(--accent); }
       strong { font-weight: 700; }
 
+      .formula {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+        padding: 14px 16px; margin: 0 0 14px; font-size: 14.5px; line-height: 1.8;
+        font-variant-numeric: tabular-nums; overflow-x: auto;
+      }
+
       .note {
         border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
         padding: 14px 16px; font-size: 13px; line-height: 1.7; color: var(--muted); margin: 22px 0;
@@ -128,62 +130,74 @@
       </header>
 
       <main>
-        <h1>서비스 소개</h1>
-        <p class="updated">코스피 NOW(코스피나우, KOSPI NOW) · kospinow.com</p>
+        <h1>용어 설명</h1>
+        <p class="updated">야간 시세를 읽는 데 필요한 개념들을 모았습니다</p>
 
-        <h2>어떤 서비스인가요</h2>
         <p>
-          코스피 NOW는 한국거래소 정규장이 닫힌 <strong>저녁, 새벽, 주말</strong>에도 국내
-          주요 종목의 가격 흐름을 가늠할 수 있도록, 해외 파생상품 시장에서 거래되는
-          국내 종목 연계 상품의 가격 변동을 바탕으로 <strong>참고용 예상 원화 가격</strong>을
-          계산해 보여주는 무료 웹 서비스입니다.
-        </p>
-        <p>
-          국내 증시는 오후 3시 30분에 닫히지만, 시장을 움직이는 뉴스는 밤에도
-          나옵니다. 미국 증시의 급등락, 반도체 업황 발표, 환율 변동 — 다음 날 아침
-          국내 시장이 반영할 재료들이 밤사이 쌓이는 동안, 국내 투자자가 참고할 수 있는
-          숫자는 마땅치 않았습니다. 코스피 NOW는 그 공백을 메우기 위해 만들어졌습니다.
+          밤이나 주말에 국내 주식의 참고 예상가를 확인하다 보면, 낮의 정규장에서는
+          잘 쓰이지 않던 단어들을 만나게 됩니다. 야간선물, 동시호가, 호가단위,
+          기준가 같은 말들입니다. 이 페이지는 그 개념들을 어려운 정의 대신
+          쉬운 말과 숫자 예시로 풀어 놓은 목차입니다. 각 글은 개념 설명에서
+          출발해, 코스피 NOW 화면의 어떤 부분과 연결되는지까지 이어집니다.
         </p>
 
-        <h2>어떤 종목을 다루나요</h2>
-        <p>
-          삼성전자(005930), SK하이닉스(000660), 현대차(005380), 삼성전기(009150),
-          LG전자(066570), 한미반도체(042700), NAVER(035420) — 해외 파생상품 시장에
-          연계 상품이 상장되어 있는 국내 대표 종목 7개입니다.
-        </p>
-
-        <h2>무엇이 아닌가요</h2>
+        <h2>야간·파생 개념</h2>
         <ul>
-          <li>한국거래소의 <strong>실제 체결가격이 아닙니다.</strong> 예상가격은 해외 선물가격의 상대 변동률을 최근 국내 종가에 적용해 계산한 참고치입니다.</li>
-          <li>다음 거래일의 <strong>시가를 보장하는 값이 아닙니다.</strong> 유동성, 환율, 뉴스, 장전 동시호가에 따라 실제 가격과 차이가 납니다.</li>
-          <li><strong>투자 권유나 매매 추천이 아닙니다.</strong> 매수·매도 판단을 위한 신호를 제공하지 않습니다.</li>
-          <li>증권사나 거래소가 아니며, 주문·매매 기능이 없습니다.</li>
-        </ul>
-        <p>
-          예상가격이 어떻게 계산되는지는 <a href="/guide/">이용 가이드</a>에서 공식과
-          예시로 자세히 설명합니다.
-        </p>
-
-        <h2>함께 제공하는 것</h2>
-        <ul>
-          <li><strong>실시간 채팅</strong> — 로그인 없이 참여할 수 있는 가벼운 대화 공간입니다.</li>
-          <li><strong>커뮤니티</strong> — 읽기는 자유, 글·댓글 작성은 로그인이 필요합니다.</li>
-          <li><strong>해외 지수·환율·주요 지표</strong> — 야간 시장을 읽는 데 필요한 주변 정보를 한 화면에서 확인할 수 있습니다.</li>
+          <li>
+            <a href="/glossary/night-futures/"><strong>야간선물(야선)이란?</strong></a><br />
+            국내 정규장이 닫힌 밤 시간대에 거래되는 지수 관련 파생상품을 흔히
+            야간선물, 줄여서 "야선"이라고 부릅니다. 이 사이트가 보여주는 값과
+            야간선물 호가가 어떻게 다른지도 함께 설명합니다.
+          </li>
+          <li>
+            <a href="/glossary/futures-vs-spot/"><strong>선물과 현물의 차이</strong></a><br />
+            현물은 지금 주고받는 거래이고, 선물은 미래의 특정 시점에 정해진
+            가격으로 거래하기로 약속하는 계약입니다. 두 가격이 왜 다르게
+            움직이는지, 야간 시세를 볼 때 왜 이 구분이 중요한지 다룹니다.
+          </li>
+          <li>
+            <a href="/glossary/kospi-kospi200/"><strong>코스피와 코스피200</strong></a><br />
+            코스피는 유가증권시장 전체를 대표하는 지수이고, 코스피200은 그중
+            200개 종목으로 만든 파생상품용 지수입니다. 지수가 움직이는 것과
+            개별 종목이 움직이는 것이 어떻게 다른지 예시로 봅니다.
+          </li>
         </ul>
 
-        <h2>운영과 연락처</h2>
+        <h2>가격이 만들어지는 규칙</h2>
+        <ul>
+          <li>
+            <a href="/glossary/single-price-auction/"><strong>동시호가란?</strong></a><br />
+            여러 주문을 일정 시간 모아 두었다가 하나의 가격으로 한꺼번에
+            체결하는 방식으로, 시가(08:30~09:00)와 종가(15:20~15:30)가 이렇게
+            결정됩니다. 밤사이 예상가와 실제 시가가 달라지는 마지막 관문이기도
+            합니다.
+          </li>
+          <li>
+            <a href="/glossary/tick-size/"><strong>호가단위란?</strong></a><br />
+            주식 주문 가격이 움직일 수 있는 최소 간격입니다. 코스피 NOW의
+            예상가격이 왜 1원 단위가 아니라 호가단위로 반올림되어 표시되는지,
+            구간별 표와 함께 설명합니다.
+          </li>
+          <li>
+            <a href="/glossary/close-open-price/"><strong>종가·시가·기준가</strong></a><br />
+            하루의 마지막 체결가격, 첫 체결가격, 그리고 등락률을 잴 때의
+            출발점이 되는 가격을 구분합니다. 코스피 NOW가 왜 항상 최근 종가를
+            기준으로 삼는지도 여기서 다룹니다.
+          </li>
+        </ul>
+
+        <h2>더 읽어 보기</h2>
         <p>
-          코스피 NOW는 개인이 운영하는 서비스이며, 광고 수익으로 서버 비용을
-          충당합니다. 서비스 관련 문의, 오류 제보, 데이터 이상 신고, 게시물 관련
-          요청은 아래 이메일로 보내 주세요.
+          개념을 익힌 뒤에는 <a href="/guide/">이용 가이드</a>에서 예상가격이
+          실제로 어떻게 계산되는지 공식과 예시로 확인할 수 있고,
+          <a href="/stocks/">종목 소개</a>에서는 이 사이트가 다루는 종목들을
+          살펴볼 수 있습니다.
         </p>
-        <p><strong>이메일:</strong> <a href="mailto:kospinow@gmail.com">kospinow@gmail.com</a></p>
 
         <div class="note">
           본 서비스의 예상가격은 해외 선물가격의 변동을 바탕으로 계산한 참고정보이며,
-          한국거래소의 실제 체결가격이나 다음 거래일 시가를 의미하지 않습니다. 상품의
-          유동성, 환율, 국내외 뉴스, 수급 및 장전 동시호가 등에 따라 실제 가격과
-          차이가 발생할 수 있습니다. 본 정보는 투자 권유 또는 매매 추천이 아닙니다.
+          한국거래소의 실제 체결가격이나 다음 거래일 시가를 의미하지 않습니다. 본
+          정보는 투자 권유 또는 매매 추천이 아닙니다.
         </div>
       </main>
 
