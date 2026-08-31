@@ -1,18 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  One URL, deliberately.
+  The app itself is one URL: the board and the chat room live behind #board and
+  #chat, and a crawler drops the fragment before it fetches anything — listing
+  them here would just submit https://kospinow.com/ again and get flagged as a
+  duplicate by Yeti and Google alike.
 
-  The board and the chat room live behind #board and #chat, and a crawler drops
-  the fragment before it fetches anything — so the two extra entries this file
-  used to carry were both just https://kospinow.com/ again, submitted three
-  times. Naver's Yeti and Google alike report those as duplicates rather than as
-  pages. Making them separately indexable would mean real paths, which is a
-  router change, not a sitemap one.
+  The info pages below are real paths, though: standalone static files under
+  public/, readable without JavaScript. They exist to give the site crawlable
+  substance (and the policy pages ad review requires), so they belong here.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://kospinow.com/</loc>
     <changefreq>hourly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://kospinow.com/about/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://kospinow.com/guide/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://kospinow.com/faq/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://kospinow.com/privacy/</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://kospinow.com/terms/</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>

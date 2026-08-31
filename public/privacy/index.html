@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>개인정보처리방침 | 코스피 NOW</title>
+    <meta
+      name="description"
+      content="코스피 NOW의 개인정보처리방침 — 수집하는 정보, 이용 목적, 보유 기간, 쿠키와 광고, 이용자의 권리와 문의처를 안내합니다."
+    />
+    <link rel="canonical" href="https://kospinow.com/privacy/" />
+
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#080b10" />
+
+    <!-- Standalone like 404.html: no app bundle, no analytics, no ads. -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f0f4f8;
+        --surface: #ffffff;
+        --border: rgba(15, 23, 42, 0.1);
+        --text: #0f172a;
+        --muted: #64748b;
+        --accent: #6b5ce7;
+        --accent-soft: rgba(139, 124, 255, 0.1);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #080b10;
+          --surface: #0d1118;
+          --border: rgba(255, 255, 255, 0.09);
+          --text: #f4f7fb;
+          --muted: #8a95a8;
+          --accent: #a99cff;
+          --accent-soft: rgba(139, 124, 255, 0.14);
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --bg: #080b10;
+        --surface: #0d1118;
+        --border: rgba(255, 255, 255, 0.09);
+        --text: #f4f7fb;
+        --muted: #8a95a8;
+        --accent: #a99cff;
+        --accent-soft: rgba(139, 124, 255, 0.14);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap { max-width: 46rem; margin: 0 auto; padding: 24px 20px 56px; }
+
+      header.site {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 4px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 28px;
+      }
+      header.site a.brand { text-decoration: none; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+      header.site a.brand span { color: var(--accent); }
+      header.site a.back { text-decoration: none; font-size: 13px; font-weight: 600; color: var(--muted); padding: 8px 0; }
+      header.site a.back:hover { color: var(--text); }
+
+      h1 { font-size: 25px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; margin: 0 0 6px; }
+      p.updated { font-size: 13px; color: var(--muted); margin: 0 0 28px; }
+      h2 { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; margin: 30px 0 8px; }
+      p, li { font-size: 15px; line-height: 1.75; }
+      p { margin: 0 0 14px; }
+      ul { margin: 0 0 14px; padding-left: 22px; }
+      li { margin-bottom: 6px; }
+      a { color: var(--accent); }
+      strong { font-weight: 700; }
+
+      table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0 0 14px; }
+      th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; line-height: 1.5; }
+      th { background: var(--accent-soft); font-weight: 600; }
+
+      footer.site { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+      footer.site nav { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; }
+      footer.site nav a { color: var(--muted); text-decoration: none; }
+      footer.site nav a:hover { color: var(--text); }
+      footer.site p { font-size: 12px; line-height: 1.6; margin: 0; }
+    </style>
+
+    <script>
+      /* Honour a saved theme before first paint, exactly as index.html does. */
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem("kospinow:theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light" : "dark";
+        } else {
+          document.documentElement.dataset.theme = t;
+        }
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", t === "light" ? "#f0f4f8" : "#080b10");
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="site">
+        <a class="brand" href="/">코스피 <span>NOW</span></a>
+        <a class="back" href="/">← 시세 보러 가기</a>
+      </header>
+
+      <main>
+        <h1>개인정보처리방침</h1>
+        <p class="updated">시행일: 2026년 8월 31일</p>
+
+        <p>
+          코스피 NOW(kospinow.com, 이하 "서비스")는 이용자의 개인정보를 최소한으로
+          수집하는 것을 원칙으로 하며, 「개인정보 보호법」 등 관련 법령을 준수합니다.
+          이 방침은 서비스가 어떤 정보를 왜 수집하고, 얼마나 보관하며, 이용자가 어떤
+          권리를 갖는지 설명합니다.
+        </p>
+
+        <h2>1. 수집하는 정보</h2>
+        <p><strong>회원가입 시 (선택 — 가입하지 않아도 시세 확인과 채팅 참여가 가능합니다)</strong></p>
+        <ul>
+          <li><strong>닉네임</strong> — 게시판·채팅에서의 표시 이름입니다.</li>
+          <li><strong>비밀번호</strong> — 원문은 저장하지 않습니다. 브라우저에서 1차 암호화된 값이 전송되고, 서버는 여기에 다시 이용자별 무작위 값을 결합해 해시로만 저장합니다. 운영자를 포함해 누구도 비밀번호 원문을 볼 수 없습니다.</li>
+          <li><strong>복구 코드</strong> — 가입 시 한 번 발급되며 해시로만 저장합니다.</li>
+          <li>이메일 주소, 전화번호, 실명, 생년월일 등 <strong>실명 식별 정보는 수집하지 않습니다.</strong></li>
+        </ul>
+        <p><strong>서비스 이용 과정에서 자동으로 처리되는 정보</strong></p>
+        <ul>
+          <li><strong>IP 주소</strong> — 원본 IP 주소를 저장하지 않습니다. 도배·남용 방지와 접속자 수 집계를 위해, 하루 단위로 바뀌는 값과 결합한 <strong>일방향 해시</strong>만 처리합니다. 이 해시는 다음 날이면 같은 IP라도 다른 값이 되며, 원본 IP로 되돌릴 수 없습니다.</li>
+          <li><strong>작성 콘텐츠</strong> — 게시글, 댓글, 채팅 메시지. 채팅은 최근 500개만 순환 보관하며 오래된 메시지는 자동 삭제됩니다.</li>
+          <li><strong>로그인 세션</strong> — 로그인 상태 유지를 위한 무작위 토큰(해시로 저장, 30일 유효).</li>
+          <li><strong>출석 정보</strong> — 로그인 회원의 마지막 방문일, 누적·연속 방문일수.</li>
+          <li><strong>브라우저 저장소(localStorage)</strong> — 화면 테마 선택, 로그인 세션, 안내 배너 닫음 여부 등 편의 설정. 이 값들은 이용자의 브라우저에만 저장됩니다.</li>
+        </ul>
+
+        <h2>2. 이용 목적</h2>
+        <ul>
+          <li>로그인, 글·댓글 작성 등 회원 기능 제공</li>
+          <li>도배, 욕설, 광고 등 남용 방지와 이용 제한</li>
+          <li>접속자 수 집계 등 서비스 운영에 필요한 통계</li>
+          <li>서비스 개선을 위한 방문 통계 분석(Google Analytics)</li>
+          <li>광고 게재(Google AdSense)</li>
+        </ul>
+
+        <h2>3. 보유 기간</h2>
+        <table>
+          <thead>
+            <tr><th>정보</th><th>보유 기간</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>계정 정보(닉네임, 비밀번호 해시 등)</td><td>회원 탈퇴 또는 삭제 요청 시까지</td></tr>
+            <tr><td>게시글·댓글</td><td>작성자 또는 운영자가 삭제할 때까지</td></tr>
+            <tr><td>채팅 메시지</td><td>최근 500개 순환 보관(초과분 자동 삭제)</td></tr>
+            <tr><td>로그인 세션</td><td>30일(만료분 자동 삭제)</td></tr>
+            <tr><td>로그인 시도 기록(IP 해시)</td><td>24시간 후 자동 삭제</td></tr>
+            <tr><td>접속자 집계용 IP 해시</td><td>수 분 내 자동 만료</td></tr>
+          </tbody>
+        </table>
+
+        <h2>4. 제3자 제공 및 처리 위탁</h2>
+        <p>
+          서비스는 이용자의 정보를 제3자에게 판매하거나 제공하지 않습니다. 다만 서비스
+          운영을 위해 다음 외부 서비스를 이용하며, 이 과정에서 접속 정보가 해당
+          사업자에 전달될 수 있습니다.
+        </p>
+        <ul>
+          <li><strong>Cloudflare</strong> — 채팅·게시판 서버와 데이터베이스 호스팅, 자동 입력 방지(Turnstile)</li>
+          <li><strong>GitHub</strong> — 웹 페이지 정적 호스팅</li>
+          <li><strong>Google</strong> — 방문 통계(Google Analytics), 광고(Google AdSense)</li>
+          <li><strong>외부 시세 제공자</strong> — 시세 표시를 위해 이용자의 브라우저가 해외 시세 제공자의 공개 API에 직접 접속합니다. 이때 통상적인 통신 정보(IP 주소 등)가 해당 제공자에 전달됩니다. 서비스가 별도의 개인정보를 함께 보내지는 않습니다.</li>
+        </ul>
+
+        <h2>5. 쿠키와 맞춤 광고</h2>
+        <p>
+          Google을 포함한 제3자 광고 사업자는 쿠키를 사용해 이용자의 이전 방문 기록을
+          바탕으로 광고를 게재할 수 있습니다. Google의 광고 쿠키 덕분에 Google과 그
+          파트너는 이용자의 본 서비스 및 다른 웹사이트 방문 기록을 기반으로 광고를
+          제공할 수 있습니다.
+        </p>
+        <p>
+          이용자는 <a href="https://adssettings.google.com" rel="noopener" target="_blank">Google 광고 설정</a>에서
+          맞춤 광고를 해제할 수 있으며,
+          <a href="https://www.aboutads.info" rel="noopener" target="_blank">www.aboutads.info</a>에서
+          다른 제3자 광고 사업자의 쿠키 사용도 해제할 수 있습니다. 브라우저 설정에서
+          쿠키 저장을 거부할 수도 있습니다(일부 기능이 제한될 수 있습니다).
+        </p>
+
+        <h2>6. 이용자의 권리</h2>
+        <ul>
+          <li>본인이 작성한 게시글·댓글은 직접 삭제할 수 있습니다.</li>
+          <li>계정 삭제, 본인 관련 정보의 열람·삭제 요청은 아래 문의처로 연락해 주세요. 확인 후 지체 없이 처리합니다.</li>
+          <li>실명 식별 정보를 수집하지 않으므로, 요청 처리 시 계정 소유 확인을 위해 닉네임과 복구 코드 등의 확인을 요청할 수 있습니다.</li>
+        </ul>
+
+        <h2>7. 안전성 확보 조치</h2>
+        <ul>
+          <li>비밀번호는 브라우저와 서버에서 이중으로 해시 처리되어 원문이 어디에도 저장되지 않습니다.</li>
+          <li>원본 IP 주소를 저장하지 않고 일 단위로 변하는 일방향 해시만 사용합니다.</li>
+          <li>모든 통신은 HTTPS로 암호화됩니다.</li>
+        </ul>
+
+        <h2>8. 문의처</h2>
+        <p>
+          개인정보 관련 문의, 열람·삭제 요청:
+          <a href="mailto:kospinow@gmail.com"><strong>kospinow@gmail.com</strong></a>
+        </p>
+
+        <h2>9. 방침의 변경</h2>
+        <p>
+          이 방침이 변경되는 경우 이 페이지를 통해 공지하며, 시행일을 함께 갱신합니다.
+        </p>
+      </main>
+
+      <footer class="site">
+        <nav>
+          <a href="/">홈</a>
+          <a href="/about/">서비스 소개</a>
+          <a href="/guide/">이용 가이드</a>
+          <a href="/faq/">자주 묻는 질문</a>
+          <a href="/privacy/">개인정보처리방침</a>
+          <a href="/terms/">이용약관</a>
+        </nav>
+        <p>코스피 NOW (코스피나우, KOSPI NOW) · kospinow.com · 문의 kospinow@gmail.com</p>
+      </footer>
+    </div>
+  </body>
+</html>

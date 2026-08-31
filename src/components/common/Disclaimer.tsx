@@ -45,6 +45,19 @@ export function Disclaimer({ short = false }: DisclaimerProps) {
             기반 코스피 야간 선물(야간선물·야선) 참고 서비스 · 야간, 주말 언제
             어디서나 삼성전자·SK하이닉스·현대차 등 국내 주요 종목의 예상가격을 확인하세요.
           </p>
+          {/* Real paths, not hash routes: these are the standalone static info
+              pages under public/ (about/guide/faq/privacy/terms), readable
+              without the bundle. Plain <a> is correct — they leave the SPA. */}
+          <nav
+            aria-label="사이트 정보"
+            className="mt-3 flex flex-wrap gap-x-3.5 gap-y-1 text-[12px]"
+          >
+            <a className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline-offset-2 hover:underline" href="/about/">서비스 소개</a>
+            <a className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline-offset-2 hover:underline" href="/guide/">이용 가이드</a>
+            <a className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline-offset-2 hover:underline" href="/faq/">자주 묻는 질문</a>
+            <a className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline-offset-2 hover:underline" href="/privacy/">개인정보처리방침</a>
+            <a className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline-offset-2 hover:underline" href="/terms/">이용약관</a>
+          </nav>
         </div>
       </div>
     </footer>
