@@ -23,7 +23,7 @@
     <style>
       :root {
         color-scheme: light dark;
-        --bg: #f6f8fb;
+        --bg: #f0f4f8;
         --surface: #ffffff;
         --border: rgba(15, 23, 42, 0.1);
         --text: #0f172a;
@@ -169,21 +169,26 @@
        *    is exactly the public routes; every other path stays on this page.
        */
       (function () {
-        var stored = null;
+        var t = null;
         try {
-          stored = localStorage.getItem("kospinow:theme");
+          t = localStorage.getItem("kospinow:theme");
         } catch (e) {
-          /* private mode — the media query decides */
+          /* private mode — the device setting still applies below */
         }
-        if (stored === "light" || stored === "dark") {
-          document.documentElement.dataset.theme = stored;
-          var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) {
-            meta.setAttribute(
-              "content",
-              stored === "light" ? "#f6f8fb" : "#080b10"
-            );
-          }
+        if (t !== "light" && t !== "dark") {
+          // No override: leave data-theme unset so the media query decides, but
+          // still correct the chrome colour — the meta above is a fixed dark
+          // and index.html corrects it the same way for a light device.
+          t = window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light"
+            : "dark";
+        } else {
+          document.documentElement.dataset.theme = t;
+        }
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+          meta.setAttribute("content", t === "light" ? "#f0f4f8" : "#080b10");
         }
 
         var match = window.location.pathname.match(/^\/(board|chat)\/?$/);

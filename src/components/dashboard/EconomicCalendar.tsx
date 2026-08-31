@@ -106,7 +106,10 @@ export function EconomicCalendar() {
           type="button"
           onClick={() => setExpanded((open) => !open)}
           aria-expanded={expanded}
-          className="min-h-[36px] rounded-lg px-2 text-[13px] text-[var(--text-tertiary)] transition-colors duration-150 hover:bg-[var(--surface-overlay)] hover:text-[var(--text-primary)]"
+          /* The before: halo lifts the hit box to §19's 44px while the visible
+             control keeps its 36px row — the PILL_QUIET trade from controls.ts,
+             kept invisible so the panel header does not grow. */
+          className="min-h-[36px] relative before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] rounded-lg px-2 text-[13px] text-[var(--text-tertiary)] transition-colors duration-150 hover:bg-[var(--surface-overlay)] hover:text-[var(--text-primary)]"
         >
           {expanded ? "접기" : "전체보기"}
         </button>

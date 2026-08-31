@@ -136,6 +136,10 @@ export function useMarketData(): MarketDataState {
     const newStocks: Partial<Record<StockId, StockSnapshot>> = {
       ...currentStocksRef.current,
     };
+    // How many listings this round actually produced data for. Zero means the
+    // copy above is all there is: held numbers that must not be restamped as if
+    // they were fetched just now.
+    let freshCount = 0;
 
     for (const stockId of STOCK_IDS) {
       const result = quoteResults[stockId];
@@ -165,8 +169,22 @@ export function useMarketData(): MarketDataState {
         ),
       };
 
-      // Without both halves of the anchor there is no honest estimate to show.
+      // Without both halves of the anchor there is no honest estimate to show —
+      // unless the previous round already showed one. baseline.json is refetched
+      // every minute with cache:no-store, so a single transient 502 (or one
+      // stock's kline read failing) used to zero out cards that were priced a
+      // minute earlier. Keep the last anchored numbers and let the status say
+      // they are held (§8.3, §18); zeroing is only for a card that never had a
+      // good value.
       if (!anchor || !(anchorKrxPrice! > 0) || !(anchorFuturesPrice! > 0)) {
+        const previous = currentStocksRef.current[stockId];
+        if (previous && previous.krxClose > 0 && previous.estimatedPrice > 0) {
+          // "stale", not "healthy": the 1s flush only reprices healthy cards, so
+          // a held estimate cannot drift away from the anchor it was built on.
+          newStocks[stockId] = { ...previous, status: "stale" };
+          freshCount += 1;
+          continue;
+        }
         newStocks[stockId] = {
           ...base,
           krxClose: 0,
@@ -184,6 +202,7 @@ export function useMarketData(): MarketDataState {
           }),
           status: "no-baseline",
         };
+        freshCount += 1;
         continue;
       }
 
@@ -240,6 +259,7 @@ export function useMarketData(): MarketDataState {
         };
 
         previousPrices.current[stockId] = currentPrice;
+        freshCount += 1;
       } catch (err) {
         console.error(`[useMarketData] Estimate error for ${stockId}:`, err);
       }
@@ -271,14 +291,27 @@ export function useMarketData(): MarketDataState {
       return;
     }
 
+    /*
+     * A round where every symbol failed leaves newStocks as a plain copy of the
+     * previous snapshot. Restamping lastUpdated then would dress last minute's
+     * prices in a fresh timestamp (§2.1: stale data must not look current), so
+     * the stamp only moves when at least one listing was actually refreshed —
+     * and a fully failed round says so instead of clearing the error. Per-card
+     * freshness still comes from each snapshot's own eventTime, untouched here.
+     */
+    const roundSucceeded = freshCount > 0;
     setState((prev) => ({
       ...prev,
       stocks: newStocks,
-      lastUpdated: new Date().toISOString(),
-      error: null,
+      lastUpdated: roundSucceeded ? new Date().toISOString() : prev.lastUpdated,
+      error: roundSucceeded
+        ? null
+        : "선물가격 데이터를 조회할 수 없습니다. 마지막 정상 데이터를 표시합니다.",
       isLoading: false,
-      usingFallback: false,
-      anchor,
+      usingFallback: roundSucceeded ? false : prev.usingFallback,
+      // A failed baseline fetch resolves no anchor; the one the cards were
+      // priced from is still the truth about the numbers being kept.
+      anchor: anchor ?? prev.anchor,
     }));
   }, []);
 

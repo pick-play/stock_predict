@@ -200,7 +200,7 @@ export function BoardPage({
 
             {/* Disclaimer */}
             <p className="text-[12px] text-[var(--text-muted)] text-center pt-2 leading-relaxed">
-              이 게시판은 익명이며 투자 권유가 아닙니다. 부적절한 게시물은
+              이 게시판의 글은 투자 권유가 아닙니다. 부적절한 게시물은
               신고해 주세요.
             </p>
           </>

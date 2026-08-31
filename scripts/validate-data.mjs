@@ -21,6 +21,28 @@ function ok(msg) {
   console.log(`[validate] OK: ${msg}`);
 }
 
+/** UTC 시각이 속하는 한국 달력 날짜 (YYYY-MM-DD). */
+function kstDateOf(date) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
+    date
+  );
+}
+
+/*
+ * src/config/symbols.ts의 MARKET_SYMBOLS를 비춘 사본. 이 스크립트는 plain
+ * Node라 TS를 import할 수 없어 fetch-market-data.mjs와 같은 방식으로 복제한다
+ * — 원본에서 종목을 더하거나 바꾸면 여기도 함께 고친다.
+ */
+const EXPECTED_BINANCE_SYMBOLS = {
+  samsung: "SAMSUNGUSDT",
+  skHynix: "SKHYNIXUSDT",
+  hyundai: "HYUNDAIUSDT",
+  samsungEM: "SAMSUNGEMUSDT",
+  lgElectronics: "LGELECTRONICSUSDT",
+  hanmi: "HANMIUSDT",
+  naver: "NAVERUSDT",
+};
+
 function validateLatest() {
   const path = join(DATA_DIR, "latest.json");
   if (!existsSync(path)) {
@@ -49,6 +71,28 @@ function validateLatest() {
   for (const [id, stock] of Object.entries(data.stocks)) {
     if (!stock.binanceSymbol) fail(`${id}: binanceSymbol missing`);
     if (!stock.eventTime) fail(`${id}: eventTime missing`);
+
+    // 종목 심볼이 요청 심볼과 일치해야 함(§17): id에 다른 종목의 심볼이 붙어
+    // 있으면 수집기가 엉뚱한 계약의 가격을 그 카드에 실은 것이다.
+    const expectedSymbol = EXPECTED_BINANCE_SYMBOLS[id];
+    if (!expectedSymbol) {
+      fail(`${id}: 설정에 없는 종목 id (src/config/symbols.ts 참조)`);
+    } else if (stock.binanceSymbol && stock.binanceSymbol !== expectedSymbol) {
+      fail(
+        `${id}: binanceSymbol ${stock.binanceSymbol} ≠ 설정값 ${expectedSymbol}`
+      );
+    }
+
+    // 미래로 찍힌 eventTime은 시계가 고장난 데이터다 — 나이 검사가 영원히
+    // "신선"으로 통과시키므로 여기서 거부한다.
+    if (stock.eventTime) {
+      const eventMs = new Date(stock.eventTime).getTime();
+      if (isNaN(eventMs)) {
+        fail(`${id}: eventTime invalid: ${stock.eventTime}`);
+      } else if (eventMs > futureBoundary) {
+        fail(`${id}: eventTime is in the future: ${stock.eventTime}`);
+      }
+    }
 
     if (stock.status === "healthy") {
       if (!(stock.currentBinancePrice > 0)) fail(`${id}: currentBinancePrice must be > 0`);
@@ -110,13 +154,24 @@ function validateBaseline() {
     const marketDate = new Date(`${anchor.marketDate}T00:00:00+09:00`);
     if (isNaN(marketDate.getTime())) {
       fail(`${kind}: marketDate invalid: ${anchor.marketDate}`);
-    } else if (marketDate.getTime() > Date.now() + 24 * 60 * 60 * 1000) {
+    } else if (anchor.marketDate > kstDateOf(new Date())) {
+      // 기준일이 미래가 아님(§7). 예전의 +24시간 여유는 KST 자정을 넘긴 지연
+      // 실행을 봐주려던 것인데, 애초에 한국 달력으로 비교하면 여유가 필요
+      // 없다 — ISO 날짜 문자열은 사전순 비교가 곧 시간순이다.
       fail(`${kind}: marketDate is in the future: ${anchor.marketDate}`);
     }
 
     const anchorTime = new Date(anchor.anchorTimeUtc);
     if (!anchor.anchorTimeUtc || isNaN(anchorTime.getTime())) {
       fail(`${kind}: anchorTimeUtc invalid: ${anchor.anchorTimeUtc}`);
+    } else if (anchor.marketDate && kstDateOf(anchorTime) !== anchor.marketDate) {
+      // 앵커 시각이 marketDate와 다른 날에 찍혀 있으면 라벨과 데이터가 서로
+      // 다른 날을 말하는 것이다 — 어제 값을 오늘 날짜로 포장하는 부류의
+      // 버그를 커밋 전에 여기서 잡는다(§2.2).
+      fail(
+        `${kind}: anchorTimeUtc ${anchor.anchorTimeUtc}는 KST ` +
+          `${kstDateOf(anchorTime)}에 속함 — marketDate ${anchor.marketDate}와 불일치`
+      );
     }
 
     if (!anchor.stocks) {

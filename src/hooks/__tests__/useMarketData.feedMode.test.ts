@@ -35,12 +35,16 @@ vi.mock("../../lib/binance/klinesClient", () => ({
   fetchMarkPriceAtTime: binance.fetchMarkPriceAtTime,
 }));
 
-// The baseline fetch is not what this file is about.
-vi.mock("../../lib/githubFallback", () => ({
-  fetchGithubBaseline: async () => null,
-  fetchGithubLatest: async () => null,
-  fetchGithubHistory: async () => [],
+// No baseline by default — the feed-mode tests are not about the anchor. The
+// resilience tests below swap in a real one to prove what a later failure of
+// this fetch must NOT do to cards it already priced.
+const github = vi.hoisted(() => ({
+  fetchGithubBaseline: vi.fn(async (): Promise<unknown> => null),
+  fetchGithubLatest: vi.fn(async () => null),
+  fetchGithubHistory: vi.fn(async () => []),
 }));
+
+vi.mock("../../lib/githubFallback", () => github);
 
 const { useMarketData } = await import("../useMarketData");
 const { STOCK_IDS, MARKET_SYMBOLS } = await import("../../config/symbols");
@@ -319,5 +323,162 @@ describe("useMarketData quote freshness", () => {
     expect(new Date(result.current.stocks.samsung!.eventTime).getTime()).toBe(
       advanced
     );
+  });
+});
+
+/**
+ * A failed round must not erase what a good round produced.
+ *
+ * baseline.json is refetched every minute with cache:no-store, so a single
+ * transient 502 used to send every card through the zeroing branch — seven
+ * priced listings replaced by dashes over one dropped request. And a round
+ * where every quote fetch failed kept the old numbers but stamped lastUpdated
+ * as if they were new, which is §2.1's "stale data shown as current" verbatim.
+ * These tests pin the keep-the-previous-value behaviour on both paths.
+ */
+describe("useMarketData resilience", () => {
+  /** A baseline whose close anchor prices every listed stock. */
+  function validBaseline() {
+    return {
+      schemaVersion: 2,
+      timezone: "Asia/Seoul",
+      updatedAt: new Date().toISOString(),
+      referencePriceMode: "mark",
+      open: null,
+      close: {
+        marketDate: "2026-08-28",
+        anchorTimeUtc: new Date(Date.now() - 60 * 60_000).toISOString(),
+        stocks: Object.fromEntries(
+          STOCK_IDS.map((id) => [id, { krxPrice: 70_000 }])
+        ),
+      },
+    };
+  }
+
+  /** The minute refresh re-runs on visibilitychange; cheaper than 60s of clock. */
+  async function runNextRefresh() {
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setTouchDevice(false); // socket path: the mocked stream stays silent
+    binance.fetchStockQuote.mockImplementation(async (id: string) =>
+      quoteFor(id)
+    );
+    binance.fetchBookQuotes.mockImplementation(async () => allBookQuotes());
+    binance.fetchMarkPriceAtTime.mockImplementation(async () => 100);
+    github.fetchGithubBaseline.mockImplementation(async () => validBaseline());
+  });
+
+  afterEach(() => {
+    // Implementations survive clearAllMocks; put the file's defaults back so
+    // no other describe inherits a live baseline.
+    github.fetchGithubBaseline.mockImplementation(async () => null);
+    binance.fetchMarkPriceAtTime.mockImplementation(async () => 100);
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("keeps the last anchored numbers when baseline.json fails transiently", async () => {
+    const { result } = renderHook(() => useMarketData());
+
+    await waitFor(() =>
+      expect(result.current.stocks.samsung?.status).toBe("healthy")
+    );
+    const before = result.current.stocks.samsung!;
+    expect(before.estimatedPrice).toBeGreaterThan(0);
+
+    // One 502 from the static host on the next minute's refetch.
+    github.fetchGithubBaseline.mockImplementation(async () => null);
+    await runNextRefresh();
+
+    await waitFor(() =>
+      expect(result.current.stocks.samsung?.status).toBe("stale")
+    );
+    const after = result.current.stocks.samsung!;
+    expect(after.estimatedPrice).toBe(before.estimatedPrice);
+    expect(after.krxClose).toBe(before.krxClose);
+    expect(after.baselineBinancePrice).toBe(before.baselineBinancePrice);
+  });
+
+  it("keeps a card whose anchor kline read failed", async () => {
+    const { result } = renderHook(() => useMarketData());
+    await waitFor(() =>
+      expect(result.current.stocks.samsung?.status).toBe("healthy")
+    );
+    const before = result.current.stocks.samsung!;
+
+    // The baseline is fine; only the futures-price-at-anchor read is down.
+    binance.fetchMarkPriceAtTime.mockImplementation(async () => {
+      throw new Error("HTTP 502");
+    });
+    await runNextRefresh();
+
+    await waitFor(() =>
+      expect(result.current.stocks.samsung?.status).toBe("stale")
+    );
+    expect(result.current.stocks.samsung!.estimatedPrice).toBe(
+      before.estimatedPrice
+    );
+  });
+
+  it("zeroes out only a card that never had a good value", async () => {
+    // No baseline from the start: the honest state really is "no estimate".
+    github.fetchGithubBaseline.mockImplementation(async () => null);
+
+    const { result } = renderHook(() => useMarketData());
+
+    await waitFor(() =>
+      expect(result.current.stocks.samsung?.status).toBe("no-baseline")
+    );
+    expect(result.current.stocks.samsung!.estimatedPrice).toBe(0);
+  });
+
+  it("does not restamp lastUpdated when every quote fails", async () => {
+    const { result } = renderHook(() => useMarketData());
+    await waitFor(() =>
+      expect(result.current.stocks.samsung?.status).toBe("healthy")
+    );
+    const stamped = result.current.lastUpdated;
+    expect(stamped).not.toBeNull();
+    const price = result.current.stocks.samsung!.estimatedPrice;
+
+    binance.fetchStockQuote.mockImplementation(async () => {
+      throw new Error("HTTP 503");
+    });
+    await runNextRefresh();
+
+    await waitFor(() => expect(result.current.error).not.toBeNull());
+    // The prices on screen are last round's; the timestamp must say so.
+    expect(result.current.lastUpdated).toBe(stamped);
+    expect(result.current.stocks.samsung!.estimatedPrice).toBe(price);
+  });
+
+  it("still stamps lastUpdated when at least one listing refreshed", async () => {
+    const { result } = renderHook(() => useMarketData());
+    await waitFor(() =>
+      expect(result.current.stocks.samsung?.status).toBe("healthy")
+    );
+
+    // A fully failed round raises the error…
+    binance.fetchStockQuote.mockImplementation(async () => {
+      throw new Error("HTTP 503");
+    });
+    await runNextRefresh();
+    await waitFor(() => expect(result.current.error).not.toBeNull());
+
+    // …and one listing answering clears it again: a partial round is still a
+    // real update (§18: one listing's failure must not take the page down).
+    binance.fetchStockQuote.mockImplementation(async (id: string) => {
+      if (id !== "samsung") throw new Error("HTTP 503");
+      return quoteFor(id);
+    });
+    await runNextRefresh();
+
+    await waitFor(() => expect(result.current.error).toBeNull());
+    expect(result.current.stocks.samsung?.status).toBe("healthy");
   });
 });

@@ -1,13 +1,14 @@
-# 익명 토론방 API 계약
+# 토론방(커뮤니티) API 계약
 
 프론트엔드(GitHub Pages)와 백엔드(Cloudflare Worker)가 공유하는 계약이다.
 양쪽 구현은 이 문서를 기준으로 하며, 임의로 필드를 바꾸지 않는다.
 
 ## 원칙
 
-- 로그인 없음. 사용자 식별자는 저장하지 않는다.
+- **읽기는 로그인 없이 열려 있고, 글·댓글 작성은 로그인 필수다**(CLAUDE.md §28.2
+  소유자 결정). 익명 작성은 중단되었고 기존 익명 글은 삭제되었다.
 - 원문 IP를 저장하지 않는다. 하루 단위로 회전하는 솔트로 HMAC-SHA256 해시만 저장한다
-  (도배 차단과 익명 표시자 생성에만 사용).
+  (도배 차단과 공감·신고 중복 판정에만 사용 — 익명 표시자 생성에는 더 이상 쓰지 않는다).
 - 검열 판정은 `src/lib/moderation/filter.ts`의 `moderatePost()` 하나만 쓴다.
   브라우저는 입력 중 안내용으로, Worker는 최종 판정용으로 동일 함수를 호출한다.
 - Worker가 최종 권한을 가진다. 브라우저 검사를 통과했어도 Worker가 거부하면 거부다.
@@ -25,8 +26,8 @@
 interface BoardPost {
   id: string;            // 숫자 문자열 (D1 rowid 기반, 커서로도 사용)
   body: string;          // 원문 그대로. 렌더링 시 프론트가 이스케이프한다
-  authorTag: string;     // 로그인 글이면 닉네임, 아니면 "익명#a3f2"(IP해시+일자솔트 파생, 날마다 바뀜)
-  isMember: boolean;     // true면 authorTag가 닉네임 — UI가 익명과 구분해 표시한다
+  authorTag: string;     // 작성자 닉네임. 작성이 로그인 필수가 되면서 새 글은 항상 닉네임이다
+  isMember: boolean;     // 새 글은 항상 true. 익명 정책 시절의 스키마가 남긴 필드로, 계약 유지를 위해 계속 보낸다
   createdAt: string;     // ISO 8601 UTC
   reportCount: number;
   likeCount: number;
@@ -35,10 +36,10 @@ interface BoardPost {
 
 ## 엔드포인트
 
-## 계정 (선택 사항)
+## 계정
 
-로그인은 선택이다. 로그인하지 않아도 지금처럼 익명으로 글을 쓸 수 있고,
-로그인하면 닉네임으로 글이 표시되며 자기가 쓴 글을 모아 볼 수 있다.
+**글·댓글 작성에는 로그인이 필요하다**(§28.2). 읽기·공감·신고는 로그인 없이
+가능하다. 로그인하면 닉네임으로 글이 표시되며 자기가 쓴 글을 모아 볼 수 있다.
 
 수집하는 정보는 **닉네임과 비밀번호뿐이다.** 이메일·전화번호·이름을 묻지 않는다.
 그 대가로 **비밀번호를 잊으면 복구 수단이 없다.** 그래서 가입 시 복구 코드를
@@ -97,13 +98,15 @@ interface BoardPost {
 
 ### POST /api/posts
 
-글 등록.
+글 등록. **인증 필요** — `Authorization: Bearer <token>`. 로그인 검사는 검열보다
+먼저다(로그아웃 상태의 작성자에게 내용 오류가 아니라 로그인 안내를 먼저 주기 위해).
 
 - 본문: `{ "body": string, "turnstileToken": string, "website": string }`
   - `website`는 허니팟. 사람에게는 보이지 않는 입력이며, 값이 비어있지 않으면
     성공(201)처럼 응답하되 저장하지 않는다(봇에게 실패를 알리지 않기 위함).
 - 201: `{ "post": BoardPost }`
 - 400 `invalid-body`: 형식 오류
+- 401 `unauthorized`: 로그인하지 않음
 - 422 `rejected`: `moderatePost()` 거부. `message`에 필터가 준 문구를 그대로 넣는다.
 - 429 `rate-limited`: 같은 IP 해시가 60초 내 1건 초과, 또는 10분 내 5건 초과,
   또는 24시간 내 동일 `duplicateKey` 재등록.

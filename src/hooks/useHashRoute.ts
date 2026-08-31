@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export type Route = "dashboard" | "board" | "chat" | "admin";
 
@@ -34,10 +34,12 @@ export function useHashRoute(): [Route, (route: Route) => void] {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  const navigate = (r: Route) => {
+  // Stable identity, so effects and memoized children taking `navigate` do
+  // not re-run on every route change.
+  const navigate = useCallback((r: Route) => {
     window.location.hash = hashFor(r);
     setRoute(r);
-  };
+  }, []);
 
   return [route, navigate];
 }

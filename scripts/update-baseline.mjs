@@ -8,15 +8,17 @@
  * Binance is deliberately NOT called here: GitHub-hosted runners are US-based
  * and Binance answers them with HTTP 451, which previously aborted every run
  * and froze the baseline for nine days. The matching futures anchor price is
- * derived in the browser (src/lib/binance/klines.ts) from anchorTimeUtc.
+ * derived in the browser (src/lib/binance/klinesClient.ts) from anchorTimeUtc.
  *
  * Sessions:
- *   --session=open   09:20 KST run — records today's opening price
- *   --session=close  15:40 KST run — records today's opening AND closing price
+ *   --session=close  기본이자 유일한 예약 세션(15:40 KST + 매시 캐치업 슬롯).
+ *                    목표 거래일의 시가와 종가를 함께 기록한다.
+ *   --session=open   수동 전용. 09:20 정기 실행은 제거됐다(§28) — close 실행이
+ *                    같은 일봉에서 시가를 함께 확정하므로 경로만 남겨 두었다.
  *
  * Exit codes:
- *   0  – updated, or skipped safely (weekend, too early, already current, holiday)
- *   1  – fatal error (network failure, validation failure); existing file kept
+ *   0  – updated, or skipped safely (이미 최신, 공휴일 등 날짜 불일치)
+ *   1  – fatal error (전 종목 조회 실패, 검증 실패 등); existing file kept
  */
 
 import { readFileSync, writeFileSync, renameSync, existsSync } from "fs";
@@ -97,9 +99,20 @@ const KRX_CLOSE_UTC_MINUTE = 30;
  */
 const CLOSE_ANCHOR_SETTLE_MINUTES = 3;
 
-// Earliest KST time each session may run (Yahoo needs a few minutes to settle).
+/*
+ * Earliest KST time each session may target TODAY's bar.
+ *
+ * The close threshold is the anchor sampling minute itself (15:30 + settle,
+ * see CLOSE_ANCHOR_SETTLE_MINUTES): writing an anchorTimeUtc that has not
+ * happened yet would send the browser after a futures kline that does not
+ * exist. Before this instant a run targets the previous weekday instead —
+ * see lastTradingDayKST.
+ */
 const OPEN_SESSION_READY = { hour: 9, minute: 15 };
-const CLOSE_SESSION_READY = { hour: 15, minute: 31 };
+const CLOSE_SESSION_READY = {
+  hour: 15,
+  minute: KRX_CLOSE_UTC_MINUTE + CLOSE_ANCHOR_SETTLE_MINUTES, // 15:33
+};
 
 // ─── 시간 유틸리티 ────────────────────────────────────────────────────────────
 
@@ -129,11 +142,22 @@ function weekdayKST() {
  * converges on the latest weekday's settled bar. A weekend run targets Friday,
  * a delayed run targets the day it was meant for, and a run whose work is
  * already done exits in the "이미 최신" branch below.
+ *
+ * "Today" only counts once its bar can actually exist. 평일이라도 세션 준비
+ * 시각(종가는 15:33 KST — 앵커 샘플링 분) 전이면 하루 물러선다. 그렇지 않으면
+ * 15:40Z 캐치업 슬롯(= 화~금 00:40 KST)이 아직 열리지도 않은 "오늘"을 목표로
+ * 삼고, 준비 게이트가 그걸 버려서 월~목 밤의 캐치업이 영구 no-op였다 — 물러선
+ * 뒤에야 그 슬롯이 어제의 종가를 메울 수 있다.
  */
-function lastTradingDayKST() {
+function lastTradingDayKST(session) {
   const [y, m, d] = todayKST().split("-").map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
   // getUTCDay() of a bare calendar date is that date's weekday.
+  const isWeekday = date.getUTCDay() >= 1 && date.getUTCDay() <= 5;
+  const ready = session === "open" ? OPEN_SESSION_READY : CLOSE_SESSION_READY;
+  if (isWeekday && !isAtOrAfter(ready)) {
+    date.setUTCDate(date.getUTCDate() - 1);
+  }
   while (date.getUTCDay() === 0 || date.getUTCDay() === 6) {
     date.setUTCDate(date.getUTCDate() - 1);
   }
@@ -147,7 +171,11 @@ function currentKSTTime() {
     minute: "2-digit",
     hour12: false,
   }).formatToParts(new Date());
-  const hour = parseInt(parts.find((p) => p.type === "hour").value, 10);
+  // h23 still yields "24" for midnight in some engines — same guard as
+  // src/lib/koreaMarket.ts. 자정의 캐치업 슬롯이 24:40으로 읽히면 어떤 준비
+  // 시각보다도 뒤가 되어 "오늘"을 목표로 오판한다.
+  const rawHour = parts.find((p) => p.type === "hour").value;
+  const hour = rawHour === "24" ? 0 : parseInt(rawHour, 10);
   const minute = parseInt(parts.find((p) => p.type === "minute").value, 10);
   return { hour, minute };
 }
@@ -341,6 +369,23 @@ function priceProblem(price) {
   return null;
 }
 
+/**
+ * 두 앵커 블록이 같은 내용인지. 재수집이 직전 실행과 똑같은 결과(같은 날짜,
+ * 같은 종목, 같은 가격)를 냈다면 파일을 다시 쓸 이유가 없다 — updatedAt만
+ * 바뀐 커밋은 배포까지 유발하면서 아무것도 새로 말하지 않는다. 한 종목이
+ * 계속 미확정인 날 매시 캐치업 슬롯이 그 커밋을 시간마다 만들던 자리다.
+ */
+function sameAnchorBlock(a, b) {
+  if (!a || !b) return false;
+  if (a.marketDate !== b.marketDate || a.anchorTimeUtc !== b.anchorTimeUtc) {
+    return false;
+  }
+  const aIds = Object.keys(a.stocks ?? {});
+  const bIds = Object.keys(b.stocks ?? {});
+  if (aIds.length !== bIds.length) return false;
+  return aIds.every((id) => a.stocks[id]?.krxPrice === b.stocks?.[id]?.krxPrice);
+}
+
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 
 function parseSession() {
@@ -356,26 +401,13 @@ async function main() {
   const session = parseSession();
   console.log(`[update-baseline] 시작 (session=${session})...`);
 
-  const targetDateKST = lastTradingDayKST();
-
   /*
-   * The ready gate only means anything when the target is today: it exists so
-   * a same-day run does not read a bar that has not settled yet. A weekend or
-   * past-midnight run is asking about a day that finished hours ago, and
-   * gating those on the current wall clock is how Friday went missing.
+   * 예전의 "세션 시각 이전 스킵" 게이트는 lastTradingDayKST 안으로 들어갔다:
+   * 준비 시각(종가는 15:33 KST 샘플링 분) 전이면 목표일 자체가 어제로 물러나므로
+   * 오늘의 미정산 봉을 목표로 삼는 경우가 구성상 없다. 시각으로 실행을 버리는
+   * 것이 2026-08-28 사고의 절반이었다(§28) — 여기서 시계를 다시 보지 않는다.
    */
-  if (targetDateKST === todayKST()) {
-    const readyAt = session === "open" ? OPEN_SESSION_READY : CLOSE_SESSION_READY;
-    if (!isAtOrAfter(readyAt)) {
-      const { hour, minute } = currentKSTTime();
-      console.log(
-        `[update-baseline] ${session} 세션 시각 이전 스킵 ` +
-          `(현재 ${hour}:${String(minute).padStart(2, "0")} KST, 기준 ` +
-          `${readyAt.hour}:${String(readyAt.minute).padStart(2, "0")}). 정상 종료.`
-      );
-      return;
-    }
-  }
+  const targetDateKST = lastTradingDayKST(session);
 
   console.log(`[update-baseline] 대상 거래일: ${targetDateKST} (오늘: ${todayKST()})`);
 
@@ -488,9 +520,11 @@ async function main() {
   next.timezone = "Asia/Seoul";
   next.referencePriceMode = next.referencePriceMode ?? REFERENCE_PRICE_MODE;
 
+  let anyBlockChanged = false;
   for (const kind of sessionsToWrite) {
     const label = kind === "open" ? "시가" : "종가";
     const stocks = {};
+    const dropped = [];
     for (const stockId of STOCK_IDS) {
       const config = SYMBOLS[stockId];
       const price = collected[stockId]?.[kind];
@@ -499,21 +533,23 @@ async function main() {
         : "오늘 데이터 없음";
 
       if (problem) {
-        // Carry the previous anchor's price rather than dropping the stock: a
-        // day-old reference still prices the card, an absent one blanks it.
-        const previous = existing?.[kind]?.stocks?.[stockId]?.krxPrice;
-        if (previous > 0) {
-          stocks[stockId] = { krxPrice: previous };
-          console.warn(
-            `[update-baseline] ${config.displayName} ${label} 사용 불가 (${problem}) — ` +
-              `직전 값 ${previous.toLocaleString("ko-KR")}원 유지`
-          );
-        } else {
-          console.warn(
-            `[update-baseline] ${config.displayName} ${label} 사용 불가 (${problem}) — ` +
-              `직전 값도 없어 이번 앵커에서 제외`
-          );
-        }
+        /*
+         * 사용할 수 없는 종목은 이번 앵커에서 제외한다 — 직전 값을 베끼지
+         * 않는다.
+         *
+         * 예전에는 직전 앵커의 가격을 새 블록에 그대로 실었는데, 새 블록은
+         * 오늘의 marketDate·anchorTimeUtc 아래에 기록된다. 어제의 종가를
+         * 오늘 15:33의 선물가격과 짝지으면 §2.2가 금지하는 "기준시점이 어긋난
+         * 예상가"가 되고, 카드는 어제 값을 오늘 날짜로 라벨링해 보여준다.
+         * 제외하면 resolveAnchor()가 그 카드만 기준가 없음 상태로 떨어뜨린다
+         * — 하루 어긋난 가격보다 빈 카드가 정직하다.
+         *
+         * 직전 블록에 이 종목이 (직전 날짜로) 있었더라도 함께 사라지는 것은
+         * 의도다: 블록의 날짜는 하나뿐이라 그 날짜에 속하지 않는 가격을 남길
+         * 자리가 없다. 위의 "이미 최신" 분기가 누락 종목을 보고 다음 실행에서
+         * 재수집을 시도한다.
+         */
+        dropped.push(`${config.displayName}: ${problem}`);
         continue;
       }
 
@@ -523,11 +559,39 @@ async function main() {
           `${label}: ${price.toLocaleString("ko-KR")}원`
       );
     }
-    next[kind] = {
+
+    for (const reason of dropped) {
+      console.warn(`[update-baseline] ${label} 앵커에서 제외 — ${reason}`);
+    }
+
+    if (Object.keys(stocks).length === 0) {
+      // 전 종목이 제외되면 빈 블록으로 덮지 않고 직전 블록을 그대로 둔다.
+      console.warn(
+        `[update-baseline] ${label} 앵커: ${targetDateKST} 기준으로 사용 가능한 ` +
+          `종목이 없음 — 기존 블록 유지`
+      );
+      continue;
+    }
+
+    const candidate = {
       marketDate: targetDateKST,
       anchorTimeUtc: anchorTimeUtc(targetDateKST, kind),
       stocks,
     };
+    if (sameAnchorBlock(candidate, next[kind])) {
+      console.log(`[update-baseline] ${label} 앵커: 직전 실행과 동일 — 재기록 생략`);
+      continue;
+    }
+    next[kind] = candidate;
+    anyBlockChanged = true;
+  }
+
+  if (!anyBlockChanged) {
+    // 파일이 그대로면 워크플로도 커밋·배포하지 않는다.
+    console.log(
+      `[update-baseline] 갱신된 앵커 없음. 기존 baseline 유지. 정상 종료.`
+    );
+    return;
   }
 
   next.updatedAt = new Date().toISOString();

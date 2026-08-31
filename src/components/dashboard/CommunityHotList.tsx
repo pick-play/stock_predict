@@ -47,30 +47,29 @@ export function CommunityHotList({ onNavigateBoard }: CommunityHotListProps) {
      * like button here — the one on the old ticker had to stop propagation to
      * avoid throwing the reader onto the board, and a list of four would need
      * four such exceptions for an action that belongs on the post itself.
+     *
+     * The click lives on a real <button> stretched over the card, not on the
+     * section itself. role="button" on the container flattened everything
+     * inside it for assistive tech — a screen reader heard the label and none
+     * of the titles. The overlay keeps the list in the accessibility tree
+     * while the whole card stays one tap target.
      */
     <section
-      className={`animate-fade-in rounded-2xl border border-[var(--border-subtle)] bg-surface-1 px-4 py-3${
+      className={`relative animate-fade-in rounded-2xl border border-[var(--border-subtle)] bg-surface-1 px-4 py-3${
         onNavigateBoard
-          ? " cursor-pointer transition-colors duration-150 hover:border-[var(--border-strong)]"
+          ? " transition-colors duration-150 hover:border-[var(--border-strong)]"
           : ""
       }`}
-      onClick={onNavigateBoard}
-      onKeyDown={
-        onNavigateBoard &&
-        ((event) => {
-          if (event.target !== event.currentTarget) return;
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onNavigateBoard();
-          }
-        })
-      }
-      role={onNavigateBoard ? "button" : undefined}
-      tabIndex={onNavigateBoard ? 0 : undefined}
-      aria-label={
-        onNavigateBoard ? "커뮤니티 주간 인기글 — 눌러서 열기" : "커뮤니티 주간 인기글"
-      }
+      aria-label="커뮤니티 주간 인기글"
     >
+      {onNavigateBoard && (
+        <button
+          type="button"
+          onClick={onNavigateBoard}
+          aria-label="커뮤니티 주간 인기글 — 눌러서 열기"
+          className="absolute inset-0 cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+        />
+      )}
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h2 className="text-[13px] font-semibold text-[var(--text-secondary)]">

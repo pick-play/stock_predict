@@ -1,14 +1,7 @@
 import { hashIp } from '../lib/ipHash';
+import { getClientIp } from '../lib/clientIp';
 import { jsonResponse, errorResponse } from '../lib/cors';
 import type { Env } from '../types';
-
-function getClientIp(request: Request): string {
-  return (
-    request.headers.get('CF-Connecting-IP') ??
-    request.headers.get('X-Forwarded-For')?.split(',')[0].trim() ??
-    '0.0.0.0'
-  );
-}
 
 /**
  * POST /api/posts/:id/like

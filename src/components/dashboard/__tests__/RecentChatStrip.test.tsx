@@ -82,6 +82,23 @@ describe("RecentChatStrip", () => {
     expect(onNavigateChat).toHaveBeenCalledOnce();
   });
 
+  /*
+   * The card used to BE a button (role="button" on the section), which
+   * flattens every child out of the accessibility tree — a screen reader
+   * heard the label and none of the lines. The button is an overlay now, so
+   * the heading and the list must stay exposed beside it.
+   */
+  it("keeps the heading and lines in the accessibility tree beside the button", async () => {
+    mockFetch.result = payload();
+    render(<RecentChatStrip onNavigateChat={() => {}} />);
+
+    await screen.findByRole("button", { name: /실시간 채팅 — 눌러서 열기/ });
+    expect(
+      screen.getByRole("heading", { name: "실시간 채팅" })
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem").length).toBeGreaterThan(0);
+  });
+
   // Without a destination it must not advertise itself as pressable.
   it("stays a plain region when given no destination", async () => {
     mockFetch.result = payload();

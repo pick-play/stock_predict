@@ -385,7 +385,21 @@ function ChatPanel({
               <ActionButton danger onClick={() => void remove({ ids: [message.id] })}>
                 <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />이 줄 삭제
               </ActionButton>
-              <ActionButton onClick={() => void remove({ handle: message.handle })}>
+              <ActionButton
+                onClick={() => {
+                  // Anonymous aliases are drawn from only 1,600 adjective+noun
+                  // combinations, so one handle can be several people — a
+                  // by-handle sweep may take strangers' lines with it, and
+                  // like the post delete below it cannot be undone.
+                  if (
+                    window.confirm(
+                      `"${message.handle}"의 대화를 모두 삭제할까요? 같은 별칭을 쓰는 다른 사용자의 대화도 함께 지워질 수 있으며, 되돌릴 수 없습니다.`,
+                    )
+                  ) {
+                    void remove({ handle: message.handle });
+                  }
+                }}
+              >
                 이 사용자 전체 삭제
               </ActionButton>
             </div>

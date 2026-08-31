@@ -1,17 +1,10 @@
 import { moderatePost } from '../../../src/lib/moderation/filter';
 import { hashIp } from '../lib/ipHash';
+import { getClientIp } from '../lib/clientIp';
 import { isCommentRateLimited, isCommentReportRateLimited } from '../lib/rateLimit';
 import { requireAuth } from '../lib/session';
 import { jsonResponse, errorResponse } from '../lib/cors';
 import type { Env, BoardComment, CommentRow } from '../types';
-
-function getClientIp(request: Request): string {
-  return (
-    request.headers.get('CF-Connecting-IP') ??
-    request.headers.get('X-Forwarded-For')?.split(',')[0].trim() ??
-    '0.0.0.0'
-  );
-}
 
 function rowToComment(row: CommentRow): BoardComment {
   return {
@@ -209,6 +202,19 @@ export async function handleReportComment(
       request,
       env
     );
+  }
+
+  // Same rule as post reports: the target must be a visible comment, or the
+  // reports table fills with rows about ids nobody can act on. Hidden 404s
+  // like missing — hidden means invisible everywhere.
+  const target = await env.DB.prepare(
+    'SELECT id FROM comments WHERE id = ? AND hidden_at IS NULL'
+  )
+    .bind(id)
+    .first<{ id: number }>();
+
+  if (!target) {
+    return errorResponse('not-found', '댓글을 찾을 수 없습니다.', 404, request, env);
   }
 
   const now = new Date().toISOString();

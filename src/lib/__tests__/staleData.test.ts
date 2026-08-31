@@ -33,6 +33,16 @@ describe("getDataFreshness", () => {
     expect(getDataFreshness(sixteenMinAgo)).toBe("stale");
   });
 
+  it("returns 'stale' when eventTime is far in the future (lying clock)", () => {
+    const tenMinAhead = new Date(NOW.getTime() + 10 * 60_000).toISOString();
+    expect(getDataFreshness(tenMinAhead)).toBe("stale");
+  });
+
+  it("stays 'fresh' under minor future clock skew", () => {
+    const thirtySecAhead = new Date(NOW.getTime() + 30_000).toISOString();
+    expect(getDataFreshness(thirtySecAhead)).toBe("fresh");
+  });
+
   it("returns 'unknown' for null", () => {
     expect(getDataFreshness(null)).toBe("unknown");
   });
@@ -69,6 +79,11 @@ describe("isDataStale", () => {
 
   it("returns false for null (unknown is not stale)", () => {
     expect(isDataStale(null)).toBe(false);
+  });
+
+  it("returns true for a far-future eventTime", () => {
+    const oneHourAhead = new Date(NOW.getTime() + 60 * 60_000).toISOString();
+    expect(isDataStale(oneHourAhead)).toBe(true);
   });
 });
 

@@ -126,8 +126,6 @@ export function useChatRoom(
   const handshakeFailuresRef = useRef(0);
   /** Guards every async continuation against running after unmount. */
   const liveRef = useRef(true);
-  /** Set while tearing down on purpose, so cleanup does not reconnect. */
-  const closingRef = useRef(false);
   const joiningRef = useRef(false);
   /**
    * The session the current ticket was minted with.
@@ -293,12 +291,26 @@ export function useChatRoom(
       };
 
       socket.onclose = () => {
+        /*
+         * A superseded socket says nothing about the current one.
+         *
+         * close() only requests the close — the event lands asynchronously, so
+         * by the time a socket closed on purpose (session change, StrictMode
+         * remount) gets here, socketRef may already hold its replacement.
+         * Running the cleanup then nulled the NEW socket's ref, threw away the
+         * freshly minted ticket and scheduled a duplicate reconnect. A shared
+         * "closing" flag cannot express this — it was reset again before the
+         * event arrived — so the guard is the socket's own identity: every
+         * intentional close nulls socketRef first, and this handler acts only
+         * for the socket the hook still considers current.
+         */
+        if (socketRef.current !== socket) return;
         if (pingTimerRef.current !== null) {
           window.clearInterval(pingTimerRef.current);
           pingTimerRef.current = null;
         }
         socketRef.current = null;
-        if (!liveRef.current || closingRef.current) return;
+        if (!liveRef.current) return;
 
         // A socket that closed without opening never completed a handshake.
         if (socket.readyState !== WebSocket.OPEN && !opened) {
@@ -412,7 +424,6 @@ export function useChatRoom(
   // Reconnect on mount with a cached ticket so a returning tab skips the door.
   useEffect(() => {
     liveRef.current = true;
-    closingRef.current = false;
 
     if (!isChatConfigured) {
       setStatus("unavailable");
@@ -492,9 +503,11 @@ export function useChatRoom(
 
     return () => {
       liveRef.current = false;
-      closingRef.current = true;
       document.removeEventListener("visibilitychange", onVisible);
       clearTimers();
+      // Nulling the ref before close() is what makes the close intentional:
+      // when the close event arrives, onclose finds itself superseded and
+      // does nothing (see connect).
       const socket = socketRef.current;
       socketRef.current = null;
       if (socket) socket.close(1000, "leaving room");
@@ -521,16 +534,23 @@ export function useChatRoom(
     authTokenRef.current = authToken;
     clearCachedTicket();
     ticketRef.current = null;
+    // A pending reconnect or keepalive belongs to the old session's socket.
+    clearTimers();
 
+    /*
+     * Null the ref before close(). The close event fires asynchronously —
+     * after the fresh ticket is minted and the new socket built — so the old
+     * socket's onclose must find itself superseded rather than run the
+     * reconnect cleanup against its replacement (see connect for the guard).
+     * The shared flag this used to flip was already reset by then, which is
+     * exactly how the old close nulled the new socket and cleared the new
+     * ticket.
+     */
     const socket = socketRef.current;
     socketRef.current = null;
-    if (socket) {
-      closingRef.current = true;
-      socket.close(1000, "session changed");
-      closingRef.current = false;
-    }
+    if (socket) socket.close(1000, "session changed");
     joinRef.current("");
-  }, [authToken]);
+  }, [authToken, clearTimers]);
 
   return {
     status,

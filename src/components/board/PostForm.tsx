@@ -23,8 +23,9 @@ import { PILL_PRIMARY } from "../common/controls";
 
 interface PostFormProps {
   onPostCreated: (post: BoardPost) => void;
-  /** Bearer token for logged-in posts. When provided the server records
-   *  the member's nickname as authorTag. Omit for anonymous posts. */
+  /** Bearer token of the logged-in member. Posting requires an account
+   *  (§28.2) — the server refuses a post without one, and the board only
+   *  renders this form once logged in. */
   authToken?: string | null;
   /** Display name of the logged-in user, for the "posting as" label. */
   authorNickname?: string | null;
@@ -198,16 +199,19 @@ export function PostForm({ onPostCreated, authToken, authorNickname }: PostFormP
               ? `${remaining < 0 ? "+" + String(-remaining) + "자 초과" : remaining + "자 남음"}`
               : `최대 ${BODY_MAX_LENGTH}자`}
           </span>
-          <span className="text-[12px] text-[var(--text-muted)]">
-            {authorNickname ? (
-              <>
-                <span className="text-[#8b7cff]">{authorNickname}</span>
-                {"으로 게시"}
-              </>
-            ) : (
-              "익명"
-            )}
-          </span>
+          {/*
+            No fallback label: anonymous posting is over (§28.2), and the
+            server records the member's nickname regardless of what is shown
+            here. The nickname is loaded with the token, so this only skips
+            the hint in a state that should not occur — better nothing than
+            "익명" over a post that will carry a name.
+          */}
+          {authorNickname && (
+            <span className="text-[12px] text-[var(--text-muted)]">
+              <span className="text-[#8b7cff]">{authorNickname}</span>
+              {"으로 게시"}
+            </span>
+          )}
         </div>
       </div>
 

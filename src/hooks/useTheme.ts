@@ -33,7 +33,9 @@ function applyTheme(theme: Theme): void {
   // Keep the mobile browser chrome in step with the page.
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
-    meta.setAttribute("content", theme === "light" ? "#f6f8fb" : "#080b10");
+    // The light value matches --bg in index.css, so the browser chrome and the
+    // page behind it are the same colour.
+    meta.setAttribute("content", theme === "light" ? "#f0f4f8" : "#080b10");
   }
 }
 

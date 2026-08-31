@@ -83,6 +83,11 @@ export function AppHeader({
       */}
       <h1 className="flex shrink-0 items-baseline text-xl md:text-2xl font-extrabold tracking-tight leading-none">
         <span className="text-[var(--text-primary)]">{BRAND_NAME_KO}</span>
+        {/* A real space, so the DOM text reads "코스피 NOW" — the brand's own
+            spelling (§28.1) — for copy-paste, accessible names and crawlers.
+            It renders nothing: a whitespace-only text node in a flex container
+            makes no box, so ml-1 stays the sole visual gap and nothing doubles. */}
+        {" "}
         <span className="ml-1 text-[#8b7cff]">{BRAND_NAME_NOW}</span>
       </h1>
 

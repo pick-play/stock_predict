@@ -1,6 +1,7 @@
 import { jsonResponse, errorResponse } from '../lib/cors';
 import { isAdmin } from '../lib/adminAuth';
 import { hashIp } from '../lib/ipHash';
+import { getClientIp } from '../lib/clientIp';
 import { isLoginRateLimited } from '../lib/rateLimit';
 import type { Env, BoardPost, BoardComment, PostRow, CommentRow } from '../types';
 
@@ -213,10 +214,7 @@ export async function handleAdminLogin(
     return errorResponse('invalid-body', '요청 형식이 올바르지 않습니다.', 400, request, env);
   }
 
-  const ip =
-    request.headers.get('CF-Connecting-IP') ??
-    request.headers.get('X-Forwarded-For')?.split(',')[0].trim() ??
-    '0.0.0.0';
+  const ip = getClientIp(request);
   const ipHash = await hashIp(ip, env.IP_SALT);
 
   // Logged before the check, so a wrong guess counts even if the response is fast.

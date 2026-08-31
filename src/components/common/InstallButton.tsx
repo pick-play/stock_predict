@@ -158,7 +158,14 @@ export function InstallButton() {
           type="button"
           onClick={dismiss}
           aria-label="앱 설치 안내 닫기"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-subtle)] text-[var(--text-tertiary)]"
+          /*
+           * Both buttons keep their painted size and take a before: halo up to
+           * §19's 44px — the PILL_QUIET trade from controls.ts, invisible here
+           * because these are filled pills. The halo is what makes a phone's
+           * dismiss actually dismissable; 4px sideways still leaves the 6px gap
+           * to the install button uncontested.
+           */
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-subtle)] text-[var(--text-tertiary)] relative before:absolute before:-inset-1 before:content-['']"
           style={{
             backgroundColor: "var(--surface-2)",
           }}
@@ -170,7 +177,7 @@ export function InstallButton() {
           type="button"
           onClick={() => void activate()}
           aria-expanded={platform === "ios" ? showIosHelp : undefined}
-          className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold text-white"
+          className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold text-white relative before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']"
           style={{
             background: "linear-gradient(135deg, #8b7cff 0%, #6b5ce7 100%)",
             boxShadow: "0 8px 24px rgba(107,92,231,0.35)",

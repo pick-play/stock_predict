@@ -57,7 +57,7 @@ export function PriceChart({
   isLoading = false,
   stockId,
 }: PriceChartProps) {
-  const [selectedStock, setSelectedStock] = useState<StockId>("samsung");
+  const [selectedStock, setSelectedStock] = useState<StockId>(STOCK_IDS[0]);
   // A pinned stock overrides the selector's state rather than syncing to it, so
   // the chart cannot drift from the card whose button opened it.
   const activeStock = stockId ?? selectedStock;
@@ -212,7 +212,12 @@ function ChartHeader({
               onClick={() => onStockChange(id)}
               aria-label={`${STOCK_LABELS[id]} 차트 보기`}
               aria-pressed={activeStock === id}
-              className={`min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 ${
+              /* The before: halo lifts the hit box to §19's 44px while the
+                 painted chip keeps its 36px — the PILL_QUIET trade from
+                 controls.ts, made invisible because these chips are filled at
+                 rest. Vertical only, so a chip cannot take its neighbour's tap;
+                 wrapped rows sit 8px apart, which two 4px halos just touch. */
+              className={`min-h-[36px] relative before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 ${
                 activeStock === id
                   ? "bg-[#8b7cff] text-white"
                   : "bg-[var(--surface-3)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -241,7 +246,8 @@ function ChartHeader({
              * the light one. The violet tint also matches how the rest of the
              * site marks a current choice.
              */
-            className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs transition-colors duration-150 ${
+            /* Same 44px before: halo as the stock chips above (§19). */
+            className={`min-h-[36px] relative before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] px-2.5 py-1 rounded-lg text-xs transition-colors duration-150 ${
               timeRange === r
                 ? "bg-[rgba(139,124,255,0.16)] text-[#8b7cff] font-semibold"
                 : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"

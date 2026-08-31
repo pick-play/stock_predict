@@ -51,7 +51,10 @@ jobs:
 
       - name: Commit updated data
         run: |
-          if git diff --quiet; then
+          # public/data만 본다: 커밋하는 것도 그 경로뿐이므로, 러너에 남은
+          # 무관한 트리 변화가 "변경 있음"으로 읽혀 빈 커밋 실패를 만들면
+          # 안 된다.
+          if git diff --quiet -- public/data; then
             echo "No data changes"
             exit 0
           fi
@@ -61,4 +64,26 @@ jobs:
 
           git add public/data
           git commit -m "chore(data): update market snapshot"
-          git push
+
+          # A push can fail for two reasons that both clear on a retry: GitHub
+          # answering 500 — which is exactly what killed the 2026-08-14 close
+          # anchor after the prices had already been fetched and committed — and
+          # another bot commit landing in between. Rebase covers the second,
+          # repetition the first. Without this the run died holding good data.
+          # (update-baseline.yml과 같은 루프. 그쪽과 달리 이 워크플로는 배포를
+          # dispatch하지 않으므로 푸시 후 sha를 읽어 둘 필요는 없다.)
+          pushed=false
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              pushed=true
+              break
+            fi
+            echo "push attempt $attempt failed; refetching and retrying"
+            sleep $((attempt * 5))
+            git pull --rebase --autostash origin main || true
+          done
+
+          if [ "$pushed" != "true" ]; then
+            echo "::error::could not push the updated data after 5 attempts"
+            exit 1
+          fi

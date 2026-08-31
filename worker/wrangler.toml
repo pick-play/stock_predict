@@ -39,5 +39,6 @@ ALLOWED_ORIGIN = "https://kospinow.com,https://www.kospinow.com"
 #   TURNSTILE_SECRET
 #   IP_SALT
 #   ADMIN_TOKEN
+#   ADMIN_PASSWORD   — short console password, traded for ADMIN_TOKEN at /api/admin/login
 #   PASSWORD_PEPPER  — server-side pepper for HMAC-SHA256 password hashing
 #   GITHUB_DISPATCH_TOKEN — Actions-write token for the baseline watchdog

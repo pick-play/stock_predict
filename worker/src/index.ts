@@ -33,6 +33,7 @@ import {
   handleChatAdminDelete,
 } from './routes/chat';
 import { ensureBaselineFresh } from './lib/baselineWatchdog';
+import { isDailyPurgeTick, purgeStaleRows } from './lib/dbMaintenance';
 import type { Env } from './types';
 
 // The Durable Object class has to be exported from the Worker entry module for
@@ -210,7 +211,14 @@ export default {
   // Cloudflare cron (wrangler.toml [triggers]): the baseline watchdog. GitHub's
   // own cron has skipped entire trading days (2026-08-27, -31); this is the
   // independent clock that notices and re-dispatches. See lib/baselineWatchdog.ts.
-  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(ensureBaselineFresh(env));
+
+    // Table hygiene rides the same cron, but only on the first tick of the day
+    // — see lib/dbMaintenance.ts for what is purged and why not hourly.
+    const tickTime = new Date(controller.scheduledTime);
+    if (isDailyPurgeTick(tickTime)) {
+      ctx.waitUntil(purgeStaleRows(env, tickTime));
+    }
   },
 };

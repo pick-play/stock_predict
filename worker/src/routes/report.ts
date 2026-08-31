@@ -1,15 +1,8 @@
 import { hashIp } from '../lib/ipHash';
+import { getClientIp } from '../lib/clientIp';
 import { isReportRateLimited } from '../lib/rateLimit';
 import { jsonResponse, errorResponse } from '../lib/cors';
 import type { Env } from '../types';
-
-function getClientIp(request: Request): string {
-  return (
-    request.headers.get('CF-Connecting-IP') ??
-    request.headers.get('X-Forwarded-For')?.split(',')[0].trim() ??
-    '0.0.0.0'
-  );
-}
 
 export async function handleReport(
   request: Request,
@@ -44,6 +37,20 @@ export async function handleReport(
       request,
       env
     );
+  }
+
+  // The target must actually be a visible post. Without this check the insert
+  // happily filed reports against ids that never existed (or were already
+  // hidden), and the reports table collected rows no moderator can act on.
+  // A hidden post 404s like a missing one — hidden means invisible everywhere.
+  const post = await env.DB.prepare(
+    'SELECT id FROM posts WHERE id = ? AND hidden_at IS NULL'
+  )
+    .bind(id)
+    .first<{ id: number }>();
+
+  if (!post) {
+    return errorResponse('not-found', '게시글을 찾을 수 없습니다.', 404, request, env);
   }
 
   const now = new Date().toISOString();

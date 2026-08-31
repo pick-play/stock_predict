@@ -67,10 +67,18 @@ export function ChatPopup({ onClose, onExpand }: ChatPopupProps) {
    * Both show the same room, and the strip is on a 20-second poll behind a
    * 10-second server cache — so a line sent here could take half a minute to
    * appear a few hundred pixels above, which reads as one of them being broken.
+   *
+   * Not before the hello frame, though. The hook mounts with participants=0,
+   * and the strip prefers live values over its polled copy (0 is a value;
+   * only null is the absence) — publishing on mount flashed "0명 접속" over a
+   * count that was right a moment ago. The handle arrives with hello, so its
+   * presence is the mark that these values describe the room rather than the
+   * hook's initial state. Closing the panel still clears nothing (§28.3).
    */
   useEffect(() => {
+    if (room.handle === null) return;
     publishLivePreview(room.messages, room.participants);
-  }, [room.messages, room.participants]);
+  }, [room.handle, room.messages, room.participants]);
 
   /*
    * Escape closes, and focus goes back where it came from.

@@ -80,6 +80,13 @@ async function fetchCloseDate(url: string): Promise<string | null> {
   return closeMarketDate(await res.json().catch(() => null));
 }
 
+/** Pause between the site read and its one retry. */
+const SITE_RETRY_DELAY_MS = 2_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function dispatchWorkflow(
   env: Env,
   workflowFile: string,
@@ -125,15 +132,35 @@ export async function ensureBaselineFresh(env: Env, now = new Date()): Promise<v
     return; // today's bar isn't settled yet — nothing can be stale
   }
 
-  const siteDate = await fetchCloseDate(SITE_BASELINE_URL).catch(() => null);
+  /*
+   * A null site read is ambiguous: it looks the same whether the anchor is
+   * stale or kospinow.com just hiccuped for one request. Treating it as stale
+   * dispatched an hourly workflow (and a deploy) for as long as the site was
+   * down — pure waste, since a deploy cannot fix an unreachable site. One
+   * retry absorbs the transient case; if the site is unreadable twice in a
+   * row, log it and let the NEXT tick decide. The watchdog runs hourly, so
+   * skipping costs at most an hour of staleness against a real outage.
+   */
+  let siteDate = await fetchCloseDate(SITE_BASELINE_URL).catch(() => null);
+  if (siteDate === null) {
+    await sleep(SITE_RETRY_DELAY_MS);
+    siteDate = await fetchCloseDate(SITE_BASELINE_URL).catch(() => null);
+    if (siteDate === null) {
+      console.warn(
+        '[baseline-watchdog] site baseline unreadable twice; skipping this tick'
+      );
+      return;
+    }
+  }
+
   // ISO date strings order lexicographically.
-  if (siteDate !== null && siteDate >= target) {
+  if (siteDate >= target) {
     return; // the published site already carries the latest close — the normal case
   }
 
   if (!env.GITHUB_DISPATCH_TOKEN) {
     console.error(
-      `[baseline-watchdog] site close anchor is ${siteDate ?? 'unreadable'} (want ${target}) ` +
+      `[baseline-watchdog] site close anchor is ${siteDate} (want ${target}) ` +
         'but GITHUB_DISPATCH_TOKEN is not set; cannot dispatch'
     );
     return;

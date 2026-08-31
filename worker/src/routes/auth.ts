@@ -13,6 +13,7 @@
 import { moderatePost } from '../../../src/lib/moderation/filter';
 import { nicknameProblem } from '../../../src/lib/auth/nickname';
 import { hashIp } from '../lib/ipHash';
+import { getClientIp } from '../lib/clientIp';
 import { isSignupRateLimited, isLoginRateLimited } from '../lib/rateLimit';
 import {
   hashAuthKey,
@@ -68,13 +69,6 @@ function validateNickname(nickname: string): string | null {
   return null;
 }
 
-function getClientIp(request: Request): string {
-  return (
-    request.headers.get('CF-Connecting-IP') ??
-    request.headers.get('X-Forwarded-For')?.split(',')[0].trim() ??
-    '0.0.0.0'
-  );
-}
 
 /**
  * Generates a 16-byte recovery code formatted as
@@ -143,7 +137,7 @@ export async function handleSignup(request: Request, env: Env): Promise<Response
   }
 
   const ip = getClientIp(request);
-  const captchaOk = await verifyTurnstile(turnstileToken, env.TURNSTILE_SECRET, ip);
+  const captchaOk = await verifyTurnstile(turnstileToken, env, ip);
   if (!captchaOk) {
     return errorResponse(
       'captcha-failed',

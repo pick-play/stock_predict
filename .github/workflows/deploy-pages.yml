@@ -11,8 +11,10 @@ on:
     #
     # Data commits do NOT arrive here as push events — GitHub suppresses workflow
     # triggers for pushes made with the default GITHUB_TOKEN. update-baseline.yml
-    # instead calls the workflow_dispatch below after it pushes, which costs two
-    # extra builds per weekday (09:20 and 15:40 KST).
+    # instead calls the workflow_dispatch below after it pushes, which costs one
+    # extra build per weekday close run (15:40 KST; the 09:20 open run was
+    # removed 2026-08-18, and catch-up slots only build when the anchor actually
+    # changed).
   workflow_dispatch:
 
 permissions:

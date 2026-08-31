@@ -145,9 +145,16 @@ const AD_STRONG = [
   "비트코인선물대여", "코인리딩", "주식리딩",
 ];
 
+/*
+ * 단타·수익률·문의 are deliberately absent. This is a stock chat: those are
+ * core vocabulary ("단타로 수익률 어때"), and two of them co-occurring in an
+ * ordinary question tripped the two-signal rule. False-blocking is the worse
+ * failure here (§28.5) — solicitation that pairs them with 무료/입장/초대
+ * still trips, and deletion covers the rest.
+ */
 const AD_WEAK = [
-  "수익률", "수익인증", "종목추천", "추천주", "급등주", "단타",
-  "무료", "이벤트", "가입", "문의", "상담", "선착순", "지금바로",
+  "수익인증", "종목추천", "추천주", "급등주",
+  "무료", "이벤트", "가입", "상담", "선착순", "지금바로",
   "클릭", "입장", "초대", "참여",
 ];
 
@@ -157,7 +164,9 @@ const CONTACT = [
 ];
 
 const PHONE_RE = /01[016789][-. ]?\d{3,4}[-. ]?\d{4}/;
-const KAKAO_LINK_RE = /open\.kakao\.com|pf\.kakao\.com|t\.me\/|틀|kko\.to/i;
+// No bare-syllable alternations here: a stray `|틀|` (IME typo remnant of
+// t.me) once rejected every sentence containing 틀 — "이거 틀렸어", "이틀 뒤".
+const KAKAO_LINK_RE = /open\.kakao\.com|pf\.kakao\.com|t\.me\/|kko\.to/i;
 const URL_RE = /(https?:\/\/|www\.)[^\s]+/gi;
 
 function countLinks(text: string): number {

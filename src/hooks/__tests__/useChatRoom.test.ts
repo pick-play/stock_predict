@@ -257,6 +257,50 @@ describe("useChatRoom reconnection", () => {
     expect(FakeSocket.instances).toHaveLength(1);
   });
 
+  describe("on a session change", () => {
+    /*
+     * A login or logout closes the old socket on purpose, but the close event
+     * lands asynchronously — after the fresh ticket is cached and the new
+     * socket built. The old socket's onclose used to run the reconnect
+     * cleanup anyway (the shared closing flag had already been reset): it
+     * nulled the NEW socket's ref, threw away the fresh ticket and scheduled
+     * a duplicate reconnect. The guard is per-socket identity now.
+     */
+    it("ignores the old socket's late close event", async () => {
+      api.cached = ticket(20 * 60_000);
+      const { result, rerender } = renderHook(
+        ({ auth }: { auth: string | null }) => useChatRoom({ authToken: auth }),
+        { initialProps: { auth: null as string | null } }
+      );
+      await act(async () => {});
+      await act(async () => FakeSocket.instances[0].open());
+
+      rerender({ auth: "member-session" });
+      await act(async () => {});
+
+      // The change re-minted the ticket and built the replacement socket.
+      expect(api.requestChatTicket).toHaveBeenCalledOnce();
+      expect(FakeSocket.instances).toHaveLength(2);
+      const clearedBefore = api.cleared;
+
+      // Only now does the browser deliver the old socket's close event.
+      await act(async () => FakeSocket.instances[0].drop());
+
+      // The fresh ticket survived it, and no duplicate reconnect follows.
+      expect(api.cleared).toBe(clearedBefore);
+      await act(async () => {
+        vi.advanceTimersByTime(30_000);
+      });
+      await act(async () => {});
+      expect(FakeSocket.instances).toHaveLength(2);
+      expect(api.requestChatTicket).toHaveBeenCalledOnce();
+
+      // And the replacement is still the socket the hook is holding.
+      await act(async () => FakeSocket.instances[1].open());
+      expect(result.current.status).toBe("open");
+    });
+  });
+
   describe("on returning to the tab", () => {
     function hide() {
       Object.defineProperty(document, "visibilityState", {

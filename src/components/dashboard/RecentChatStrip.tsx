@@ -100,30 +100,29 @@ export function RecentChatStrip({ onNavigateChat }: RecentChatStripProps) {
      * The whole card activates the room rather than only a corner link — on a
      * phone the lines themselves are the obvious tap target, and a reader who
      * wants in should not have to find a small "열기".
+     *
+     * The click lives on a real <button> stretched over the card, not on the
+     * section itself. role="button" on the container flattened everything
+     * inside it for assistive tech — a screen reader heard "실시간 채팅 버튼"
+     * and none of the lines. The overlay keeps the content in the
+     * accessibility tree while the whole card stays one tap target.
      */
     <section
-      className={`animate-fade-in rounded-2xl border border-[var(--border-subtle)] bg-surface-1 px-4 py-3${
+      className={`relative animate-fade-in rounded-2xl border border-[var(--border-subtle)] bg-surface-1 px-4 py-3${
         onNavigateChat
-          ? " cursor-pointer transition-colors duration-150 hover:border-[var(--border-strong)]"
+          ? " transition-colors duration-150 hover:border-[var(--border-strong)]"
           : ""
       }`}
-      onClick={onNavigateChat}
-      onKeyDown={
-        onNavigateChat &&
-        ((event) => {
-          if (event.target !== event.currentTarget) return;
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onNavigateChat();
-          }
-        })
-      }
-      role={onNavigateChat ? "button" : undefined}
-      tabIndex={onNavigateChat ? 0 : undefined}
-      aria-label={
-        onNavigateChat ? "실시간 채팅 — 눌러서 열기" : "실시간 채팅"
-      }
+      aria-label="실시간 채팅"
     >
+      {onNavigateChat && (
+        <button
+          type="button"
+          onClick={onNavigateChat}
+          aria-label="실시간 채팅 — 눌러서 열기"
+          className="absolute inset-0 cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b7cff]"
+        />
+      )}
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h2 className="text-xs font-semibold text-[var(--text-secondary)]">

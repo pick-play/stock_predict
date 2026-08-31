@@ -9,7 +9,7 @@
  * JavaScript.
  */
 
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 const ChatPopupLazy = lazy(() =>
@@ -34,6 +34,18 @@ export function ChatLauncher({ onExpand }: { onExpand?: () => void }) {
    * of problem as a phone.
    */
   const canFloat = useMediaQuery("(min-width: 768px)");
+
+  /*
+   * Close when the viewport narrows below the breakpoint while the panel is
+   * open. The panel unmounts on its own (`open && canFloat`), but `open`
+   * staying true also hid the launcher — leaving the page with no way into
+   * the chat until a reload. Closing silently gives the button back.
+   * Navigating to #chat here instead is NOT acceptable: resizing a window
+   * must never yank the reader onto another page.
+   */
+  useEffect(() => {
+    if (open && !canFloat) setOpen(false);
+  }, [open, canFloat]);
 
   return (
     <>

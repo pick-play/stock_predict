@@ -780,7 +780,8 @@ export function AuthModal({ auth, onClose, onRecoveryCode }: AuthModalProps) {
               )}
 
               <p className="text-[12px] text-[var(--text-muted)] text-center mt-4 leading-relaxed">
-                로그인 없이도 익명으로 글을 쓸 수 있습니다.
+                읽기는 로그인 없이 가능하고, 글·댓글 작성에는 로그인이
+                필요합니다.
               </p>
             </>
           )}

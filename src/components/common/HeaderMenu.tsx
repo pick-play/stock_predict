@@ -157,7 +157,15 @@ export function HeaderMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="메뉴"
-        className={`${PILL_SURFACE} w-9 px-0`}
+        /*
+         * PILL_SURFACE is 36px and this is the one control a phone reader has
+         * to hit, so a before: halo grows the target to §19's 44px in both
+         * axes without repainting the pill or the header row — controls.ts's
+         * PILL_QUIET makes the same trade with min-h + negative margin, which
+         * a filled pill cannot use without visibly growing. 4px sideways stays
+         * inside the row's 8px gap, so nothing else's tap is taken.
+         */
+        className={`${PILL_SURFACE} w-9 px-0 relative before:absolute before:-inset-1 before:content-['']`}
       >
         <svg
           width="15"

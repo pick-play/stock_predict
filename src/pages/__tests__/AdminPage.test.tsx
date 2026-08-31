@@ -119,17 +119,40 @@ describe("AdminPage", () => {
     expect(api.deleteChatLines).toHaveBeenCalledWith(TOKEN, { ids: ["9"] });
   });
 
-  it("deletes every line from one sender", async () => {
+  /*
+   * The by-handle sweep must ask first: anonymous aliases come from 1,600
+   * adjective+noun combinations, so the same handle can be several people and
+   * a moderator needs to see that warning before the lines vanish.
+   */
+  it("deletes every line from one sender after confirming", async () => {
     sessionStorage.setItem("kospinow:admin-token", TOKEN);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     renderPage();
 
     await user.click(
       await screen.findByRole("button", { name: /이 사용자 전체 삭제/ })
     );
+    expect(confirmSpy).toHaveBeenCalledWith(
+      expect.stringContaining("같은 별칭")
+    );
     expect(api.deleteChatLines).toHaveBeenCalledWith(TOKEN, {
       handle: "빠른 별자리",
     });
+    confirmSpy.mockRestore();
+  });
+
+  it("does not delete by handle when the confirm is declined", async () => {
+    sessionStorage.setItem("kospinow:admin-token", TOKEN);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: /이 사용자 전체 삭제/ })
+    );
+    expect(api.deleteChatLines).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
   });
 
   /*

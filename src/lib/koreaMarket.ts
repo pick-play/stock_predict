@@ -35,11 +35,15 @@ export function getSeoulDate(date: Date = new Date()): {
     Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
   };
 
+  // h23 still yields "24" for midnight in some engines — same guard as
+  // easternParts below.
+  const rawHour = get("hour");
+
   return {
     year: parseInt(get("year")),
     month: parseInt(get("month")),
     day: parseInt(get("day")),
-    hour: parseInt(get("hour")),
+    hour: rawHour === "24" ? 0 : parseInt(rawHour),
     minute: parseInt(get("minute")),
     dayOfWeek: weekdayMap[get("weekday")] ?? 0,
   };

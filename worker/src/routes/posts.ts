@@ -1,18 +1,11 @@
 import { moderatePost, duplicateKey } from '../../../src/lib/moderation/filter';
 import { hashIp } from '../lib/ipHash';
+import { getClientIp } from '../lib/clientIp';
 import { isPostRateLimited, isDuplicatePost } from '../lib/rateLimit';
 import { verifyTurnstile } from '../lib/turnstile';
 import { requireAuth } from '../lib/session';
 import { jsonResponse, errorResponse } from '../lib/cors';
 import type { Env, BoardPost, PostRow } from '../types';
-
-function getClientIp(request: Request): string {
-  return (
-    request.headers.get('CF-Connecting-IP') ??
-    request.headers.get('X-Forwarded-For')?.split(',')[0].trim() ??
-    '0.0.0.0'
-  );
-}
 
 function rowToPost(row: PostRow): BoardPost {
   return {
@@ -121,7 +114,7 @@ export async function handleCreatePost(
 
   // Turnstile CAPTCHA verification
   const ip = getClientIp(request);
-  const captchaOk = await verifyTurnstile(token, env.TURNSTILE_SECRET, ip);
+  const captchaOk = await verifyTurnstile(token, env, ip);
   if (!captchaOk) {
     return errorResponse(
       'captcha-failed',

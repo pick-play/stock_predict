@@ -72,6 +72,33 @@ function readIdentity(socket: WebSocket): SocketIdentity | null {
 const READY_STATE_CLOSING = 2;
 const READY_STATE_CLOSED = 3;
 
+/**
+ * Hard ceiling on the presence map.
+ *
+ * The whole map is flushed as ONE storage row (see flushPresence), and a
+ * Durable Object storage value tops out at 128KiB. Keys are 64-hex-char IP
+ * hashes, ~80B per entry once serialized, so the flush starts failing at
+ * roughly 1,600 entries — and flushPresence swallows the error by design,
+ * which means an over-full map would stop persisting SILENTLY and every
+ * restart would resurrect the §28.3 sawtooth the flush exists to prevent.
+ * 1,200 leaves headroom under that limit; a site with more than 1,200
+ * concurrent addresses has long outgrown the free plan this is built for.
+ */
+const SITE_PRESENCE_MAX = 1_200;
+
+/**
+ * Per-socket flood guard.
+ *
+ * The socket-count cap limits how many sockets one address may hold, not what
+ * a single socket may push through: a script hammering one connection keeps
+ * the room awake (and billed) on every frame even though the rate limiter
+ * rejects the text. Frames beyond a sane length are refused before JSON.parse
+ * ever sees them, and a socket that keeps sending into rejection gets closed —
+ * 1008 (policy violation) — instead of being answered forever.
+ */
+const MAX_FRAME_CHARS = 4_096;
+const MAX_CONSECUTIVE_REJECTIONS = 10;
+
 function isClosingOrClosed(socket: WebSocket): boolean {
   const state = socket.readyState;
   return state === READY_STATE_CLOSING || state === READY_STATE_CLOSED;
@@ -113,6 +140,16 @@ export class ChatRoom implements DurableObject {
 
   /** When the map was last written down, so flushes stay rate-limited. */
   private presenceFlushedAtMs = 0;
+
+  /**
+   * Consecutive rejected frames per socket, for the flood guard.
+   *
+   * In memory like sendHistory, and for the same reason: hibernation only
+   * clears it after the room has gone quiet, and a WeakMap needs no cleanup
+   * when a socket dies. Reset to zero the moment a frame is accepted — the
+   * guard is aimed at a socket that does nothing but flood.
+   */
+  private readonly rejectionStreaks = new WeakMap<WebSocket, number>();
 
   constructor(ctx: DurableObjectState) {
     this.ctx = ctx;
@@ -165,7 +202,10 @@ export class ChatRoom implements DurableObject {
     if (new URL(request.url).pathname === CHAT_PRESENCE_PATH) {
       const ipHash = request.headers.get(CHAT_IP_HASH_HEADER) ?? '';
       const before = this.siteCount();
-      if (ipHash !== '') this.sitePresence.set(ipHash, Date.now());
+      if (ipHash !== '') {
+        this.capSitePresence(ipHash);
+        this.sitePresence.set(ipHash, Date.now());
+      }
       const participants = this.siteCount();
       await this.flushPresence();
 
@@ -296,9 +336,23 @@ export class ChatRoom implements DurableObject {
       return;
     }
 
+    /*
+     * Raw length guard, before JSON.parse gets a chance to chew on it. The
+     * validator's own length cap only runs after a successful parse, so
+     * without this a socket could feed megabyte frames to the parser forever.
+     * The protocol's largest legitimate frame is a short JSON envelope around
+     * a 200-char message; 4KiB is generous.
+     */
+    if (message.length > MAX_FRAME_CHARS) {
+      this.reject(socket, 'too-long', '보낼 수 없는 내용입니다.');
+      this.noteRejectedFrame(socket);
+      return;
+    }
+
     const event = parseChatClientEvent(message);
     if (!event) {
       this.reject(socket, 'invalid', '알 수 없는 요청입니다.');
+      this.noteRejectedFrame(socket);
       return;
     }
 
@@ -319,6 +373,7 @@ export class ChatRoom implements DurableObject {
         'rate-limited',
         `너무 빠르게 보내고 있습니다. ${seconds}초 후 다시 보내주세요.`
       );
+      this.noteRejectedFrame(socket);
       return;
     }
 
@@ -331,6 +386,10 @@ export class ChatRoom implements DurableObject {
       );
       return;
     }
+
+    // An accepted frame ends any rejection streak: the guard is for a socket
+    // that does nothing but flood, not one that occasionally trips a limit.
+    this.rejectionStreaks.delete(socket);
 
     // The handle comes from the socket attachment, never from the frame, so a
     // sender cannot claim someone else's name.
@@ -390,6 +449,38 @@ export class ChatRoom implements DurableObject {
       if (readIdentity(socket)?.ipHash === ipHash) count++;
     }
     return count;
+  }
+
+  /**
+   * Keeps the presence map under SITE_PRESENCE_MAX before a new entry lands.
+   *
+   * Expired entries go first — they were dead weight anyway — and only if the
+   * map is somehow still full does the oldest live entry get evicted. Evicting
+   * a live visitor costs them at most one minute of being counted (their next
+   * ping re-adds them); letting the map grow costs the flush its 128KiB row
+   * and, because flushPresence fails silently, the whole persistence layer.
+   */
+  private capSitePresence(incoming: string): void {
+    if (this.sitePresence.has(incoming)) return; // refresh, not growth
+    if (this.sitePresence.size < SITE_PRESENCE_MAX) return;
+
+    const now = Date.now();
+    for (const [ipHash, lastSeen] of this.sitePresence) {
+      if (now - lastSeen > CHAT_PRESENCE_TTL_MS) this.sitePresence.delete(ipHash);
+    }
+
+    while (this.sitePresence.size >= SITE_PRESENCE_MAX) {
+      let oldestKey: string | null = null;
+      let oldestSeen = Infinity;
+      for (const [ipHash, lastSeen] of this.sitePresence) {
+        if (lastSeen < oldestSeen) {
+          oldestSeen = lastSeen;
+          oldestKey = ipHash;
+        }
+      }
+      if (oldestKey === null) break;
+      this.sitePresence.delete(oldestKey);
+    }
   }
 
   /**
@@ -496,6 +587,33 @@ export class ChatRoom implements DurableObject {
     return new Response(JSON.stringify({ deleted }), {
       headers: { 'Content-Type': 'application/json; charset=utf-8' },
     });
+  }
+
+  /**
+   * Counts a rejected frame and closes the socket after too many in a row.
+   *
+   * The per-IP socket cap limits how many connections one address holds, not
+   * per-socket throughput: a single socket replaying garbage keeps the room
+   * awake — every frame is a billed wake — while the send limiter politely
+   * answers each one. Ten consecutive rejections is nothing a human produces
+   * (the rate limiter alone would need 20+ seconds of non-stop resends), so
+   * the socket is closed with 1008 and the client's reconnect logic can start
+   * over if it was ever legitimate. Content-rule rejections (profanity and
+   * friends) deliberately do not count — a person rephrasing a refused message
+   * is using the room, not flooding it.
+   */
+  private noteRejectedFrame(socket: WebSocket): void {
+    const streak = (this.rejectionStreaks.get(socket) ?? 0) + 1;
+    if (streak >= MAX_CONSECUTIVE_REJECTIONS) {
+      this.rejectionStreaks.delete(socket);
+      try {
+        socket.close(1008, 'flooding');
+      } catch (error) {
+        console.warn('[chat] flood close failed', error);
+      }
+      return;
+    }
+    this.rejectionStreaks.set(socket, streak);
   }
 
   private send(socket: WebSocket, event: ChatServerEvent): void {

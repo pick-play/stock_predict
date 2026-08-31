@@ -1,5 +1,6 @@
 import { errorResponse, jsonResponse } from '../lib/cors';
 import { hashIp } from '../lib/ipHash';
+import { getClientIp } from '../lib/clientIp';
 import { issueChatTicket, verifyChatTicket } from '../lib/chatTicket';
 import { getChatRoomNamespace } from '../chatEnv';
 import { isAdmin } from '../lib/adminAuth';
@@ -16,19 +17,14 @@ import {
 } from '../../../src/lib/chat/config';
 import type { Env } from '../types';
 
-function getClientIp(request: Request): string {
-  return (
-    request.headers.get('CF-Connecting-IP') ??
-    request.headers.get('X-Forwarded-For')?.split(',')[0].trim() ??
-    '0.0.0.0'
-  );
-}
-
 /**
  * Browsers do not apply CORS to WebSocket handshakes — no preflight, and the
  * connection opens whatever the response headers say. The Origin allowlist that
  * cors.ts enforces for the board therefore has to be re-checked by hand here,
  * or any page on the internet could open a socket into the room.
+ *
+ * No localhost entry, same as cors.ts (§28): local dev reaches the Worker
+ * through the Vite proxy, which carries the allowed Origin for it.
  */
 function isAllowedChatOrigin(request: Request, env: Env): boolean {
   const origin = request.headers.get('Origin') ?? '';
@@ -37,7 +33,7 @@ function isAllowedChatOrigin(request: Request, env: Env): boolean {
     .map((o) => o.trim())
     .filter(Boolean);
 
-  return allowed.includes(origin) || origin === 'http://localhost:5173';
+  return allowed.includes(origin);
 }
 
 function unavailable(request: Request, env: Env): Response {
@@ -202,8 +198,10 @@ export async function handleChatPresence(
   const namespace = getChatRoomNamespace(env);
   if (!namespace) return unavailable(request, env);
 
-  const ip = request.headers.get('CF-Connecting-IP') ?? '';
-  const ipHash = await hashIp(ip, env.IP_SALT);
+  // Same extractor as every other route: the visitor announcing themselves
+  // here must hash to the same ip_hash the socket path computes, or one person
+  // is counted twice.
+  const ipHash = await hashIp(getClientIp(request), env.IP_SALT);
 
   const headers = new Headers();
   headers.set(CHAT_IP_HASH_HEADER, ipHash);
@@ -249,11 +247,14 @@ export async function handleChatRecent(
    * shared by every endpoint the site has, and that a dedicated poll exhausted
    * once already. The room still sees one announcement per visitor per minute:
    * the client only sets the flag when one is due.
+   *
+   * POST only: the flag mutates what the room reports, and a mutating GET is
+   * prefetcher-bait (see the /api/chat/presence comment in index.ts). A GET
+   * with ?presence=1 is served as the plain cached preview.
    */
   let freshCount: number | null = null;
-  if (url.searchParams.get('presence') === '1') {
-    const ip = request.headers.get('CF-Connecting-IP') ?? '';
-    const ipHash = await hashIp(ip, env.IP_SALT);
+  if (request.method === 'POST' && url.searchParams.get('presence') === '1') {
+    const ipHash = await hashIp(getClientIp(request), env.IP_SALT);
     const headers = new Headers();
     headers.set(CHAT_IP_HASH_HEADER, ipHash);
     try {

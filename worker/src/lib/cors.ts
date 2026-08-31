@@ -4,6 +4,10 @@ import type { Env } from '../types';
  * ALLOWED_ORIGIN holds a comma-separated list because the site answers on both
  * the apex and the www host. Only an exact match is echoed back — a wildcard
  * would let any page call the board with a logged-in reader's bearer token.
+ *
+ * No localhost entry, by §28 of CLAUDE.md: local dev goes through the Vite
+ * proxy (vite.config.ts `/api` → Worker), which forwards requests under the
+ * page's own origin, so the production allowlist is all dev ever needs.
  */
 function getAllowedOrigin(request: Request, env: Env): string {
   const origin = request.headers.get('Origin') ?? '';
@@ -12,7 +16,7 @@ function getAllowedOrigin(request: Request, env: Env): string {
     .map((o) => o.trim())
     .filter(Boolean);
 
-  if (allowed.includes(origin) || origin === 'http://localhost:5173') {
+  if (allowed.includes(origin)) {
     return origin;
   }
   return '';

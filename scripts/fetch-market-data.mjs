@@ -117,7 +117,12 @@ function roundHalfUp(v) {
   return Math.floor(v + 0.5 + Number.EPSILON);
 }
 
+// src/lib/roundToKrxTick.ts의 사본 — 입력 검증까지 포함해서 같아야 한다.
+// NaN·음수를 여기서 던지지 않으면 그대로 latest.json에 직렬화된다.
 function getKrxTickSize(price) {
+  if (!Number.isFinite(price) || price < 0) {
+    throw new Error("Price must be a finite non-negative number");
+  }
   if (price < 1_000) return 1;
   if (price < 5_000) return 5;
   if (price < 10_000) return 10;
@@ -128,6 +133,9 @@ function getKrxTickSize(price) {
 }
 
 function roundToKrxTick(price) {
+  if (!Number.isFinite(price) || price < 0) {
+    throw new Error("Price must be a finite non-negative number");
+  }
   let tick = getKrxTickSize(price);
   let rounded = roundHalfUp(price / tick) * tick;
   const adjustedTick = getKrxTickSize(rounded);
@@ -178,13 +186,45 @@ function loadLatest() {
   }
 }
 
-// Check whether the current time in Seoul is a weekend day
-function isWeekendInKorea() {
-  const day = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Seoul",
+/** Wall-clock weekday (and minutes past midnight) in the given time zone. */
+function zoneParts(timeZone, date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
     weekday: "short",
-  }).format(new Date());
-  return day === "Sat" || day === "Sun";
+  }).formatToParts(date);
+  const get = (type) => parts.find((p) => p.type === type)?.value ?? "0";
+  const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  // h23 still yields "24" for midnight in some engines.
+  const hour = get("hour") === "24" ? 0 : parseInt(get("hour"), 10);
+  return {
+    dayOfWeek: weekdayMap[get("weekday")] ?? 0,
+    minutes: hour * 60 + parseInt(get("minute"), 10),
+  };
+}
+
+/** 16:00 in New York — the closing bell, in minutes past midnight. */
+const US_CLOSE_MINUTES = 16 * 60;
+
+/**
+ * 주말 판정 — src/lib/koreaMarket.ts isWeekend()가 원본이다(§28: 주말은 미국
+ * 마감부터). 한국 토요일 00시는 뉴욕이 아직 금요일 오후장을 하는 시간이라,
+ * KST 요일만 보면 실제 해외 거래량 위에서 움직이는 시세에 주말 감점을 준다.
+ * 경계는 뉴욕 시계로 계산한다 — 시차가 서머타임에 9시간, 아닐 때 10시간이라
+ * KST 고정 시각으로 박으면 1년의 절반이 틀린다. 이 스크립트는 plain Node라
+ * TS를 import할 수 없어 여기 복제한다 — 원본이 바뀌면 함께 고친다.
+ */
+function isWeekendInKorea(date = new Date()) {
+  const seoulDay = zoneParts("Asia/Seoul", date).dayOfWeek;
+  // 서울 일요일은 뉴욕의 토요일 또는 이른 일요일: 어느 쪽이든 휴장이다.
+  if (seoulDay === 0) return true;
+  if (seoulDay !== 6) return false;
+  const eastern = zoneParts("America/New_York", date);
+  // 서울 토요일은 뉴욕 저녁까지는 아직 금요일이다.
+  if (eastern.dayOfWeek === 5) return eastern.minutes >= US_CLOSE_MINUTES;
+  return true;
 }
 
 /**
@@ -296,6 +336,7 @@ async function main() {
         estimatedPrice: 0,
         changeAmount: 0,
         changeRate: 0,
+        limited: false,
         status: "no-baseline",
       };
 
@@ -309,11 +350,17 @@ async function main() {
          * built from an unclamped rate leaves a card whose percentage and
          * won figure describe different calculations. rawEstimatedPrice keeps
          * the unclamped number for anyone who wants to see how far out it was.
+         *
+         * The epsilon is not decoration (calculateEstimate.ts와 같은 이유):
+         * 108/100 - 1 is 0.08000000000000007 in binary floating point, so a
+         * bare `>` reports a price sitting exactly on the limit as having
+         * exceeded it. The boundary itself is a legal price.
          */
-        const changeRate =
-          Math.abs(rawChangeRate) > NIGHT_SESSION_LIMIT_RATE
-            ? Math.sign(rawChangeRate) * NIGHT_SESSION_LIMIT_RATE
-            : rawChangeRate;
+        const limited =
+          Math.abs(rawChangeRate) > NIGHT_SESSION_LIMIT_RATE + Number.EPSILON * 8;
+        const changeRate = limited
+          ? Math.sign(rawChangeRate) * NIGHT_SESSION_LIMIT_RATE
+          : rawChangeRate;
         const rawEstimatedPrice = anchorKrxPrice * (1 + rawChangeRate);
         const estimatedPrice = roundToKrxTick(anchorKrxPrice * (1 + changeRate));
 
@@ -322,6 +369,9 @@ async function main() {
           estimatedPrice,
           changeAmount: estimatedPrice - anchorKrxPrice,
           changeRate,
+          // 잘렸다는 사실을 폴백 JSON에도 남긴다 — 브라우저 스키마가 이미
+          // 받는 필드다(validation.ts의 limited).
+          limited,
           status: "healthy",
         };
       }

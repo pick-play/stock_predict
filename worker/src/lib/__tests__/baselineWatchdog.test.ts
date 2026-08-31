@@ -95,10 +95,41 @@ describe("ensureBaselineFresh", () => {
     expect(dispatched).toEqual(["deploy-pages.yml"]);
   });
 
-  it("treats an unreadable site as stale, not as fresh", async () => {
-    const dispatched = stubNetwork({ site: null, git: null });
-    await ensureBaselineFresh(env("tok"), evening);
-    expect(dispatched).toEqual(["update-baseline.yml"]);
+  /*
+   * A null site read cannot distinguish "the anchor is stale" from "the site
+   * is down for this one request". Dispatching on it meant an hourly workflow
+   * run (and deploy) for the whole duration of an outage a deploy cannot fix.
+   * The watchdog retries once, then stands down and leaves it to the next tick.
+   */
+  it("skips the tick when the site is unreadable twice", async () => {
+    vi.useFakeTimers();
+    try {
+      // Both the read and its retry 404; git would claim staleness if asked.
+      const dispatched = stubNetwork({ site: null, git: "2026-08-28" });
+      const run = ensureBaselineFresh(env("tok"), evening);
+      await vi.runAllTimersAsync(); // burn through the retry delay
+      await run;
+      expect(dispatched).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("recovers when the retry succeeds", async () => {
+    vi.useFakeTimers();
+    try {
+      // First site read fails, the retry answers stale → normal dispatch path.
+      const dispatched = stubNetwork({ site: "2026-08-28", git: "2026-08-28" });
+      vi.mocked(fetch).mockImplementationOnce(
+        async () => new Response("boom", { status: 502 })
+      );
+      const run = ensureBaselineFresh(env("tok"), evening);
+      await vi.runAllTimersAsync();
+      await run;
+      expect(dispatched).toEqual(["update-baseline.yml"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("stands down without a token instead of throwing", async () => {

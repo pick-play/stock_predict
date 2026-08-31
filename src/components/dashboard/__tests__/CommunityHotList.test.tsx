@@ -97,6 +97,20 @@ describe("CommunityHotList", () => {
     expect(onNavigateBoard).toHaveBeenCalledOnce();
   });
 
+  /*
+   * The card used to BE a button (role="button" on the section), which
+   * flattens every child out of the accessibility tree — a screen reader
+   * heard the label and none of the titles. The button is an overlay now, so
+   * the heading and the list must stay exposed beside it.
+   */
+  it("keeps the heading and titles in the accessibility tree beside the button", () => {
+    render(<CommunityHotList onNavigateBoard={() => {}} />);
+
+    expect(screen.getByRole("button", { name: /눌러서 열기/ })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "커뮤니티" })).toBeTruthy();
+    expect(screen.getAllByRole("listitem")).toHaveLength(COMMUNITY_HOT_COUNT);
+  });
+
   it("stays a plain section when given no destination", () => {
     render(<CommunityHotList />);
     expect(screen.queryByRole("button")).toBeNull();

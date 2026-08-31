@@ -35,9 +35,17 @@ const FRESHNESS_TICK_MS = 30_000;
  * whitespace.
  *
  * Small on purpose: they are ways to ask for more, not the point of the card.
+ *
+ * Small to the eye, not to the finger. The before: halo stretches the hit box
+ * to the 44px §19 asks for without growing the row — the same bargain
+ * controls.ts strikes for PILL_QUIET with min-h + negative margin, except these
+ * pills carry a fill at rest, so the extra height has to be invisible rather
+ * than painted. Vertical only: the three buttons already split the card's full
+ * width, and a sideways halo would let one steal its neighbour's taps.
  */
 const ACTION_CLASS = [
   "inline-flex h-8 w-full items-center justify-center gap-1",
+  "relative before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-['']",
   "rounded-lg text-[0.6875rem] font-medium",
   "bg-[var(--surface-2)] text-[var(--text-tertiary)]",
   "transition-colors duration-150 active:scale-[0.97] motion-reduce:active:scale-100",

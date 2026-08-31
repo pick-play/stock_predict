@@ -7,16 +7,16 @@
  * dashboard visitor wakes the Durable Object and makes hibernation pointless.
  */
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const room = vi.hoisted(() => ({
   mounts: 0,
   state: {
-    status: "open" as const,
-    messages: [],
+    status: "open",
+    messages: [] as unknown[],
     participants: 3,
-    handle: "느긋한 수달",
+    handle: "느긋한 수달" as string | null,
     notice: null,
     send: () => true,
     clearNotice: () => {},
@@ -27,6 +27,20 @@ vi.mock("../../../hooks/useChatRoom", () => ({
   useChatRoom: () => {
     room.mounts += 1;
     return room.state;
+  },
+}));
+
+/*
+ * The strip's shared store, recorded rather than real: the panel's contract is
+ * only when it publishes, and the store's own behaviour has its own tests.
+ */
+const preview = vi.hoisted(() => ({
+  published: [] as { participants: number }[],
+}));
+
+vi.mock("../../../lib/chat/livePreview", () => ({
+  publishLivePreview: (_messages: unknown[], participants: number) => {
+    preview.published.push({ participants });
   },
 }));
 
@@ -50,17 +64,37 @@ const { ChatLauncher } = await import("../ChatLauncher");
  * had the sheet closing under them mid-message when a phone keyboard resized
  * the viewport out from under a fixed element.
  */
+const media = {
+  wide: true,
+  listeners: new Set<(event: { matches: boolean }) => void>(),
+};
+
 function setViewport(wide: boolean) {
+  media.wide = wide;
   vi.stubGlobal(
     "matchMedia",
     (query: string) =>
       ({
-        matches: wide && query.includes("min-width"),
+        get matches() {
+          return media.wide && query.includes("min-width");
+        },
         media: query,
-        addEventListener: () => {},
-        removeEventListener: () => {},
+        addEventListener: (
+          _type: string,
+          listener: (event: { matches: boolean }) => void
+        ) => media.listeners.add(listener),
+        removeEventListener: (
+          _type: string,
+          listener: (event: { matches: boolean }) => void
+        ) => media.listeners.delete(listener),
       }) as unknown as MediaQueryList
   );
+}
+
+/** A window resize crossing the breakpoint, delivered to mounted listeners. */
+function resizeViewport(wide: boolean) {
+  media.wide = wide;
+  media.listeners.forEach((listener) => listener({ matches: wide }));
 }
 
 const open = async () => {
@@ -72,6 +106,12 @@ const open = async () => {
 describe("ChatLauncher", () => {
   beforeEach(() => {
     room.mounts = 0;
+    room.state.status = "open";
+    room.state.messages = [];
+    room.state.participants = 3;
+    room.state.handle = "느긋한 수달";
+    preview.published = [];
+    media.listeners.clear();
     setViewport(true);
   });
 
@@ -130,6 +170,49 @@ describe("ChatLauncher", () => {
     fireEvent.keyDown(document, { key: "Escape" });
 
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  /*
+   * The panel only exists while the viewport can float it. When the window
+   * narrows below the breakpoint mid-conversation the panel unmounts — and
+   * `open` staying true used to hide the launcher too, leaving no way back
+   * into the chat until a reload. The button must come back; navigating away
+   * on a resize would be worse than either outcome.
+   */
+  it("restores the launcher when the viewport narrows while open", async () => {
+    render(<ChatLauncher />);
+    await open();
+
+    act(() => resizeViewport(false));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "실시간 채팅 열기" })
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * The hook mounts with participants=0, and the strip behind the panel
+   * prefers live values over its polled copy — publishing before the hello
+   * frame flashed "0명 접속" over a count that was right a moment ago. The
+   * handle only arrives with hello, so it is the mark the room has answered.
+   */
+  it("publishes no preview before the hello frame", async () => {
+    room.state.status = "connecting";
+    room.state.handle = null;
+    room.state.participants = 0;
+    render(<ChatLauncher />);
+    await open();
+
+    expect(preview.published).toHaveLength(0);
+  });
+
+  it("publishes the room to the strip once hello has arrived", async () => {
+    render(<ChatLauncher />);
+    await open();
+
+    expect(preview.published.length).toBeGreaterThan(0);
+    expect(preview.published[0].participants).toBe(3);
   });
 
   /*

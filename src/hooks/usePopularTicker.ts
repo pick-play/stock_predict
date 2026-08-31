@@ -20,10 +20,14 @@ export function usePopularTicker() {
     if (!isBoardConfigured) return;
 
     let cancelled = false;
+    /** The in-flight request's controller, so cleanup can abort it. */
+    let controller: AbortController | null = null;
 
-    const load = async (signal: AbortSignal) => {
+    const load = async () => {
       if (loadingRef.current) return;
       loadingRef.current = true;
+      controller = new AbortController();
+      const signal = controller.signal;
       setIsLoading(true);
       setError(null);
       try {
@@ -40,29 +44,24 @@ export function usePopularTicker() {
     };
 
     // Initial load
-    const initController = new AbortController();
-    void load(initController.signal);
+    void load();
 
     // Periodic refresh (only when tab is visible)
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        const ctrl = new AbortController();
-        void load(ctrl.signal);
-      }
+      if (document.visibilityState === "visible") void load();
     }, REFRESH_INTERVAL_MS);
 
     // Resume on tab restore
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        const ctrl = new AbortController();
-        void load(ctrl.signal);
-      }
+      if (document.visibilityState === "visible") void load();
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       cancelled = true;
-      initController.abort();
+      // Whatever request is in flight, not just the initial one — the refresh
+      // controllers used to be created inline and never reached this cleanup.
+      controller?.abort();
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
