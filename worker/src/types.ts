@@ -13,6 +13,13 @@ export interface Env {
   ADMIN_PASSWORD?: string;
   ALLOWED_ORIGIN: string;
   PASSWORD_PEPPER: string;
+  /**
+   * GitHub token with Actions write on pick-play/stock_predict, used by the
+   * baseline watchdog (lib/baselineWatchdog.ts) to dispatch workflows when
+   * GitHub's own cron fails to run them. Optional: unset means the watchdog
+   * logs and stands down (the is-configured rule).
+   */
+  GITHUB_DISPATCH_TOKEN?: string;
 }
 
 /** Public post shape returned by the API (matches board-api.md BoardPost). */

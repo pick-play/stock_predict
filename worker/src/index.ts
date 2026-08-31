@@ -32,6 +32,7 @@ import {
   handleChatPresence,
   handleChatAdminDelete,
 } from './routes/chat';
+import { ensureBaselineFresh } from './lib/baselineWatchdog';
 import type { Env } from './types';
 
 // The Durable Object class has to be exported from the Worker entry module for
@@ -204,5 +205,12 @@ export default {
     }
 
     return errorResponse('not-found', '엔드포인트를 찾을 수 없습니다.', 404, request, env);
+  },
+
+  // Cloudflare cron (wrangler.toml [triggers]): the baseline watchdog. GitHub's
+  // own cron has skipped entire trading days (2026-08-27, -31); this is the
+  // independent clock that notices and re-dispatches. See lib/baselineWatchdog.ts.
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(ensureBaselineFresh(env));
   },
 };

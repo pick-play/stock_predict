@@ -20,6 +20,18 @@ class_name = "ChatRoom"
 tag = "v1"
 new_sqlite_classes = ["ChatRoom"]
 
+# Baseline watchdog (src/lib/baselineWatchdog.ts). GitHub's cron has skipped
+# entire trading days, so the clock that guarantees the close anchor is this
+# one. Weekday ticks cover 15:45-23:45 KST hourly (:45, after GitHub's own :40
+# slots get first shot); weekend ticks catch a Friday left empty. Each tick is
+# a cheap freshness check that almost always does nothing.
+[triggers]
+# Cloudflare's cron rejects 0-based weekday numbers, so days are spelled out.
+crons = [
+  "45 6-14 * * MON-FRI",
+  "45 2,8 * * SAT,SUN",
+]
+
 [vars]
 ALLOWED_ORIGIN = "https://kospinow.com,https://www.kospinow.com"
 
@@ -28,3 +40,4 @@ ALLOWED_ORIGIN = "https://kospinow.com,https://www.kospinow.com"
 #   IP_SALT
 #   ADMIN_TOKEN
 #   PASSWORD_PEPPER  — server-side pepper for HMAC-SHA256 password hashing
+#   GITHUB_DISPATCH_TOKEN — Actions-write token for the baseline watchdog
