@@ -1,59 +1,59 @@
 {
   "schemaVersion": 2,
   "timezone": "Asia/Seoul",
-  "updatedAt": "2026-08-29T03:05:29.326Z",
+  "updatedAt": "2026-08-31T11:57:47.754Z",
   "referencePriceMode": "mark",
   "open": {
-    "marketDate": "2026-08-28",
-    "anchorTimeUtc": "2026-08-28T00:00:00.000Z",
+    "marketDate": "2026-08-31",
+    "anchorTimeUtc": "2026-08-31T00:00:00.000Z",
     "stocks": {
       "samsung": {
-        "krxPrice": 262500
+        "krxPrice": 249000
       },
       "skHynix": {
-        "krxPrice": 1704000
+        "krxPrice": 1596000
       },
       "hyundai": {
-        "krxPrice": 399000
+        "krxPrice": 391500
       },
       "samsungEM": {
-        "krxPrice": 1398000
+        "krxPrice": 1370000
       },
       "lgElectronics": {
-        "krxPrice": 199400
+        "krxPrice": 196800
       },
       "hanmi": {
-        "krxPrice": 220500
+        "krxPrice": 211000
       },
       "naver": {
-        "krxPrice": 220000
+        "krxPrice": 214500
       }
     }
   },
   "close": {
-    "marketDate": "2026-08-28",
-    "anchorTimeUtc": "2026-08-28T06:33:00.000Z",
+    "marketDate": "2026-08-31",
+    "anchorTimeUtc": "2026-08-31T06:33:00.000Z",
     "stocks": {
       "samsung": {
-        "krxPrice": 257000
+        "krxPrice": 260000
       },
       "skHynix": {
-        "krxPrice": 1653000
+        "krxPrice": 1674000
       },
       "hyundai": {
-        "krxPrice": 399500
+        "krxPrice": 403500
       },
       "samsungEM": {
-        "krxPrice": 1421000
+        "krxPrice": 1458000
       },
       "lgElectronics": {
-        "krxPrice": 201500
+        "krxPrice": 216500
       },
       "hanmi": {
-        "krxPrice": 219500
+        "krxPrice": 220500
       },
       "naver": {
-        "krxPrice": 220500
+        "krxPrice": 217000
       }
     }
   }
