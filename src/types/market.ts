@@ -60,15 +60,6 @@ export interface StockSnapshot {
   confidenceScore: number;
   eventTime: string;
   status: StockStatus;
-  /**
-   * True when the estimate was held at the night session's ±8% limit rather
-   * than following the overseas contract further. The card says so, so that a
-   * capped number is never presented as the calculation's own answer.
-   *
-   * Optional because snapshots restored from the stored fallback predate the
-   * field; requiring it would fail every one of them.
-   */
-  limited?: boolean;
   /** Which KRX reference the estimate is measured from. */
   anchorKind?: AnchorKind;
   /** Trading day that reference belongs to ("YYYY-MM-DD"). */

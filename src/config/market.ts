@@ -37,19 +37,11 @@ export const STALE_CRITICAL_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
 
 export const MAX_CHANGE_RATE = 0.3; // 30% max single-update change
 
-/**
- * The night session's price limit, ±8%.
- *
- * A domestic after-hours order cannot print outside this band, so an estimate
- * beyond it describes a fill that could not occur. The overseas contract the
- * estimate follows has no limit of its own — it can run further on news — so
- * without this the site would quote a price the market is not allowed to reach.
- *
- * Distinct from MAX_CHANGE_RATE above, which is an outlier guard against bad
- * ticks. This one is a market rule, not a data-quality rule, and being at the
- * boundary is a fact worth showing rather than a reading to discard.
- */
-export const NIGHT_SESSION_LIMIT_RATE = 0.08;
+// The ±8% night-session cap (NIGHT_SESSION_LIMIT_RATE) was removed on
+// 2026-08-31 (owner decision): the estimate tracks an overseas futures-linked
+// contract with no exchange price limit, so the KRX night-session band never
+// applied to what this site shows. MAX_CHANGE_RATE above remains — that one is
+// a data-quality outlier guard, not a market rule.
 export const MIN_PRICE_RATIO = 0.5;
 export const MAX_PRICE_RATIO = 2.0;
 

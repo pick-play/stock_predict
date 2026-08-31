@@ -96,11 +96,6 @@ export const StockSnapshotSchema = z.object({
   confidenceScore: z.number().min(0).max(100),
   eventTime: z.string().datetime(),
   status: z.enum(["healthy", "stale", "error", "loading", "no-baseline"]),
-  // z.object strips unknown keys, so an undeclared `limited` would survive
-  // validation but vanish from the parsed snapshot — the fallback card would
-  // then present a capped price without the caption saying it was capped.
-  // Optional because files written before the cap existed do not carry it.
-  limited: z.boolean().optional(),
 });
 
 export const LatestDataSchema = z.object({

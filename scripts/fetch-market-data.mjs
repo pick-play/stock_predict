@@ -25,16 +25,6 @@ const SYMBOLS = {
 const BINANCE_FUTURES_REST = "https://fapi.binance.com";
 
 /**
- * Night-session limit, mirroring src/config/market.ts.
- *
- * Duplicated rather than imported: this script runs as plain Node with no
- * bundler, and a browser module would drag in import.meta.env. If the browser's
- * value changes, change it here too — a fallback that prices a stock past the
- * limit the site itself enforces would contradict the card it stands in for.
- */
-const NIGHT_SESSION_LIMIT_RATE = 0.08;
-
-/**
  * The mark price at one exact minute, used as the anchor.
  *
  * The v2 baseline stores only the KRX side of the anchor; the futures side is
@@ -336,42 +326,22 @@ async function main() {
         estimatedPrice: 0,
         changeAmount: 0,
         changeRate: 0,
-        limited: false,
         status: "no-baseline",
       };
 
       if (anchorKrxPrice > 0 && anchorFuturesPrice > 0) {
-        const rawChangeRate = currentPrice / anchorFuturesPrice - 1;
-        /*
-         * Clamped on the RATE, not on the price.
-         *
-         * Same rule as src/lib/calculateEstimate.ts: derive the shown price
-         * from the clamped rate so the two agree. Clamping a price that was
-         * built from an unclamped rate leaves a card whose percentage and
-         * won figure describe different calculations. rawEstimatedPrice keeps
-         * the unclamped number for anyone who wants to see how far out it was.
-         *
-         * The epsilon is not decoration (calculateEstimate.ts와 같은 이유):
-         * 108/100 - 1 is 0.08000000000000007 in binary floating point, so a
-         * bare `>` reports a price sitting exactly on the limit as having
-         * exceeded it. The boundary itself is a legal price.
-         */
-        const limited =
-          Math.abs(rawChangeRate) > NIGHT_SESSION_LIMIT_RATE + Number.EPSILON * 8;
-        const changeRate = limited
-          ? Math.sign(rawChangeRate) * NIGHT_SESSION_LIMIT_RATE
-          : rawChangeRate;
-        const rawEstimatedPrice = anchorKrxPrice * (1 + rawChangeRate);
-        const estimatedPrice = roundToKrxTick(anchorKrxPrice * (1 + changeRate));
+        // 등락률은 자르지 않는다(2026-08-31 소유자 결정, src/lib/calculateEstimate.ts와
+        // 동일). 추종 대상이 상하한가 없는 해외 선물 연계 계약이므로 KRX 야간
+        // 상하한 ±8%는 이 사이트가 보여주는 것에 애초에 적용되지 않는다.
+        const changeRate = currentPrice / anchorFuturesPrice - 1;
+        const rawEstimatedPrice = anchorKrxPrice * (1 + changeRate);
+        const estimatedPrice = roundToKrxTick(rawEstimatedPrice);
 
         estimateFields = {
           rawEstimatedPrice,
           estimatedPrice,
           changeAmount: estimatedPrice - anchorKrxPrice,
           changeRate,
-          // 잘렸다는 사실을 폴백 JSON에도 남긴다 — 브라우저 스키마가 이미
-          // 받는 필드다(validation.ts의 limited).
-          limited,
           status: "healthy",
         };
       }

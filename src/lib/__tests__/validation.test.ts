@@ -222,19 +222,15 @@ describe("LatestDataSchema — schema version check", () => {
     ).not.toThrow();
   });
 
-  // Stripped instead of kept, the flag would be lost on the fallback path and a
-  // capped price would render without its caption.
-  it("keeps the night-limit flag through validation", () => {
-    const parsed = LatestDataSchema.parse({
-      ...validLatest,
-      stocks: { samsung: { ...minimalSnapshot, limited: true } },
-    });
-    expect(parsed.stocks.samsung?.limited).toBe(true);
-  });
-
-  it("accepts a snapshot written before the night-limit flag existed", () => {
-    const parsed = LatestDataSchema.parse(validLatest);
-    expect(parsed.stocks.samsung?.limited).toBeUndefined();
+  // The removed night-limit flag (2026-08-31) may still sit in old committed
+  // snapshots; z.object strips unknown keys, so those files must keep parsing.
+  it("accepts a snapshot that still carries the removed limited flag", () => {
+    expect(() =>
+      LatestDataSchema.parse({
+        ...validLatest,
+        stocks: { samsung: { ...minimalSnapshot, limited: true } },
+      })
+    ).not.toThrow();
   });
 
   it("accepts a newly listed stock", () => {

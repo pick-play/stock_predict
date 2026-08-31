@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { calculateEstimate } from "../calculateEstimate";
+import { roundToKrxTick } from "../roundToKrxTick";
 
 describe("calculateEstimate", () => {
   it("calculates correct estimate for rise", () => {
@@ -101,16 +102,15 @@ describe("calculateEstimate", () => {
 });
 
 /**
- * ±8% is the night session's price limit, not a data-quality guard.
- *
- * A domestic after-hours order cannot print outside that band, so an estimate
- * beyond it describes a fill that could not happen — while the overseas
- * contract the estimate follows has no limit and can run further on news.
+ * The estimate follows the overseas contract wherever it goes (owner decision,
+ * 2026-08-31). The KRX night session's ±8% band was removed: it constrains
+ * KOSPI after-hours fills, which this site never claims to show, and a capped
+ * figure hid how far the overseas market actually moved.
  */
-describe("night session price limit", () => {
+describe("no night-session cap", () => {
   const krxClose = 100_000;
 
-  it("leaves an ordinary move alone", () => {
+  it("follows an ordinary move", () => {
     const r = calculateEstimate({
       krxClose,
       baselineBinancePrice: 100,
@@ -119,65 +119,39 @@ describe("night session price limit", () => {
 
     expect(r.changeRate).toBeCloseTo(0.03, 10);
     expect(r.estimatedPrice).toBe(103_000);
-    expect(r.limited).toBe(false);
   });
 
-  it("holds a runaway rise at +8%", () => {
+  it("follows a large rise past 8% uncapped", () => {
     const r = calculateEstimate({
       krxClose,
       baselineBinancePrice: 100,
       currentBinancePrice: 115, // +15% overseas
     });
 
-    expect(r.changeRate).toBeCloseTo(0.08, 10);
-    expect(r.estimatedPrice).toBe(108_000);
-    expect(r.limited).toBe(true);
+    expect(r.changeRate).toBeCloseTo(0.15, 10);
+    expect(r.estimatedPrice).toBe(115_000);
   });
 
-  it("holds a runaway fall at -8%", () => {
+  it("follows a large fall past -8% uncapped", () => {
     const r = calculateEstimate({
       krxClose,
       baselineBinancePrice: 100,
       currentBinancePrice: 80, // -20% overseas
     });
 
-    expect(r.changeRate).toBeCloseTo(-0.08, 10);
-    expect(r.estimatedPrice).toBe(92_000);
-    expect(r.limited).toBe(true);
+    expect(r.changeRate).toBeCloseTo(-0.2, 10);
+    expect(r.estimatedPrice).toBe(80_000);
   });
 
-  // The rate is capped before the price is derived, so every figure the card
-  // shows agrees. Clamping the price afterwards would leave changeRate and
-  // changeAmount describing a different number than estimatedPrice.
-  it("keeps the price, rate and amount consistent when capped", () => {
+  // Every figure on the card describes the same calculation.
+  it("keeps the price, rate and amount consistent", () => {
     const r = calculateEstimate({
       krxClose,
       baselineBinancePrice: 100,
       currentBinancePrice: 130,
     });
 
-    expect(r.estimatedPrice).toBe(krxClose * (1 + r.changeRate));
+    expect(r.estimatedPrice).toBe(roundToKrxTick(krxClose * (1 + r.changeRate)));
     expect(r.changeAmount).toBe(r.estimatedPrice - krxClose);
-  });
-
-  // What the calculation actually produced, kept so the card can say the limit
-  // was reached rather than quietly presenting the boundary as the answer.
-  it("still reports the uncapped price it computed", () => {
-    const r = calculateEstimate({
-      krxClose,
-      baselineBinancePrice: 100,
-      currentBinancePrice: 115,
-    });
-
-    expect(r.rawEstimatedPrice).toBeCloseTo(115_000, 6);
-  });
-
-  it("does not trip exactly at the boundary", () => {
-    const r = calculateEstimate({
-      krxClose,
-      baselineBinancePrice: 100,
-      currentBinancePrice: 108,
-    });
-    expect(r.limited).toBe(false);
   });
 });
