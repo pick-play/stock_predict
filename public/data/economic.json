@@ -1,23 +1,9 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-01T12:32:32.948Z",
-  "windowStart": "2026-08-25",
-  "windowEnd": "2026-10-02",
+  "updatedAt": "2026-09-03T12:04:54.031Z",
+  "windowStart": "2026-08-27",
+  "windowEnd": "2026-10-04",
   "releases": [
-    {
-      "id": "pce",
-      "label": "개인소비지출 (PCE)",
-      "source": "BEA",
-      "date": "2026-08-26",
-      "releaseAtUtc": "2026-08-26T12:30:00.000Z"
-    },
-    {
-      "id": "gdp",
-      "label": "GDP",
-      "source": "BEA",
-      "date": "2026-08-26",
-      "releaseAtUtc": "2026-08-26T12:30:00.000Z"
-    },
     {
       "id": "employment",
       "label": "고용보고서",
