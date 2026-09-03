@@ -1,59 +1,59 @@
 {
   "schemaVersion": 2,
   "timezone": "Asia/Seoul",
-  "updatedAt": "2026-09-02T06:45:41.885Z",
+  "updatedAt": "2026-09-03T06:45:30.817Z",
   "referencePriceMode": "mark",
   "open": {
-    "marketDate": "2026-09-02",
-    "anchorTimeUtc": "2026-09-02T00:00:00.000Z",
+    "marketDate": "2026-09-03",
+    "anchorTimeUtc": "2026-09-03T00:00:00.000Z",
     "stocks": {
       "samsung": {
-        "krxPrice": 252000
+        "krxPrice": 254000
       },
       "skHynix": {
-        "krxPrice": 1630000
+        "krxPrice": 1643000
       },
       "hyundai": {
-        "krxPrice": 389000
+        "krxPrice": 381500
       },
       "samsungEM": {
-        "krxPrice": 1381000
+        "krxPrice": 1432000
+      },
+      "lgElectronics": {
+        "krxPrice": 203000
+      },
+      "hanmi": {
+        "krxPrice": 215500
+      },
+      "naver": {
+        "krxPrice": 210500
+      }
+    }
+  },
+  "close": {
+    "marketDate": "2026-09-03",
+    "anchorTimeUtc": "2026-09-03T06:33:00.000Z",
+    "stocks": {
+      "samsung": {
+        "krxPrice": 250000
+      },
+      "skHynix": {
+        "krxPrice": 1601000
+      },
+      "hyundai": {
+        "krxPrice": 383000
+      },
+      "samsungEM": {
+        "krxPrice": 1349000
       },
       "lgElectronics": {
         "krxPrice": 199900
       },
       "hanmi": {
+        "krxPrice": 210500
+      },
+      "naver": {
         "krxPrice": 207000
-      },
-      "naver": {
-        "krxPrice": 209000
-      }
-    }
-  },
-  "close": {
-    "marketDate": "2026-09-02",
-    "anchorTimeUtc": "2026-09-02T06:33:00.000Z",
-    "stocks": {
-      "samsung": {
-        "krxPrice": 250500
-      },
-      "skHynix": {
-        "krxPrice": 1614000
-      },
-      "hyundai": {
-        "krxPrice": 378000
-      },
-      "samsungEM": {
-        "krxPrice": 1402000
-      },
-      "lgElectronics": {
-        "krxPrice": 200500
-      },
-      "hanmi": {
-        "krxPrice": 213000
-      },
-      "naver": {
-        "krxPrice": 208000
       }
     }
   }
